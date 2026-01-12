@@ -11,9 +11,9 @@ import 'package:esc_pos_utils/esc_pos_utils.dart';
 import 'package:flutter_bluetooth_serial/flutter_bluetooth_serial.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:intl/intl.dart';
+import 'package:resturant/ApiConstants.dart'; 
 
-// Add this constant
-const String REFERER_HEADER = 'https://api-cloudchef.sltcloud.lk';     
+
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -147,11 +147,11 @@ class _LoginScreenState extends State<LoginScreen> {
 
     try {
       final response = await http.post(
-        Uri.parse('https://api-cloudchef.sltcloud.lk/api/auth/login'),
+        Uri.parse(ApiConstants.getFullUrl(ApiConstants.authLogin)),
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
-          'referer': REFERER_HEADER,
+          'referer': ApiConstants.refererHeader,
         },
         body: json.encode({
           'name': _usernameController.text.trim(),
@@ -167,12 +167,12 @@ class _LoginScreenState extends State<LoginScreen> {
           await AuthService.saveToken(token);
           
           final userResponse = await http.get(
-            Uri.parse('https://api-cloudchef.sltcloud.lk/api/user'),
+            Uri.parse(ApiConstants.getFullUrl(ApiConstants.getUser)),
             headers: {
               'Content-Type': 'application/json',
               'Accept': 'application/json',
               'Authorization': 'Bearer $token',
-              'referer': REFERER_HEADER,
+              'referer': ApiConstants.refererHeader,
             },
           ).timeout(const Duration(seconds: 10));
 
@@ -335,8 +335,6 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 }
 
-
-
 class AuthService {
   static const String _tokenKey = 'auth_token';
  
@@ -362,12 +360,12 @@ class AuthService {
   
     try {
       final response = await http.get(
-        Uri.parse('https://api-cloudchef.sltcloud.lk/api/customers?page=1&limit=1'),
+        Uri.parse(ApiConstants.getFullUrl('${ApiConstants.getCustomers}?page=1&limit=1')),
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
           'Authorization': 'Bearer $token',
-          'referer': REFERER_HEADER,
+          'referer': ApiConstants.refererHeader,
         },
       ).timeout(const Duration(seconds: 10));
     
@@ -577,15 +575,18 @@ class CartItem {
   int quantity;
   String discountType;
   double discountValue;
-  bool isNewItem; // Track if this is a newly added item (for due tables)
+  bool isNewItem;
+  String uniqueId;
+  String? specialNote;
 
   CartItem({
     required this.product,
     required this.quantity,
     this.discountType = 'none',
     this.discountValue = 0.0,
-    this.isNewItem = true, // Default to true for new items
-  });
+    this.isNewItem = true,
+    this.specialNote,
+  }) : uniqueId = DateTime.now().millisecondsSinceEpoch.toString();
 
   double getPriceByOrderType(OrderType orderType) {
     switch (orderType) {
@@ -603,6 +604,24 @@ class CartItem {
       : (discountType == 'value' ? discountValue : 0.0);
 
   double getTotalPrice(OrderType orderType) => getSubtotal(orderType) - getDiscount(orderType);
+
+  CartItem copyWith({
+    Product? product,
+    int? quantity,
+    String? discountType,
+    double? discountValue,
+    bool? isNewItem,
+    String? specialNote,
+  }) {
+    return CartItem(
+      product: product ?? this.product,
+      quantity: quantity ?? this.quantity,
+      discountType: discountType ?? this.discountType,
+      discountValue: discountValue ?? this.discountValue,
+      isNewItem: isNewItem ?? this.isNewItem,
+      specialNote: specialNote ?? this.specialNote,
+    );
+  }
 }
 
 class Category {
@@ -632,14 +651,14 @@ class Table {
   final String name;
   final double serviceCharge;
   bool hasDueOrders;
-  String specialNote; // ADDED: Special note for table
+  String specialNote;
 
   Table({
     required this.id,
     required this.name,
     required this.serviceCharge,
     this.hasDueOrders = false,
-    this.specialNote = '', // ADDED: Default empty special note
+    this.specialNote = '',
   });
 
   factory Table.fromJson(Map<String, dynamic> json) {
@@ -648,7 +667,7 @@ class Table {
       name: json['name'] ?? '',
       serviceCharge: double.tryParse(json['service_charge']?.toString() ?? '0') ?? 0.0,
       hasDueOrders: json['has_due_orders'] ?? false,
-      specialNote: json['special_note'] ?? '', // ADDED: Load special note from JSON
+      specialNote: json['special_note'] ?? '',
     );
   }
 
@@ -657,7 +676,7 @@ class Table {
     'name': name,
     'service_charge': serviceCharge,
     'has_due_orders': hasDueOrders,
-    'special_note': specialNote, // ADDED: Include special note in JSON
+    'special_note': specialNote,
   };
 }
 
@@ -669,7 +688,7 @@ class Order {
   final DateTime orderDate;
   final String? customerName;
   final String? tableName;
-  final String? invoiceNumber; 
+  final String? invoiceNumber;
 
   Order({
     required this.id,
@@ -679,7 +698,7 @@ class Order {
     required this.orderDate,
     this.customerName,
     this.tableName,
-    this.invoiceNumber, 
+    this.invoiceNumber,
   });
 
   factory Order.fromJson(Map<String, dynamic> json) {
@@ -691,7 +710,7 @@ class Order {
       orderDate: DateTime.parse(json['order_date'] ?? DateTime.now().toString()),
       customerName: json['customer_name'],
       tableName: json['table_name'],
-      invoiceNumber: json['invoice_code'] ?? json['invoice_number'] ?? '', 
+      invoiceNumber: json['invoice_code'] ?? json['invoice_number'] ?? '',
     );
   }
 
@@ -710,6 +729,7 @@ class Order {
 class PrinterType {
   static const String cashier = 'CASHIER';
   static const String kitchen = 'KITCHEN';
+  static const String bot = 'BOT';
 }
 
 class NumPad extends StatelessWidget {
@@ -862,9 +882,8 @@ class NumPad extends StatelessWidget {
         ],
       )
     );
-    }
   }
-
+}
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -887,11 +906,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
   List<Order> _orders = [];
   Category? _selectedCategory;
   
-  // FIXED: Add flags to track what data has been loaded
   bool _dataLoaded = false;
   bool _isInitialLoading = true;
   bool _isLoading = false;
   bool _isLoadingProducts = false;
+
+  bool _isSavingInvoice = false;
   
   final TextEditingController _searchController = TextEditingController();
   final TextEditingController _productSearchController = TextEditingController();
@@ -907,30 +927,31 @@ class _DashboardScreenState extends State<DashboardScreen> {
   List<BluetoothDevice> _devices = [];
   List<BluetoothDevice> _connectedCashierDevices = [];
   List<BluetoothDevice> _connectedKitchenDevices = [];
+  List<BluetoothDevice> _connectedBotDevices = [];
   List<BluetoothConnection> _connections = [];
   bool _isScanning = false;
   bool _isBluetoothEnabled = false;
   int _orderNumber = 1;
   static const String defaultCashierPrinterName = 'Printer001';
   static const String defaultKitchenPrinterName = '4B-2023PA-EE15';
+  static const String defaultBotPrinterName = 'BOT-Printer';
   double _serviceAmountOverride = 0.0;
   Map<String, dynamic>? _cartDataForPrinting;
   bool _showListView = true;
   
-  // Add this variable to track if we're editing a due table
   bool _isEditingDueTable = false;
-  // Add this variable to store the existing items from due table
   List<Map<String, dynamic>> _existingDueTableItems = [];
-  // Add this flag to track if we're processing due table payment
   bool _isProcessingDueTablePayment = false;
   
-  // Add this map to store special notes locally
   Map<int, String> _tableSpecialNotes = {};
+  
+  Map<String, double>? _paymentDataForPrinting;
+  String? _kotCode;
+  String? _botCode;
 
   @override
   void initState() {
     super.initState();
-    // Start loading data immediately
     _initializeApp();
     _discountController.addListener(_updateCartTotals);
     _checkBluetoothStatus();
@@ -958,7 +979,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
       return;
     }
     
-    // Load data in parallel where possible
     await Future.wait([
       _loadCategories(),
       _loadProducts(),
@@ -973,6 +993,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
     });
   }
 
+  int _getTotalConnectedPrinters() {
+    return _connectedCashierDevices.length + 
+         _connectedKitchenDevices.length + 
+         _connectedBotDevices.length;
+  }
+
   Future<void> _loadOrders() async {
     if (!_dataLoaded) return;
     
@@ -980,7 +1006,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     try {
       final headers = await _getAuthHeaders();
       final response = await http.get(
-        Uri.parse('https://api-cloudchef.sltcloud.lk/api/order'),
+        Uri.parse(ApiConstants.getFullUrl(ApiConstants.getOrders)),
         headers: headers,
       ).timeout(const Duration(seconds: 30));
 
@@ -1006,6 +1032,32 @@ class _DashboardScreenState extends State<DashboardScreen> {
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  bool _hasKitchenItems(List<CartItem> cartItems) {
+    return cartItems.any((item) {
+      final stockName = item.product.stockName.toLowerCase();
+      final productUnit = item.product.unit.toLowerCase();
+      final productName = item.product.name.toLowerCase();
+      
+      final isBarItem = stockName.contains('bar') || 
+                       stockName.contains('beverage') ||
+                       productUnit.contains('drink') ||
+                       productUnit.contains('beverage') ||
+                       productUnit.contains('coffee') ||
+                       productUnit.contains('tea') ||
+                       productUnit.contains('juice') ||
+                       productName.contains('coffee') ||
+                       productName.contains('tea') ||
+                       productName.contains('juice') ||
+                       productName.contains('soda') ||
+                       productName.contains('water') ||
+                       productName.contains('cappuccino') ||
+                       productName.contains('latte') ||
+                       productName.contains('espresso');
+      
+      return !isBarItem;
+    });
   }
 
   Future<void> _findTableBill(String tableName) async {
@@ -1073,7 +1125,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         _cartItems.clear();
         _currentInvoiceId = null;
         _serviceAmountOverride = 0.0;
-        _isEditingDueTable = true; // Set to true since we're loading a due table
+        _isEditingDueTable = true;
         _existingDueTableItems.clear();
       });
 
@@ -1119,7 +1171,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
       List<dynamic> itemsData = data['invB'] ?? data['items'] ?? data['order_items'] ?? [];
     
-      // Store the existing items for reference
       _existingDueTableItems = List<Map<String, dynamic>>.from(itemsData);
     
       int loadedItems = 0;
@@ -1171,7 +1222,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
             quantity: quantity,
             discountType: discountType,
             discountValue: discountValue,
-            isNewItem: false, // These are existing items, not new
+            isNewItem: false,
+            specialNote: itemData['special_note'] ?? itemData['note'] ?? '', 
           ));
           loadedItems++;
         } catch (e) {
@@ -1197,66 +1249,58 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
-Future<void> _loadTableItems() async {
-  if (_selectedTable == null) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text('Please select a table first'),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
-    return;
-  }
-
-  // Clear cart items first when selecting any table
-  _clearCart();
-
-  try {
-    final headers = await _getAuthHeaders();
-    final response = await http.post(
-      Uri.parse('https://api-cloudchef.sltcloud.lk/api/invoice-create/table-bill-find'),
-      headers: headers,
-      body: json.encode({'table_name': _selectedTable!.name}),
-    ).timeout(const Duration(seconds: 10));
-
-    if (response.statusCode == 200) {
-      // If table has existing bill, load it
-      await _findTableBill(_selectedTable!.name);
+  Future<void> _loadTableItems() async {
+    if (_selectedTable == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Please select a table first'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
       return;
     }
-  } catch (e) {
-    // No existing bill found - this is a fresh table
-    print('No existing bill for table ${_selectedTable!.name}: $e');
+
+    _clearCart();
+
+    try {
+      final headers = await _getAuthHeaders();
+      final response = await http.post(
+        Uri.parse(ApiConstants.getFullUrl(ApiConstants.tableBillFind)),
+        headers: headers,
+        body: json.encode({'table_name': _selectedTable!.name}),
+      ).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        await _findTableBill(_selectedTable!.name);
+        return;
+      }
+    } catch (e) {
+      print('No existing bill for table ${_selectedTable!.name}: $e');
+    }
+
+    setState(() {
+      _cartItems.clear();
+      _currentInvoiceId = null;
+      _serviceAmountOverride = 0.0;
+      _isEditingDueTable = false;
+      _existingDueTableItems.clear();
+      
+      if (_selectedTable != null) {
+        final localNote = _tableSpecialNotes[_selectedTable!.id];
+        _selectedTable = Table(
+          id: _selectedTable!.id,
+          name: _selectedTable!.name,
+          serviceCharge: _selectedTable!.serviceCharge,
+          hasDueOrders: false,
+          specialNote: localNote ?? '',
+        );
+      }
+    });
   }
 
-  // If no existing bill or error, clear everything and set fresh table
-  setState(() {
-    _cartItems.clear();
-    _currentInvoiceId = null;
-    _serviceAmountOverride = 0.0;
-    _isEditingDueTable = false;
-    _existingDueTableItems.clear();
-    
-    // IMPORTANT: Keep the table with its special note when fresh
-    if (_selectedTable != null) {
-      // Check if we have a local special note for this table
-      final localNote = _tableSpecialNotes[_selectedTable!.id];
-      _selectedTable = Table(
-        id: _selectedTable!.id,
-        name: _selectedTable!.name,
-        serviceCharge: _selectedTable!.serviceCharge,
-        hasDueOrders: false, // Explicitly set to false for fresh table
-        specialNote: localNote ?? '', // Keep existing special note or empty
-      );
-    }
-  });
-}
-
-  // NEW: Show special note dialog when saving invoice
   Future<String?> _showSaveInvoiceNoteDialog() async {
     final noteController = TextEditingController();
     
-    // Load existing special note if any
     if (_selectedTable != null && _selectedTable!.specialNote.isNotEmpty) {
       noteController.text = _selectedTable!.specialNote;
     }
@@ -1265,90 +1309,115 @@ Future<void> _loadTableItems() async {
       context: context,
       barrierDismissible: false,
       builder: (context) {
+        final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
+        
         return Dialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          insetPadding: const EdgeInsets.all(20),
-          child: ConstrainedBox(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          insetPadding: EdgeInsets.all(isLandscape ? 40 : 20),
+          child: Container(
+            padding: const EdgeInsets.all(16),
             constraints: BoxConstraints(
-              maxWidth: MediaQuery.of(context).size.width * 0.9,
+              maxWidth: isLandscape 
+                  ? MediaQuery.of(context).size.width * 0.5
+                  : MediaQuery.of(context).size.width * 0.8,
               maxHeight: MediaQuery.of(context).size.height * 0.5,
             ),
-            child: SingleChildScrollView(
-              child: Container(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      'Special Note for Table ${_selectedTable?.name ?? ''}',
-                      style: GoogleFonts.poppins(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    TextField(
-                      controller: noteController,
-                      maxLines: 4,
-                      decoration: InputDecoration(
-                        hintText: 'Enter special note for this table...',
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                        contentPadding: const EdgeInsets.all(16),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextButton(
-                            onPressed: () => Navigator.pop(context, null),
-                            style: TextButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                            child: Text(
-                              'Cancel',
-                              style: GoogleFonts.poppins(
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: ElevatedButton(
-                            onPressed: () {
-                              final note = noteController.text.trim();
-                              Navigator.pop(context, note);
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.blue,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                            child: Text(
-                              'OK',
-                              style: GoogleFonts.poppins(
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  'Table ${_selectedTable?.name ?? ''} - Special Note',
+                  style: GoogleFonts.poppins(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  textAlign: TextAlign.center,
                 ),
-              ),
+                const SizedBox(height: 12),
+                
+                Container(
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey[300]!),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: TextField(
+                    controller: noteController,
+                    minLines: 1,
+                    maxLines: 5,
+                    expands: false,
+                    textAlignVertical: TextAlignVertical.top,
+                    decoration: InputDecoration(
+                      hintText: 'Enter special note...',
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      border: InputBorder.none,
+                      isDense: true,
+                    ),
+                    style: GoogleFonts.poppins(fontSize: 12),
+                  ),
+                ),
+                
+                if (isLandscape)
+                  Row(
+                    children: _buildDialogButtons(noteController),
+                  )
+                else
+                  Column(
+                    children: _buildDialogButtons(noteController),
+                  ),
+              ],
             ),
           ),
         );
       },
     );
+  }
+
+  List<Widget> _buildDialogButtons(TextEditingController noteController) {
+    return [
+      Expanded(
+        child: TextButton(
+          onPressed: () => Navigator.pop(context, null),
+          style: TextButton.styleFrom(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(6),
+            ),
+          ),
+          child: Text(
+            'Cancel',
+            style: GoogleFonts.poppins(
+              fontWeight: FontWeight.w500,
+              fontSize: 11,
+            ),
+          ),
+        ),
+      ),
+      const SizedBox(width: 12, height: 12),
+      Expanded(
+        child: ElevatedButton(
+          onPressed: () {
+            final note = noteController.text.trim();
+            Navigator.pop(context, note);
+          },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.blue,
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(6),
+            ),
+          ),
+          child: Text(
+            'OK',
+            style: GoogleFonts.poppins(
+              fontWeight: FontWeight.w500,
+              fontSize: 11,
+            ),
+          ),
+        ),
+      ),
+    ];
   }
 
   Future<void> _requestPermissions() async {
@@ -1389,12 +1458,15 @@ Future<void> _loadTableItems() async {
     
       BluetoothDevice? cashierPrinter;
       BluetoothDevice? kitchenPrinter;
+      BluetoothDevice? botPrinter;
     
       for (var device in bondedDevices) {
         if (device.name == defaultCashierPrinterName) {
           cashierPrinter = device;
         } else if (device.name == defaultKitchenPrinterName) {
           kitchenPrinter = device;
+        } else if (device.name == defaultBotPrinterName) {
+          botPrinter = device;
         }
       }
     
@@ -1404,6 +1476,10 @@ Future<void> _loadTableItems() async {
     
       if (kitchenPrinter != null) {
         await _connectToDevice(kitchenPrinter, PrinterType.kitchen, isAutoConnect: true);
+      }
+      
+      if (botPrinter != null) {
+        await _connectToDevice(botPrinter, PrinterType.bot, isAutoConnect: true);
       }
     } catch (e) {
       print('Auto-connect error: $e');
@@ -1449,8 +1525,10 @@ Future<void> _loadTableItems() async {
     bool isAlreadyConnected = false;
     if (printerType == PrinterType.cashier) {
       isAlreadyConnected = _connectedCashierDevices.any((d) => d.address == device.address);
-    } else {
+    } else if (printerType == PrinterType.kitchen) {
       isAlreadyConnected = _connectedKitchenDevices.any((d) => d.address == device.address);
+    } else if (printerType == PrinterType.bot) {
+      isAlreadyConnected = _connectedBotDevices.any((d) => d.address == device.address);
     }
   
     if (isAlreadyConnected) {
@@ -1469,6 +1547,7 @@ Future<void> _loadTableItems() async {
           _connections.removeWhere((conn) => _getDeviceForConnection(conn)?.address == device.address);
           _connectedCashierDevices.removeWhere((d) => d.address == device.address);
           _connectedKitchenDevices.removeWhere((d) => d.address == device.address);
+          _connectedBotDevices.removeWhere((d) => d.address == device.address);
         });
         if (!isAutoConnect) {
           _showMessage('${device.name} disconnected');
@@ -1479,8 +1558,10 @@ Future<void> _loadTableItems() async {
         _connections.add(connection);
         if (printerType == PrinterType.cashier) {
           _connectedCashierDevices.add(device);
-        } else {
+        } else if (printerType == PrinterType.kitchen) {
           _connectedKitchenDevices.add(device);
+        } else if (printerType == PrinterType.bot) {
+          _connectedBotDevices.add(device);
         }
       });
     
@@ -1505,6 +1586,11 @@ Future<void> _loadTableItems() async {
       if (kitchenIndex >= 0 && kitchenIndex < _connectedKitchenDevices.length) {
         return _connectedKitchenDevices[kitchenIndex];
       }
+      
+      int botIndex = _connections.indexOf(connection) - _connectedCashierDevices.length - _connectedKitchenDevices.length;
+      if (botIndex >= 0 && botIndex < _connectedBotDevices.length) {
+        return _connectedBotDevices[botIndex];
+      }
     
       return null;
     } catch (e) {
@@ -1517,6 +1603,8 @@ Future<void> _loadTableItems() async {
       return PrinterType.cashier;
     } else if (_connectedKitchenDevices.any((d) => d.address == device.address)) {
       return PrinterType.kitchen;
+    } else if (_connectedBotDevices.any((d) => d.address == device.address)) {
+      return PrinterType.bot;
     }
     return 'UNKNOWN';
   }
@@ -1524,15 +1612,26 @@ Future<void> _loadTableItems() async {
   Future<void> _disconnectDevice(BluetoothDevice device) async {
     try {
       final String printerType = _getPrinterTypeForDevice(device);
-      List<BluetoothDevice> targetList = printerType == PrinterType.cashier
-          ? _connectedCashierDevices
-          : _connectedKitchenDevices;
+      List<BluetoothDevice> targetList;
+      
+      if (printerType == PrinterType.cashier) {
+        targetList = _connectedCashierDevices;
+      } else if (printerType == PrinterType.kitchen) {
+        targetList = _connectedKitchenDevices;
+      } else {
+        targetList = _connectedBotDevices;
+      }
         
       final index = targetList.indexWhere((d) => d.address == device.address);
       if (index >= 0) {
-        int connectionIndex = printerType == PrinterType.cashier
-            ? index
-            : _connectedCashierDevices.length + index;
+        int connectionIndex;
+        if (printerType == PrinterType.cashier) {
+          connectionIndex = index;
+        } else if (printerType == PrinterType.kitchen) {
+          connectionIndex = _connectedCashierDevices.length + index;
+        } else {
+          connectionIndex = _connectedCashierDevices.length + _connectedKitchenDevices.length + index;
+        }
           
         if (connectionIndex < _connections.length) {
           await _connections[connectionIndex].finish();
@@ -1556,11 +1655,12 @@ Future<void> _loadTableItems() async {
       _connections.clear();
       _connectedCashierDevices.clear();
       _connectedKitchenDevices.clear();
+      _connectedBotDevices.clear();
     });
     _showMessage('Disconnected from all printers');
   }
 
-Future<List<int>> _generateReceipt(Map<String, dynamic> cartData) async {
+  Future<List<int>> _generateReceipt(Map<String, dynamic> cartData) async {
     final profile = await CapabilityProfile.load();
     final generator = Generator(PaperSize.mm80, profile);
     List<int> bytes = [];
@@ -1579,16 +1679,28 @@ Future<List<int>> _generateReceipt(Map<String, dynamic> cartData) async {
     int orderNumber = cartData['orderNumber'];
     String? invoiceNumber = cartData['invoiceNumber'];
     bool isBillCopy = cartData['isBillCopy'] ?? false;
+    bool isBotPrint = cartData['isBotPrint'] ?? false;
+    String? kotCode = cartData['kotCode'];
+    String? botCode = cartData['botCode'];
+
+    
+    Map<String, double>? paymentBreakdown = cartData['paymentBreakdown'];
+    double cashPaid = paymentBreakdown?['cash'] ?? 0.0;
+    double bankPaid = paymentBreakdown?['bank'] ?? 0.0;
+    double cardPaid = paymentBreakdown?['card'] ?? 0.0;
+    double creditPaid = paymentBreakdown?['credit'] ?? 0.0;
+    double totalPaid = cashPaid + bankPaid + cardPaid + creditPaid;
+    double remainingBalance = netAmount - totalPaid;
+    double cashChange = cashPaid > 0 ? cashPaid - (netAmount - bankPaid - cardPaid - creditPaid) : 0.0;
+    if (cashChange < 0) cashChange = 0.0;
 
     if (printerType == PrinterType.cashier) {
-      // ================= HEADER =================
       bytes += generator.text(
         'KAFENIO COLOMBO',
         styles: const PosStyles(
           align: PosAlign.center,
           bold: true,
-          height: PosTextSize.size3, // INCREASED from size2 to size3
-          width: PosTextSize.size2, // ADDED width for larger font
+          height: PosTextSize.size2,
         ),
       );
 
@@ -1596,7 +1708,6 @@ Future<List<int>> _generateReceipt(Map<String, dynamic> cartData) async {
         'NO-32, Hospital Street, Colombo 1',
         styles: const PosStyles(
           align: PosAlign.center,
-          height: PosTextSize.size2, // INCREASED font size
         ),
       );
 
@@ -1604,13 +1715,11 @@ Future<List<int>> _generateReceipt(Map<String, dynamic> cartData) async {
         'Tel: 0712901901',
         styles: const PosStyles(
           align: PosAlign.center,
-          height: PosTextSize.size2, // INCREASED font size
         ),
       );
 
       bytes += generator.hr();
 
-      // Bill Copy Header if it's a copy
       if (isBillCopy) {
         bytes += generator.text(
           '*** BILL COPY ***',
@@ -1618,19 +1727,16 @@ Future<List<int>> _generateReceipt(Map<String, dynamic> cartData) async {
             align: PosAlign.center,
             bold: true,
             reverse: true,
-            height: PosTextSize.size2, // INCREASED font size
           ),
         );
         bytes += generator.hr();
       }
 
-      // FIXED: Always print the invoice number from system
       bytes += generator.text(
         'Invoice No: ${invoiceNumber ?? 'INV-${DateTime.now().millisecondsSinceEpoch}'}',
         styles: const PosStyles(
           align: PosAlign.left,
           bold: true,
-          height: PosTextSize.size2, // INCREASED font size
         ),
       );
       
@@ -1638,7 +1744,6 @@ Future<List<int>> _generateReceipt(Map<String, dynamic> cartData) async {
         'Cashier: POS User',
         styles: const PosStyles(
           align: PosAlign.left,
-          height: PosTextSize.size2, // INCREASED font size
         ),
       );
       
@@ -1646,7 +1751,6 @@ Future<List<int>> _generateReceipt(Map<String, dynamic> cartData) async {
         'Date: ${DateFormat('yyyy-MM-dd').format(DateTime.now())}',
         styles: const PosStyles(
           align: PosAlign.right,
-          height: PosTextSize.size2, // INCREASED font size
         ),
       );
 
@@ -1654,7 +1758,6 @@ Future<List<int>> _generateReceipt(Map<String, dynamic> cartData) async {
         'Time: ${DateFormat('HH:mm:ss').format(DateTime.now())}',
         styles: const PosStyles(
           align: PosAlign.right,
-          height: PosTextSize.size2, // INCREASED font size
         ),
       );
 
@@ -1663,7 +1766,6 @@ Future<List<int>> _generateReceipt(Map<String, dynamic> cartData) async {
           'Customer: ${selectedCustomer.name}',
           styles: const PosStyles(
             align: PosAlign.left,
-            height: PosTextSize.size2, // INCREASED font size
           ),
         );
       }
@@ -1673,17 +1775,14 @@ Future<List<int>> _generateReceipt(Map<String, dynamic> cartData) async {
           'Table: ${selectedTable.name}',
           styles: const PosStyles(
             align: PosAlign.left,
-            height: PosTextSize.size2, // INCREASED font size
           ),
         );
-        // ADDED: Print special note if exists
         if (selectedTable!.specialNote.isNotEmpty) {
           bytes += generator.text(
             'Note: ${selectedTable!.specialNote}',
             styles: const PosStyles(
               align: PosAlign.left,
               fontType: PosFontType.fontB,
-              height: PosTextSize.size2, // INCREASED font size
             ),
           );
         }
@@ -1693,20 +1792,17 @@ Future<List<int>> _generateReceipt(Map<String, dynamic> cartData) async {
         'Order Type: ${selectedOrderType.displayName}',
         styles: const PosStyles(
           align: PosAlign.left,
-          height: PosTextSize.size2, // INCREASED font size
         ),
       );
 
       bytes += generator.hr(ch: '-');
 
-      // ================= TABLE HEADER =================
       bytes += generator.row([
         PosColumn(
           text: 'Qty',
           width: 2,
           styles: const PosStyles(
             bold: true,
-            height: PosTextSize.size2, // INCREASED font size
           ),
         ),
         PosColumn(
@@ -1715,7 +1811,6 @@ Future<List<int>> _generateReceipt(Map<String, dynamic> cartData) async {
           styles: const PosStyles(
             bold: true,
             align: PosAlign.center,
-            height: PosTextSize.size2, // INCREASED font size
           ),
         ),
         PosColumn(
@@ -1724,7 +1819,6 @@ Future<List<int>> _generateReceipt(Map<String, dynamic> cartData) async {
           styles: const PosStyles(
             bold: true,
             align: PosAlign.center,
-            height: PosTextSize.size2, // INCREASED font size
           ),
         ),
         PosColumn(
@@ -1733,36 +1827,36 @@ Future<List<int>> _generateReceipt(Map<String, dynamic> cartData) async {
           styles: const PosStyles(
             bold: true,
             align: PosAlign.right,
-            height: PosTextSize.size2, // INCREASED font size
           ),
         ),
       ]);
 
       bytes += generator.hr(ch: '-');
 
-      // ================= ITEMS =================
       for (var item in cartItems) {
         final price = item.getPriceByOrderType(selectedOrderType);
         final total = item.getTotalPrice(selectedOrderType);
-        final itemDiscount = 0.00; 
+        final itemDiscount = 0.00;
 
+        String itemName = item.product.name.toUpperCase();
+        
+        if (item.specialNote != null && item.specialNote!.isNotEmpty) {
+          itemName = '$itemName (${item.specialNote})';
+        }
         
         bytes += generator.text(
-          item.product.name.toUpperCase(),
+          itemName,
           styles: const PosStyles(
             align: PosAlign.left,
-            height: PosTextSize.size2, // INCREASED font size
           ),
         );
 
-       
         bytes += generator.row([
           PosColumn(
             text: item.quantity.toString(),
             width: 2,
             styles: const PosStyles(
               align: PosAlign.left,
-              height: PosTextSize.size2, // INCREASED font size
             ),
           ),
           PosColumn(
@@ -1770,7 +1864,6 @@ Future<List<int>> _generateReceipt(Map<String, dynamic> cartData) async {
             width: 3,
             styles: const PosStyles(
               align: PosAlign.center,
-              height: PosTextSize.size2, // INCREASED font size
             ),
           ),
           PosColumn(
@@ -1778,7 +1871,6 @@ Future<List<int>> _generateReceipt(Map<String, dynamic> cartData) async {
             width: 3,
             styles: const PosStyles(
               align: PosAlign.center,
-              height: PosTextSize.size2, // INCREASED font size
             ),
           ),
           PosColumn(
@@ -1786,7 +1878,6 @@ Future<List<int>> _generateReceipt(Map<String, dynamic> cartData) async {
             width: 4,
             styles: const PosStyles(
               align: PosAlign.right,
-              height: PosTextSize.size2, // INCREASED font size
             ),
           ),
         ]);
@@ -1794,13 +1885,11 @@ Future<List<int>> _generateReceipt(Map<String, dynamic> cartData) async {
 
       bytes += generator.hr();
 
-      // ================= TOTALS =================
       bytes += generator.row([
         PosColumn(
           text: 'Gross Amount',
           width: 7,
           styles: const PosStyles(
-            height: PosTextSize.size2, // INCREASED font size
           ),
         ),
         PosColumn(
@@ -1808,7 +1897,6 @@ Future<List<int>> _generateReceipt(Map<String, dynamic> cartData) async {
           width: 5,
           styles: const PosStyles(
             align: PosAlign.right,
-            height: PosTextSize.size2, // INCREASED font size
           ),
         ),
       ]);
@@ -1819,7 +1907,6 @@ Future<List<int>> _generateReceipt(Map<String, dynamic> cartData) async {
             text: 'Discount (${discountPercentage.toStringAsFixed(0)}%)',
             width: 7,
             styles: const PosStyles(
-              height: PosTextSize.size2, // INCREASED font size
             ),
           ),
           PosColumn(
@@ -1827,7 +1914,6 @@ Future<List<int>> _generateReceipt(Map<String, dynamic> cartData) async {
             width: 5,
             styles: const PosStyles(
               align: PosAlign.right,
-              height: PosTextSize.size2, // INCREASED font size
             ),
           ),
         ]);
@@ -1839,7 +1925,6 @@ Future<List<int>> _generateReceipt(Map<String, dynamic> cartData) async {
             text: 'Service Charge',
             width: 7,
             styles: const PosStyles(
-              height: PosTextSize.size2, // INCREASED font size
             ),
           ),
           PosColumn(
@@ -1847,7 +1932,6 @@ Future<List<int>> _generateReceipt(Map<String, dynamic> cartData) async {
             width: 5,
             styles: const PosStyles(
               align: PosAlign.right,
-              height: PosTextSize.size2, // INCREASED font size
             ),
           ),
         ]);
@@ -1861,7 +1945,6 @@ Future<List<int>> _generateReceipt(Map<String, dynamic> cartData) async {
           width: 7,
           styles: const PosStyles(
             bold: true,
-            height: PosTextSize.size2, // INCREASED font size
           ),
         ),
         PosColumn(
@@ -1870,22 +1953,135 @@ Future<List<int>> _generateReceipt(Map<String, dynamic> cartData) async {
           styles: const PosStyles(
             bold: true,
             align: PosAlign.right,
-            height: PosTextSize.size2, // INCREASED font size
           ),
         ),
       ]);
 
+      if (paymentBreakdown != null) {
+       
+      
+        bytes += generator.hr(ch: '-');
+        
+        if (cashPaid > 0) {
+          bytes += generator.row([
+            PosColumn(
+              text: 'Cash Payment',
+              width: 7,
+              styles: const PosStyles(),
+            ),
+            PosColumn(
+              text: cashPaid.toStringAsFixed(2),
+              width: 5,
+              styles: const PosStyles(
+                align: PosAlign.right,
+              ),
+            ),
+          ]);
+          
+        
+        }
+        
+        if (bankPaid > 0) {
+          bytes += generator.row([
+            PosColumn(
+              text: 'Bank Transfer',
+              width: 7,
+              styles: const PosStyles(),
+            ),
+            PosColumn(
+              text: bankPaid.toStringAsFixed(2),
+              width: 5,
+              styles: const PosStyles(
+                align: PosAlign.right,
+              ),
+            ),
+          ]);
+        }
+        
+        if (cardPaid > 0) {
+          bytes += generator.row([
+            PosColumn(
+              text: 'Card Payment',
+              width: 7,
+              styles: const PosStyles(),
+            ),
+            PosColumn(
+              text: cardPaid.toStringAsFixed(2),
+              width: 5,
+              styles: const PosStyles(
+                align: PosAlign.right,
+              ),
+            ),
+          ]);
+        }
+        
+        if (creditPaid > 0) {
+          bytes += generator.row([
+            PosColumn(
+              text: 'Credit Used',
+              width: 7,
+              styles: const PosStyles(),
+            ),
+            PosColumn(
+              text: creditPaid.toStringAsFixed(2),
+              width: 5,
+              styles: const PosStyles(
+                align: PosAlign.right,
+              ),
+            ),
+          ]);
+        }
+        
+        bytes += generator.hr();
+        
+        bytes += generator.row([
+          PosColumn(
+            text: 'TOTAL PAID',
+            width: 7,
+            styles: const PosStyles(
+              bold: true,
+            ),
+          ),
+          PosColumn(
+            text: totalPaid.toStringAsFixed(2),
+            width: 5,
+            styles: const PosStyles(
+              bold: true,
+              align: PosAlign.right,
+            ),
+          ),
+        ]);
+        
+        if (remainingBalance != 0) {
+          bytes += generator.row([
+            PosColumn(
+              text: 'REMAINING BALANCE',
+              width: 7,
+              styles: const PosStyles(
+                bold: true,
+              ),
+            ),
+            PosColumn(
+              text: remainingBalance.toStringAsFixed(2),
+              width: 5,
+              styles: const PosStyles(
+                bold: true,
+                align: PosAlign.right,
+              
+              ),
+            ),
+          ]);
+        }
+      }
+
       bytes += generator.hr();
 
-      // ================= FOOTER =================
-      // Add Bill Copy notice at bottom
       if (isBillCopy) {
         bytes += generator.text(
           '*** BILL COPY - NOT ORIGINAL ***',
           styles: const PosStyles(
             align: PosAlign.center,
             bold: true,
-            height: PosTextSize.size2, // INCREASED font size
           ),
         );
         bytes += generator.hr();
@@ -1896,7 +2092,6 @@ Future<List<int>> _generateReceipt(Map<String, dynamic> cartData) async {
         styles: const PosStyles(
           align: PosAlign.center,
           bold: true,
-          height: PosTextSize.size2, // INCREASED font size
         ),
       );
 
@@ -1904,7 +2099,6 @@ Future<List<int>> _generateReceipt(Map<String, dynamic> cartData) async {
         'Software By (e) SLT Cloud POS',
         styles: const PosStyles(
           align: PosAlign.center,
-          height: PosTextSize.size2, // INCREASED font size
         ),
       );
 
@@ -1912,7 +2106,6 @@ Future<List<int>> _generateReceipt(Map<String, dynamic> cartData) async {
         '0252264723 | 0702967270',
         styles: const PosStyles(
           align: PosAlign.center,
-          height: PosTextSize.size2, // INCREASED font size
         ),
       );
 
@@ -1920,21 +2113,21 @@ Future<List<int>> _generateReceipt(Map<String, dynamic> cartData) async {
         'www.posmasters.lk',
         styles: const PosStyles(
           align: PosAlign.center,
-          height: PosTextSize.size2, // INCREASED font size
         ),
       );
-    } else {
-      // Kitchen Printer (KOT)
-      bytes += generator.text(
-        'KITCHEN ORDER TICKET',
-        styles: const PosStyles(
-          align: PosAlign.center,
-          bold: true,
-          height: PosTextSize.size3, // INCREASED from size2 to size3
-          width: PosTextSize.size2, // ADDED width for larger font
-        ),
-      );
-      
+    } else if (printerType == PrinterType.kitchen) {
+      if (kotCode != null && kotCode.isNotEmpty) {
+        bytes += generator.text(
+          'KOT - $kotCode',
+          styles: const PosStyles(
+            align: PosAlign.center,
+            bold: true,
+            height: PosTextSize.size3,
+            width: PosTextSize.size2,
+          ),
+        );
+      }
+  
       if (isBillCopy) {
         bytes += generator.text(
           '*** BILL COPY ***',
@@ -1942,26 +2135,24 @@ Future<List<int>> _generateReceipt(Map<String, dynamic> cartData) async {
             align: PosAlign.center,
             bold: true,
             reverse: true,
-            height: PosTextSize.size2, // INCREASED font size
+            height: PosTextSize.size2,
           ),
         );
       }
-      
-      // FIXED: Always print the invoice number from system
+  
       bytes += generator.text(
-        'Invoice #${invoiceNumber ?? 'INV-${DateTime.now().millisecondsSinceEpoch}'}',
+        'Date: ${DateFormat('dd-MM-yyyy').format(DateTime.now())}',
         styles: const PosStyles(
           align: PosAlign.center,
-          bold: true,
-          height: PosTextSize.size2, // INCREASED font size
+          height: PosTextSize.size2,
         ),
       );
-      
+
       bytes += generator.text(
         'Time: ${DateFormat('HH:mm:ss').format(DateTime.now())}',
         styles: const PosStyles(
           align: PosAlign.center,
-          height: PosTextSize.size2, // INCREASED font size
+          height: PosTextSize.size2,
         ),
       );
   
@@ -1970,94 +2161,366 @@ Future<List<int>> _generateReceipt(Map<String, dynamic> cartData) async {
           'Table: ${selectedTable.name}',
           styles: const PosStyles(
             align: PosAlign.center,
-            height: PosTextSize.size2, // INCREASED font size
+            height: PosTextSize.size2,
           ),
         );
-        // ADDED: Print special note in KOT
         if (selectedTable!.specialNote.isNotEmpty) {
           bytes += generator.text(
             'Note: ${selectedTable!.specialNote}',
             styles: const PosStyles(
               align: PosAlign.center,
-              height: PosTextSize.size2, // INCREASED font size
+              height: PosTextSize.size2,
             ),
           );
         }
       }
-  
+
       bytes += generator.hr();
-      
-      // For due tables, only print new items
+  
       final itemsToPrint = cartData['onlyNewItems'] == true 
           ? cartItems.where((item) => item.isNewItem).toList()
           : cartItems;
-      
-      final foodItems = itemsToPrint.where((item) =>
-        item.product.unit.toLowerCase().contains('food') ||
-        !item.product.unit.toLowerCase().contains('beverage')
-      ).toList();
   
-      if (foodItems.isEmpty) {
+      final kitchenItems = itemsToPrint.where((item) {
+        final stockName = item.product.stockName.toLowerCase();
+        final productUnit = item.product.unit.toLowerCase();
+        final productName = item.product.name.toLowerCase();
+        
+        final isBarItem = stockName.contains('bar') || 
+                         stockName.contains('beverage') ||
+                         productUnit.contains('drink') ||
+                         productUnit.contains('beverage') ||
+                         productUnit.contains('coffee') ||
+                         productUnit.contains('tea') ||
+                         productUnit.contains('juice') ||
+                         productName.contains('coffee') ||
+                         productName.contains('tea') ||
+                         productName.contains('juice') ||
+                         productName.contains('soda') ||
+                         productName.contains('water') ||
+                         productName.contains('cappuccino') ||
+                         productName.contains('latte') ||
+                         productName.contains('espresso');
+        
+        return !isBarItem;
+      }).toList();
+
+      if (kitchenItems.isEmpty) {
         bytes += generator.text(
-          'No food items in this order',
+          'No kitchen items in this order',
           styles: const PosStyles(
             align: PosAlign.center,
-            height: PosTextSize.size2, // INCREASED font size
+            height: PosTextSize.size2,
           ),
         );
       } else {
         bytes += generator.text(
-          'ITEMS:',
+          'KITCHEN ITEMS:',
           styles: const PosStyles(
             bold: true,
             align: PosAlign.left,
-            height: PosTextSize.size2, // INCREASED font size
+            height: PosTextSize.size2,
           ),
         );
-      
-        for (var item in foodItems) {
+        
+        bytes += generator.text(
+          'Item'.padRight(45) + 'Qty',
+          styles: const PosStyles(
+            bold: true,
+            align: PosAlign.left,
+            height: PosTextSize.size2,
+          ),
+        );
+        
+        bytes += generator.hr(ch: '-');
+        
+        for (var item in kitchenItems) {
+          String itemName = item.product.name;
+          String quantity = 'x${item.quantity.toString()}';
+          
           bytes += generator.text(
-            '${item.quantity}x ${item.product.name}',
+            itemName.padRight(45) + quantity,
             styles: const PosStyles(
               align: PosAlign.left,
-              height: PosTextSize.size2, // INCREASED font size
+              height: PosTextSize.size2,
             ),
           );
-      
-          if (item.product.unit.toLowerCase().contains('main')) {
+          
+          if (item.specialNote != null && item.specialNote!.isNotEmpty) {
+            bytes += generator.text(
+              'Note: ${item.specialNote}',
+              styles: const PosStyles(
+                align: PosAlign.left,
+                height: PosTextSize.size1,
+              ),
+            );
+          }
+          
+          if (item.product.unit.toLowerCase().contains('main') ||
+              item.product.name.toLowerCase().contains('main')) {
             bytes += generator.text(
               ' - Please prepare fresh',
               styles: const PosStyles(
                 align: PosAlign.left,
-                height: PosTextSize.size2, // INCREASED font size
+                height: PosTextSize.size1,
               ),
             );
           }
         }
       }
-  
+
       bytes += generator.hr();
-      bytes += generator.text(
-        'Priority: Normal',
-        styles: const PosStyles(
-          align: PosAlign.left,
-          height: PosTextSize.size2, // INCREASED font size
-        ),
-      );
-      bytes += generator.text(
-        'Status: CONFIRMED',
-        styles: const PosStyles(
-          align: PosAlign.left,
-          bold: true,
-          height: PosTextSize.size2, // INCREASED font size
-        ),
-      );
       bytes += generator.feed(1);
       bytes += generator.text(
         '--- END OF KOT ---',
         styles: const PosStyles(
+          align: PosAlign.center,                           
+          height: PosTextSize.size2,
+        ),
+      );
+    } else if (printerType == PrinterType.bot) {
+      if (botCode != null && botCode.isNotEmpty) {
+        bytes += generator.text(
+          'BOT - $botCode',
+          styles: const PosStyles(
+            align: PosAlign.center,
+            bold: true,
+            height: PosTextSize.size3,
+            width: PosTextSize.size2,
+          ),
+        );
+      }
+  
+      if (isBillCopy) {
+        bytes += generator.text(
+          '*** BILL COPY ***',
+          styles: const PosStyles(
+            align: PosAlign.center,
+            bold: true,
+            reverse: true,
+            height: PosTextSize.size2,
+          ),
+        );
+      }
+  
+      bytes += generator.text(
+        'Date: ${DateFormat('dd-MM-yyyy').format(DateTime.now())}',
+        styles: const PosStyles(
           align: PosAlign.center,
-          height: PosTextSize.size2, // INCREASED font size
+          height: PosTextSize.size2,
+        ),
+      );
+
+      bytes += generator.text(
+        'Time: ${DateFormat('HH:mm:ss').format(DateTime.now())}',
+        styles: const PosStyles(
+          align: PosAlign.center,
+          height: PosTextSize.size2,
+        ),
+      );
+  
+      if (selectedTable != null) {
+        bytes += generator.text(
+          'Table: ${selectedTable.name}',
+          styles: const PosStyles(
+            align: PosAlign.center,
+            height: PosTextSize.size2,
+          ),
+        );
+        if (selectedTable!.specialNote.isNotEmpty) {
+          bytes += generator.text(
+            'Note: ${selectedTable!.specialNote}',
+            styles: const PosStyles(
+              align: PosAlign.center,
+              height: PosTextSize.size2,
+            ),
+          );
+        }
+      }
+
+      bytes += generator.hr();
+  
+      final itemsToPrint = cartData['onlyNewItems'] == true 
+          ? cartItems.where((item) => item.isNewItem).toList()
+          : cartItems;
+  
+      final allItems = itemsToPrint;
+
+      if (allItems.isEmpty) {
+        bytes += generator.text(
+          'No items in this order',
+          styles: const PosStyles(
+            align: PosAlign.center,
+            height: PosTextSize.size2,
+          ),
+        );
+      } else {
+        bytes += generator.text(
+          'BAR/BEVERAGE & KITCHEN ITEMS:',
+          styles: const PosStyles(
+            bold: true,
+            align: PosAlign.left,
+            height: PosTextSize.size2,
+          ),
+        );
+        
+        bytes += generator.text(
+          'Item'.padRight(45) + 'Qty',
+          styles: const PosStyles(
+            bold: true,
+            align: PosAlign.left,
+            height: PosTextSize.size2,
+          ),
+        );
+        
+        bytes += generator.hr(ch: '-');
+        
+        final barItems = allItems.where((item) {
+          final stockName = item.product.stockName.toLowerCase();
+          final productUnit = item.product.unit.toLowerCase();
+          final productName = item.product.name.toLowerCase();
+          
+          return stockName.contains('bar') || 
+                 stockName.contains('beverage') ||
+                 productUnit.contains('drink') ||
+                 productUnit.contains('beverage') ||
+                 productUnit.contains('coffee') ||
+                 productUnit.contains('tea') ||
+                 productUnit.contains('juice') ||
+                 productName.contains('coffee') ||
+                 productName.contains('tea') ||
+                 productName.contains('juice') ||
+                 productName.contains('soda') ||
+                 productName.contains('water') ||
+                 productName.contains('cappuccino') ||
+                 productName.contains('latte') ||
+                 productName.contains('espresso');
+        }).toList();
+        
+        final kitchenItems = allItems.where((item) {
+          final stockName = item.product.stockName.toLowerCase();
+          final productUnit = item.product.unit.toLowerCase();
+          final productName = item.product.name.toLowerCase();
+          
+          return !(stockName.contains('bar') || 
+                  stockName.contains('beverage') ||
+                  productUnit.contains('drink') ||
+                  productUnit.contains('beverage') ||
+                  productUnit.contains('coffee') ||
+                  productUnit.contains('tea') ||
+                  productUnit.contains('juice') ||
+                  productName.contains('coffee') ||
+                  productName.contains('tea') ||
+                  productName.contains('juice') ||
+                  productName.contains('soda') ||
+                  productName.contains('water') ||
+                  productName.contains('cappuccino') ||
+                  productName.contains('latte') ||
+                  productName.contains('espresso'));
+        }).toList();
+        
+        if (barItems.isNotEmpty) {
+          bytes += generator.text(
+            'BAR/BEVERAGE ITEMS:',
+            styles: const PosStyles(
+              bold: true,
+              align: PosAlign.left,
+              height: PosTextSize.size2,
+            ),
+          );
+          
+          for (var item in barItems) {
+            String itemName = item.product.name;
+            String quantity = 'x${item.quantity.toString()}';
+            
+            bytes += generator.text(
+              itemName.padRight(45) + quantity,
+              styles: const PosStyles(
+                align: PosAlign.left,
+                height: PosTextSize.size2,
+              ),
+            );
+            
+            if (item.specialNote != null && item.specialNote!.isNotEmpty) {
+              bytes += generator.text(
+                'Note: ${item.specialNote}',
+                styles: const PosStyles(
+                  align: PosAlign.left,
+                  height: PosTextSize.size1,
+                ),
+              );
+            }
+          }
+          
+          if (kitchenItems.isNotEmpty) {
+            bytes += generator.hr(ch: '-');
+          }
+        }
+        
+        if (kitchenItems.isNotEmpty) {
+          if (barItems.isEmpty) {
+            bytes += generator.text(
+              'KITCHEN ITEMS:',
+              styles: const PosStyles(
+                bold: true,
+                align: PosAlign.left,
+                height: PosTextSize.size2,
+              ),
+            );
+          } else {
+            bytes += generator.text(
+              'KITCHEN ITEMS:',
+              styles: const PosStyles(
+                bold: true,
+                align: PosAlign.left,
+                height: PosTextSize.size2,
+              ),
+            );
+          }
+          
+          for (var item in kitchenItems) {
+            String itemName = item.product.name;
+            String quantity = 'x${item.quantity.toString()}';
+            
+            bytes += generator.text(
+              itemName.padRight(45) + quantity,
+              styles: const PosStyles(
+                align: PosAlign.left,
+                height: PosTextSize.size2,
+              ),
+            );
+            
+            if (item.specialNote != null && item.specialNote!.isNotEmpty) {
+              bytes += generator.text(
+                'Note: ${item.specialNote}',
+                styles: const PosStyles(
+                  align: PosAlign.left,
+                  height: PosTextSize.size1,
+                ),
+              );
+            }
+            
+            if (item.product.unit.toLowerCase().contains('main') ||
+                item.product.name.toLowerCase().contains('main')) {
+              bytes += generator.text(
+                ' - Please prepare fresh',
+                styles: const PosStyles(
+                  align: PosAlign.left,
+                  height: PosTextSize.size1,
+                ),
+              );
+            }
+          }
+        }
+      }
+
+      bytes += generator.hr();
+      bytes += generator.feed(1);
+      bytes += generator.text(
+        '--- END OF BOT ---',
+        styles: const PosStyles(
+          align: PosAlign.center,
+          height: PosTextSize.size2,
         ),
       );
     }
@@ -2067,7 +2530,7 @@ Future<List<int>> _generateReceipt(Map<String, dynamic> cartData) async {
     return bytes;
   }
 
-  Future<void> _printReceipt({bool isBillCopy = false, bool skipKOT = false}) async {
+  Future<void> _printReceipt({bool isBillCopy = false, bool skipKOT = false, bool skipBOT = false}) async {
     if (_connectedCashierDevices.isEmpty) {
       _showMessage('Please connect to a cashier printer first');
       return;
@@ -2099,35 +2562,52 @@ Future<List<int>> _generateReceipt(Map<String, dynamic> cartData) async {
           'netAmount': _netAmount,
           'orderNumber': _orderNumber,
           'isBillCopy': isBillCopy,
+          'kotCode': _kotCode,
         };
+      }
+      
+      if (_paymentDataForPrinting != null) {
+        cartData['paymentBreakdown'] = _paymentDataForPrinting;
       }
 
       final List<int> cashierBytes = await _generateReceipt({...cartData, 'printerType': PrinterType.cashier});
-      final List<int> kitchenBytes = await _generateReceipt({...cartData, 'printerType': PrinterType.kitchen});
+      final List<int> kitchenBytes = await _generateReceipt({...cartData, 'printerType': PrinterType.kitchen, 'kotCode': _kotCode});
+      final List<int> botBytes = await _generateReceipt({...cartData, 'printerType': PrinterType.bot, 'kotCode': _kotCode});
     
-      // Print to cashier printers
       for (int i = 0; i < _connectedCashierDevices.length; i++) {
         try {
           _connections[i].output.add(Uint8List.fromList(cashierBytes));
           await _connections[i].output.allSent;
           print('Receipt sent to ${_connectedCashierDevices[i].name}');
-          _showMessage(isBillCopy ? 'Bill copy printed to ${_connectedCashierDevices[i].name}' : 'Receipt sent to ${_connectedCashierDevices[i].name}');
         } catch (e) {
-          // _showMessage('Error printing to ${_connectedCashierDevices[i].name}: $e');
+          
         }
       }
     
-      // Print to kitchen printers only if not a bill copy and not skipping KOT
-      if (!isBillCopy && !skipKOT && _connectedKitchenDevices.isNotEmpty) {
+      final hasKitchenItems = _hasKitchenItems(_cartItems);
+
+      if (!isBillCopy && !skipKOT && _connectedKitchenDevices.isNotEmpty && hasKitchenItems) {
         for (int i = 0; i < _connectedKitchenDevices.length; i++) {
           try {
             int connectionIndex = _connectedCashierDevices.length + i;
             _connections[connectionIndex].output.add(Uint8List.fromList(kitchenBytes));
             await _connections[connectionIndex].output.allSent;
             print('KOT sent to ${_connectedKitchenDevices[i].name}');
-            // _showMessage('KOT sent to ${_connectedKitchenDevices[i].name}');
           } catch (e) {
             _showMessage('Error printing to ${_connectedKitchenDevices[i].name}: $e');
+          }
+        }
+      }
+      
+      if (!isBillCopy && !skipBOT && _connectedBotDevices.isNotEmpty) {
+        for (int i = 0; i < _connectedBotDevices.length; i++) {
+          try {
+            int connectionIndex = _connectedCashierDevices.length + _connectedKitchenDevices.length + i;
+            _connections[connectionIndex].output.add(Uint8List.fromList(botBytes));
+            await _connections[connectionIndex].output.allSent;
+            print('BOT sent to ${_connectedBotDevices[i].name}');
+          } catch (e) {
+            _showMessage('Error printing to ${_connectedBotDevices[i].name}: $e');
           }
         }
       }
@@ -2143,21 +2623,44 @@ Future<List<int>> _generateReceipt(Map<String, dynamic> cartData) async {
     }
   }
 
-  Future<void> _printKOT({bool onlyNewItems = false}) async {
-    if (_connectedKitchenDevices.isEmpty) {
-      _showMessage('No kitchen printer connected. Cannot print KOT.');
-      return;
+  Future<void> _printKOT({bool onlyNewItems = false, bool printBOT = false}) async {
+    final itemsToCheck = onlyNewItems 
+        ? _cartItems.where((item) => item.isNewItem).toList()
+        : List<CartItem>.from(_cartItems);
+  
+    if (!printBOT) {
+      if (_connectedKitchenDevices.isEmpty) {
+        _showMessage('No kitchen printer connected. Cannot print KOT.');
+        return;
+      }
+      
+      final hasKitchenItems = _hasKitchenItems(itemsToCheck);
+      
+      if (!hasKitchenItems) {
+        print('No kitchen items to print KOT');
+        return;
+      }
+    } else {
+      if (_connectedBotDevices.isEmpty) {
+        _showMessage('No BOT printer connected. Cannot print BOT.');
+        return;
+      }
+      
+      if (itemsToCheck.isEmpty) {
+        print('No items to print BOT');
+        return;
+      }
     }
 
-    if (_cartItems.isEmpty) {
+    if (itemsToCheck.isEmpty) {
       _showMessage('No items to print');
       return;
     }
 
     try {
       final cartData = {
-        'printerType': PrinterType.kitchen,
-        'cartItems': List<CartItem>.from(_cartItems),
+        'printerType': printBOT ? PrinterType.bot : PrinterType.kitchen,
+        'cartItems': itemsToCheck,
         'selectedOrderType': _selectedOrderType,
         'selectedCustomer': _selectedCustomer,
         'selectedTable': _selectedTable,
@@ -2168,41 +2671,66 @@ Future<List<int>> _generateReceipt(Map<String, dynamic> cartData) async {
         'serviceAmount': _serviceAmount,
         'netAmount': _netAmount,
         'orderNumber': _orderNumber,
-        'onlyNewItems': onlyNewItems, // Pass this parameter
+        'onlyNewItems': onlyNewItems,
+        'isBotPrint': printBOT,
+        'kotCode': _kotCode,
       };
-      
-      final List<int> kitchenBytes = await _generateReceipt(cartData);
     
-      for (int i = 0; i < _connectedKitchenDevices.length; i++) {
-        try {
-          int connectionIndex = _connectedCashierDevices.length + i;
-          _connections[connectionIndex].output.add(Uint8List.fromList(kitchenBytes));
-          await _connections[connectionIndex].output.allSent;
-          _showMessage('KOT sent to ${_connectedKitchenDevices[i].name}');
-        } catch (e) {
-          _showMessage('Error printing to ${_connectedKitchenDevices[i].name}: $e');
+      final List<int> printerBytes = await _generateReceipt(cartData);
+  
+      if (printBOT) {
+        for (int i = 0; i < _connectedBotDevices.length; i++) {
+          try {
+            int connectionIndex = _connectedCashierDevices.length + _connectedKitchenDevices.length + i;
+            _connections[connectionIndex].output.add(Uint8List.fromList(printerBytes));
+            await _connections[connectionIndex].output.allSent;
+          } catch (e) {
+            _showMessage('Error printing to ${_connectedBotDevices[i].name}: $e');
+          }
         }
+        
+        await _updateStockAfterKOT(onlyNewItems, printBOT: true);
+      } else {
+        for (int i = 0; i < _connectedKitchenDevices.length; i++) {
+          try {
+            int connectionIndex = _connectedCashierDevices.length + i;
+            _connections[connectionIndex].output.add(Uint8List.fromList(printerBytes));
+            await _connections[connectionIndex].output.allSent;
+          } catch (e) {
+            _showMessage('Error printing to ${_connectedKitchenDevices[i].name}: $e');
+          }
+        }
+        
+        await _updateStockAfterKOT(onlyNewItems, printBOT: false);
       }
-    
-      await _updateStockAfterKOT(onlyNewItems);
-    
+  
     } catch (e) {
-      _showMessage('Error generating KOT: $e');
+      _showMessage('Error generating ${printBOT ? 'BOT' : 'KOT'}: $e');
     }
   }
 
-  Future<void> _updateStockAfterKOT(bool onlyNewItems) async {
+  Future<void> _updateStockAfterKOT(bool onlyNewItems, {bool printBOT = false}) async {
     if (_cartItems.isEmpty) return;
-    
+  
     try {
       final headers = await _getAuthHeaders();
       
-      // Filter items to update - only new items for due tables
       final itemsToUpdate = onlyNewItems
           ? _cartItems.where((item) => item.isNewItem).toList()
           : _cartItems;
       
-      for (var cartItem in itemsToUpdate) {
+      final filteredItems = itemsToUpdate.where((item) {
+        if (printBOT) {
+          return item.product.unit.toLowerCase().contains('beverage') ||
+                 item.product.unit.toLowerCase().contains('drink') ||
+                 item.product.unit.toLowerCase().contains('bar');
+        } else {
+          return !item.product.unit.toLowerCase().contains('beverage') &&
+                 !item.product.unit.toLowerCase().contains('drink');
+        }
+      }).toList();
+      
+      for (var cartItem in filteredItems) {
         final product = cartItem.product;
         
         if (product.lotsqty.isNotEmpty) {
@@ -2220,7 +2748,7 @@ Future<List<int>> _generateReceipt(Map<String, dynamic> cartData) async {
             final newQty = currentQty - cartItem.quantity;
             
             final response = await http.post(
-              Uri.parse('https://api-cloudchef.sltcloud.lk/api/lot/update-qty'),
+              Uri.parse(ApiConstants.getFullUrl(ApiConstants.updateLotQuantity)),
               headers: headers,
               body: json.encode({
                 'lot_id': lotId,
@@ -2250,7 +2778,7 @@ Future<List<int>> _generateReceipt(Map<String, dynamic> cartData) async {
       
       setState(() {});
     } catch (e) {
-      // Silent fail
+      
     }
   }
 
@@ -2263,7 +2791,6 @@ Future<List<int>> _generateReceipt(Map<String, dynamic> cartData) async {
     setState(() => _isLoading = true);
     
     try {
-      // First load the table bill
       await _findTableBill(table.name);
       
       if (_cartItems.isEmpty) {
@@ -2271,7 +2798,6 @@ Future<List<int>> _generateReceipt(Map<String, dynamic> cartData) async {
         return;
       }
       
-      // Create cart data for printing
       final cartData = {
         'printerType': PrinterType.cashier,
         'cartItems': List<CartItem>.from(_cartItems),
@@ -2287,23 +2813,20 @@ Future<List<int>> _generateReceipt(Map<String, dynamic> cartData) async {
         'orderNumber': _orderNumber,
         'isBillCopy': true,
         'invoiceNumber': 'COPY-${DateTime.now().millisecondsSinceEpoch}',
+        'kotCode': _kotCode,
       };
       
-      // Generate and print bill copy
       final List<int> cashierBytes = await _generateReceipt(cartData);
       
-      // Print to cashier printers
       for (int i = 0; i < _connectedCashierDevices.length; i++) {
         try {
           _connections[i].output.add(Uint8List.fromList(cashierBytes));
           await _connections[i].output.allSent;
-          // _showMessage('Bill copy printed for table ${table.name}');
         } catch (e) {
           _showMessage('Error printing bill copy: $e');
         }
       }
       
-      // IMPORTANT: Clear the cart after printing bill copy
       _clearCart();
       
     } catch (e) {
@@ -2320,23 +2843,22 @@ Future<List<int>> _generateReceipt(Map<String, dynamic> cartData) async {
     }
 
     try {
-      // Extract data from invoice response
       final invoiceHead = invoiceData['data']?['invoice_head'] ?? invoiceData['invoice_head'];
       final items = invoiceData['data']?['items'] ?? invoiceData['items'] ?? [];
       final customer = invoiceData['data']?['customer'] ?? invoiceData['customer'];
       final table = invoiceData['data']?['table'] ?? invoiceData['table'];
+      final kotCode = invoiceData['kot_code'] ?? invoiceData['data']?['kot_code'];
       
       if (items.isEmpty) {
         _showMessage('No invoice data to print');
         return;
       }
       
-      // Create cart items from invoice data
       List<CartItem> cartItems = [];
       double totalSubtotal = 0.0;
       
       for (var item in items) {
-            final product = Product(
+        final product = Product(
           id: item['id'] ?? 0,
           name: item['name'] ?? 'Unknown',
           unit: item['unit'] ?? '',
@@ -2374,13 +2896,13 @@ Future<List<int>> _generateReceipt(Map<String, dynamic> cartData) async {
           quantity: quantity,
           discountType: discountType,
           discountValue: discountValue,
+          specialNote: item['special_note'] ?? item['note'] ?? '',
         );
         
         cartItems.add(cartItem);
         totalSubtotal += cartItem.getSubtotal(_selectedOrderType);
       }
       
-      // Get customer data
       Customer? selectedCustomer;
       if (customer != null) {
         selectedCustomer = Customer(
@@ -2393,7 +2915,6 @@ Future<List<int>> _generateReceipt(Map<String, dynamic> cartData) async {
         );
       }
       
-      // Get table data
       Table? selectedTable;
       if (table != null) {
         selectedTable = Table(
@@ -2401,11 +2922,10 @@ Future<List<int>> _generateReceipt(Map<String, dynamic> cartData) async {
           name: table['name'] ?? '',
           serviceCharge: double.tryParse(table['service_charge']?.toString() ?? '0') ?? 0.0,
           hasDueOrders: false,
-          specialNote: table['special_note'] ?? '', // ADDED: Load special note
+          specialNote: table['special_note'] ?? '',
         );
       }
       
-      // Create cart data for printing
       final cartData = {
         'printerType': PrinterType.cashier,
         'cartItems': cartItems,
@@ -2421,26 +2941,22 @@ Future<List<int>> _generateReceipt(Map<String, dynamic> cartData) async {
         'orderNumber': invoiceHead['invoice_code'] ?? _orderNumber,
         'invoiceNumber': invoiceHead['invoice_code'] ?? 'COPY',
         'isBillCopy': true,
+        'kotCode': kotCode,
       };
       
-      // Generate and print bill copy
       final List<int> cashierBytes = await _generateReceipt(cartData);
       
-      // Print to cashier printers
       for (int i = 0; i < _connectedCashierDevices.length; i++) {
         try {
           _connections[i].output.add(Uint8List.fromList(cashierBytes));
           await _connections[i].output.allSent;
-          // _showMessage('Bill copy printed successfully');
         } catch (e) {
           _showMessage('Error printing bill copy: $e');
         }
       }
       
-      // IMPORTANT: Clear the current cart after printing
       if (_selectedTable != null && _cartItems.isNotEmpty) {
         _clearCart();
-        // _showMessage('Bill copy printed and cart cleared.');
       }
       
     } catch (e) {
@@ -2448,11 +2964,9 @@ Future<List<int>> _generateReceipt(Map<String, dynamic> cartData) async {
     }
   }
 
-  // MODIFIED: Added printer connection check before payment
   Future<void> _payNow() async {
     if (_cartItems.isEmpty) return;
 
-    // Check if cashier printer is connected
     if (_connectedCashierDevices.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -2464,7 +2978,6 @@ Future<List<int>> _generateReceipt(Map<String, dynamic> cartData) async {
       return;
     }
 
-    // Check if kitchen printer is connected for KOT (skip for due tables)
     if (!_isEditingDueTable && _connectedKitchenDevices.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -2473,7 +2986,16 @@ Future<List<int>> _generateReceipt(Map<String, dynamic> cartData) async {
           behavior: SnackBarBehavior.floating,
         ),
       );
-      // Continue with payment even if kitchen printer is not connected
+    }
+    
+    if (!_isEditingDueTable && _connectedBotDevices.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Warning: BOT printer not connected. BOT will not be printed.'),
+          backgroundColor: Colors.orange,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     }
 
     _cartDataForPrinting = {
@@ -2487,14 +3009,15 @@ Future<List<int>> _generateReceipt(Map<String, dynamic> cartData) async {
       'serviceAmount': _serviceAmount,
       'netAmount': _netAmount,
       'orderNumber': _orderNumber,
-      'isDueTable': _isEditingDueTable, // Add this flag
+      'isDueTable': _isEditingDueTable,
+      'kotCode': _kotCode,
     };
 
     try {
       final headers = await _getAuthHeaders();
   
       String saleType = _selectedTable != null 
-          ? 'DINE IN'  // When table is selected
+          ? 'DINE IN'
           : 'TAKE AWAY'; 
   
       List<Map<String, dynamic>> items = [];
@@ -2523,6 +3046,7 @@ Future<List<int>> _generateReceipt(Map<String, dynamic> cartData) async {
           'total': total.toStringAsFixed(2),
           'total_discount': disVal.toStringAsFixed(2),
           'unit': item.product.unit,
+          'special_note': item.specialNote ?? '',
         });
       }
 
@@ -2583,10 +3107,11 @@ Future<List<int>> _generateReceipt(Map<String, dynamic> cartData) async {
             'total': total.toStringAsFixed(2),
             'total_discount': disVal.toStringAsFixed(2),
             'unit': item.product.unit,
+            'special_note': item.specialNote ?? '',
           };
         }).toList(),
         'netAmount': _netAmount.toStringAsFixed(2),
-        'order_now_order_info_id': _currentInvoiceId,
+        'order_now_order_info_id': [],
         'room_booking': '',
         'saleType': saleType,
         'service_charge': _selectedTable != null ? _serviceAmount.toStringAsFixed(2) : '0.00',
@@ -2601,7 +3126,7 @@ Future<List<int>> _generateReceipt(Map<String, dynamic> cartData) async {
           'id': _selectedTable!.id,
           'name': _selectedTable!.name,
           'service_charge': _selectedTable!.serviceCharge,
-          'special_note': _selectedTable!.specialNote, // ADDED: Include special note
+          'special_note': _selectedTable!.specialNote,
         };
       }
 
@@ -2617,7 +3142,7 @@ Future<List<int>> _generateReceipt(Map<String, dynamic> cartData) async {
           'cardBank': {},
           'cardType': "",
         },
-       'cash': _netAmount.toStringAsFixed(2),
+        'cash': _netAmount.toStringAsFixed(2),
         'cheque': {
           'amount': "",
           'bank': "",
@@ -2633,7 +3158,7 @@ Future<List<int>> _generateReceipt(Map<String, dynamic> cartData) async {
 
       print('PayNow Payload: ${json.encode(payload)}');
       final response = await http.post(
-        Uri.parse('https://api-cloudchef.sltcloud.lk/api/payment'),
+        Uri.parse(ApiConstants.getFullUrl(ApiConstants.processPayment)),
         headers: headers,
         body: json.encode(payload),
       ).timeout(const Duration(seconds: 30));
@@ -2646,14 +3171,16 @@ Future<List<int>> _generateReceipt(Map<String, dynamic> cartData) async {
           invoiceNumber = responseData['data']['invoice_head']['invoice_code'];
         }
         
-        // FIXED: Update cartDataForPrinting with actual invoice number
+        String? kotCode = responseData['kot_code'] ?? responseData['data']?['kot_code'];
+        String? botCode = responseData['bot_code'] ?? responseData['data']?['bot_code'];
+        
         if (_cartDataForPrinting != null) {
           _cartDataForPrinting!['invoiceNumber'] = invoiceNumber;
+          _cartDataForPrinting!['kotCode'] = kotCode;
+          _cartDataForPrinting!['botCode'] = botCode;
         }
         
-        // Print receipt (cashier printer already checked)
-        // Skip KOT for due tables
-        await _printReceipt(skipKOT: _isEditingDueTable);
+        await _printReceipt(skipKOT: _isEditingDueTable, skipBOT: _isEditingDueTable);
         
         _clearCart();
         _cartDataForPrinting = null;
@@ -2682,6 +3209,7 @@ Future<List<int>> _generateReceipt(Map<String, dynamic> cartData) async {
       _cartDataForPrinting = null;
     }
   }
+  
   void _showPrinterDialog() {
     showDialog(
       context: context,
@@ -2719,6 +3247,19 @@ Future<List<int>> _generateReceipt(Map<String, dynamic> cartData) async {
                       )).toList(),
                       const Divider(),
                     ],
+                    
+                    if (_connectedBotDevices.isNotEmpty) ...[
+                      const Text('BOT Printers:', style: TextStyle(fontWeight: FontWeight.bold)),
+                      ..._connectedBotDevices.map((device) => ListTile(
+                        title: Text(device.name ?? 'Unknown Device'),
+                        subtitle: Text(device.address),
+                        trailing: IconButton(
+                          icon: const Icon(Icons.close, color: Colors.red),
+                          onPressed: () => _disconnectDevice(device),
+                        ),
+                      )).toList(),
+                      const Divider(),
+                    ],
                   
                     if (_isScanning)
                       const Padding(
@@ -2736,7 +3277,8 @@ Future<List<int>> _generateReceipt(Map<String, dynamic> cartData) async {
                             final device = _devices[index];
                             final isCashierConnected = _connectedCashierDevices.any((d) => d.address == device.address);
                             final isKitchenConnected = _connectedKitchenDevices.any((d) => d.address == device.address);
-                            final isConnected = isCashierConnected || isKitchenConnected;
+                            final isBotConnected = _connectedBotDevices.any((d) => d.address == device.address);
+                            final isConnected = isCashierConnected || isKitchenConnected || isBotConnected;
                           
                             return ListTile(
                               title: Text(device.name ?? 'Unknown Device'),
@@ -2757,6 +3299,10 @@ Future<List<int>> _generateReceipt(Map<String, dynamic> cartData) async {
                                         value: PrinterType.kitchen,
                                         child: Text('Connect as Kitchen Printer'),
                                       ),
+                                      const PopupMenuItem<String>(
+                                        value: PrinterType.bot,
+                                        child: Text('Connect as BOT Printer'),
+                                      ),
                                     ],
                                   ),
                             );
@@ -2771,7 +3317,7 @@ Future<List<int>> _generateReceipt(Map<String, dynamic> cartData) async {
                           onPressed: _scanDevices,
                           child: const Text('Scan'),
                         ),
-                        if (_connectedCashierDevices.isNotEmpty || _connectedKitchenDevices.isNotEmpty)
+                        if (_connectedCashierDevices.isNotEmpty || _connectedKitchenDevices.isNotEmpty || _connectedBotDevices.isNotEmpty)
                           ElevatedButton(
                             onPressed: _disconnectAllDevices,
                             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
@@ -2792,7 +3338,7 @@ Future<List<int>> _generateReceipt(Map<String, dynamic> cartData) async {
       },
     );
   }
-  // MODIFIED: Added printer connection check before payment
+  
   Future<void> _showPaymentScreen() async {
     if (_cartItems.isEmpty) {
       _showMessage('Cart is empty. Add items before payment.');
@@ -2809,7 +3355,6 @@ Future<List<int>> _generateReceipt(Map<String, dynamic> cartData) async {
       return;
     }
     
-    // Check if cashier printer is connected
     if (_connectedCashierDevices.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -2821,8 +3366,9 @@ Future<List<int>> _generateReceipt(Map<String, dynamic> cartData) async {
       return;
     }
     
-    // Check if kitchen printer is connected for KOT (skip for due tables)
-    if (!_isEditingDueTable && _connectedKitchenDevices.isEmpty) {
+    final hasKitchenItems = _hasKitchenItems(_cartItems);
+
+    if (!_isEditingDueTable && hasKitchenItems && _connectedKitchenDevices.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Text('Warning: Kitchen printer not connected. KOT will not be printed.'),
@@ -2830,10 +3376,18 @@ Future<List<int>> _generateReceipt(Map<String, dynamic> cartData) async {
           behavior: SnackBarBehavior.floating,
         ),
       );
-      // Continue with payment even if kitchen printer is not connected
+    }
+
+    if (!_isEditingDueTable && _cartItems.isNotEmpty && _connectedBotDevices.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Warning: BOT printer not connected. BOT will not be printed.'),
+          backgroundColor: Colors.orange,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     }
     
-    // Set the flag if we're processing a due table
     setState(() {
       _isProcessingDueTablePayment = _isEditingDueTable;
     });
@@ -2850,7 +3404,8 @@ Future<List<int>> _generateReceipt(Map<String, dynamic> cartData) async {
       'serviceAmount': _serviceAmount,
       'netAmount': _netAmount,
       'orderNumber': _orderNumber,
-      'isDueTable': _isEditingDueTable, // Add this flag
+      'isDueTable': _isEditingDueTable,
+      'kotCode': _kotCode,
     };
   
     final result = await Navigator.push<Map<String, dynamic>>(
@@ -2868,34 +3423,36 @@ Future<List<int>> _generateReceipt(Map<String, dynamic> cartData) async {
           globalDiscountValue: _globalDiscountValue,
           serviceAmount: _serviceAmount,
           totalSubtotal: _totalSubtotal,
-          isDueTable: _isEditingDueTable, // Pass this flag
+          isDueTable: _isEditingDueTable,
         ),
       ),
     );
     
     if (result != null && result['success'] == true) {
       try {
-        // FIXED: Get invoice number from payment response
         String? invoiceNumber = result['invoiceNumber'];
         
-        // Update cartDataForPrinting with actual invoice number
         if (_cartDataForPrinting != null && invoiceNumber != null) {
           _cartDataForPrinting!['invoiceNumber'] = invoiceNumber;
         }
         
-        // Print receipt (cashier printer already checked)
-        // Skip KOT for due tables
-        await _printReceipt(skipKOT: _isEditingDueTable);
+        if (result['paymentData'] != null) {
+          _paymentDataForPrinting = Map<String, double>.from(result['paymentData']);
+        }
+        
+        await _printReceipt(skipKOT: _isEditingDueTable, skipBOT: _isEditingDueTable);
         
         _clearCart();
         await _refreshDueTables();
         _cartDataForPrinting = null;
+        _paymentDataForPrinting = null;
         
       } catch (e) {
         _showMessage('Payment successful but printing failed: $e');
         
         _clearCart();
         _cartDataForPrinting = null;
+        _paymentDataForPrinting = null;
       } finally {
         setState(() {
           _isProcessingDueTablePayment = false;
@@ -2919,7 +3476,7 @@ Future<List<int>> _generateReceipt(Map<String, dynamic> cartData) async {
                 name: table.name,
                 serviceCharge: table.serviceCharge,
                 hasDueOrders: false, 
-                specialNote: '', // Clear special note after payment
+                specialNote: '',
               );
             }
             return table;
@@ -2930,8 +3487,6 @@ Future<List<int>> _generateReceipt(Map<String, dynamic> cartData) async {
         
         _selectedTable = null;
       }
-      
-      _showMessage('Table paid successfully and removed from due tables');
       
     } catch (e) {
       print('Error refreshing due tables: $e');
@@ -2947,7 +3502,7 @@ Future<List<int>> _generateReceipt(Map<String, dynamic> cartData) async {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
       'Authorization': 'Bearer $token',
-      'referer': REFERER_HEADER,
+      'referer': ApiConstants.refererHeader,
     };
   }
 
@@ -2955,7 +3510,7 @@ Future<List<int>> _generateReceipt(Map<String, dynamic> cartData) async {
     try {
       final headers = await _getAuthHeaders();
       final response = await http.get(
-        Uri.parse('https://api-cloudchef.sltcloud.lk/api/stock/create-data/category/get'),
+        Uri.parse(ApiConstants.getFullUrl(ApiConstants.getCategories)),
         headers: headers,
       ).timeout(const Duration(seconds: 30));
 
@@ -2989,7 +3544,7 @@ Future<List<int>> _generateReceipt(Map<String, dynamic> cartData) async {
     try {
       final headers = await _getAuthHeaders();
       final response = await http.get(
-        Uri.parse('https://api-cloudchef.sltcloud.lk/api/invoice-create/stock-master-data?type=All'),
+        Uri.parse('${ApiConstants.getFullUrl(ApiConstants.getProducts)}?type=All'),
         headers: headers,
       ).timeout(const Duration(seconds: 30));
 
@@ -3026,7 +3581,7 @@ Future<List<int>> _generateReceipt(Map<String, dynamic> cartData) async {
     try {
       final headers = await _getAuthHeaders();
       final response = await http.get(
-        Uri.parse('https://api-cloudchef.sltcloud.lk/api/table-name'),
+        Uri.parse(ApiConstants.getFullUrl(ApiConstants.getTables)),
         headers: headers,
       ).timeout(const Duration(seconds: 30));
 
@@ -3078,12 +3633,11 @@ Future<List<int>> _generateReceipt(Map<String, dynamic> cartData) async {
     }
   }
   
-  // MODIFIED: Load due tables with special notes from local storage
   Future<List<Table>> _loadDueTablesFromAPI() async {
     try {
       final headers = await _getAuthHeaders();
       final response = await http.get(
-        Uri.parse('https://api-cloudchef.sltcloud.lk/api/invoice-create/get-due-tables'),
+        Uri.parse(ApiConstants.getFullUrl(ApiConstants.getDueTables)),
         headers: headers,
       ).timeout(const Duration(seconds: 30));
 
@@ -3096,7 +3650,6 @@ Future<List<int>> _generateReceipt(Map<String, dynamic> cartData) async {
           for (var tableData in tablesData) {
             Table table = Table.fromJson(tableData);
             
-            // Check if we have a local special note for this table
             if (_tableSpecialNotes.containsKey(table.id)) {
               table = Table(
                 id: table.id,
@@ -3122,97 +3675,218 @@ Future<List<int>> _generateReceipt(Map<String, dynamic> cartData) async {
     }
   }
 
-  // MODIFIED: Fixed to properly load due table items without calling KOT
   Future<void> _loadDueTableItems(Table table) async {
     setState(() => _isLoading = true);
-    
+  
     try {
-      // Clear existing cart items first
       _clearCart();
       
-      // Load the due table items directly
       final headers = await _getAuthHeaders();
-      
       final response = await http.get(
-        Uri.parse('https://api-cloudchef.sltcloud.lk/api/invoice-create/get-due-table-items/${table.id}'),
+        Uri.parse('${ApiConstants.getFullUrl(ApiConstants.getDueTableItems)}/${table.id}'),
         headers: headers,
-      ).timeout(const Duration(seconds: 30));
+      ).timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data['status'] == 'Success' && data['data'] != null) {
           final itemsData = data['data'];
           
-          // First, load the basic table info using _findTableBill
-          await _findTableBill(table.name);
+          List<CartItem> tempCartItems = [];
+          int loadedItems = 0;
           
-          // Now populate cart items from the due table items
-          if (_currentInvoiceId != null) {
-            int loadedItems = 0;
-            for (var itemData in itemsData) {
-              try {
-                var productId = itemData['product_id'] ?? itemData['tbl_product_id'];
-                final barCode = itemData['bar_code'];
-                final productName = itemData['name'] ?? 'Unknown Product';
-                
-                  Product product = _products.firstWhere(
-                  (p) => p.id == productId || p.barCode == barCode,
-                  orElse: () => Product(
+          for (var itemData in itemsData) {
+            try {
+              var productId = itemData['product_id'] ?? itemData['tbl_product_id'];
+              
+              Product? product = _products.firstWhere(
+                (p) => p.id == productId,
+                orElse: () {
+                  return Product(
                     id: productId ?? 0,
-                    name: productName,
+                    name: itemData['name'] ?? 'Unknown Product',
                     unit: itemData['unit'] ?? '',
-                    barCode: barCode ?? '',
+                    barCode: itemData['bar_code'] ?? '',
                     tblStockId: itemData['tbl_stock_id'] ?? 0,
                     tblCategoryId: itemData['tbl_category_id'] ?? 0,
                     productImage: null,
                     stockName: itemData['stock']?['stock_name'] ?? itemData['stock_name'] ?? 'Main',
-                    availableQuantity: int.tryParse(itemData['qty']?.toString() ?? '0') ?? 0,
+                    availableQuantity: 9999,
                     price: double.tryParse(itemData['price']?.toString() ?? '0') ?? 0.0,
                     cost: double.tryParse(itemData['cost']?.toString() ?? '0') ?? 0.0,
                     wsPrice: double.tryParse(itemData['ws_price']?.toString() ?? itemData['price']?.toString() ?? '0') ?? 0.0,
                     lotNumber: itemData['lot_id']?.toString() ?? itemData['lot_number'] ?? '',
                     expiryDate: itemData['ex_date'] ?? itemData['expiry_date'],
                     lotsqty: [],
-                  ),
-                );
+                  );
+                },
+              );
 
-                final quantity = int.tryParse(itemData['qty']?.toString() ?? '1') ?? 1;
-                String discountType = itemData['discount_type'] ?? 'none';
-                double discountValue = double.tryParse(itemData['discount_value']?.toString() ?? '0') ?? 0.0;
+              final quantity = int.tryParse(itemData['qty']?.toString() ?? '1') ?? 1;
+              String discountType = itemData['discount_type'] ?? 'none';
+              double discountValue = double.tryParse(itemData['discount_value']?.toString() ?? '0') ?? 0.0;
 
-                // Check if item already exists in cart (from _findTableBill)
-                bool itemExists = _cartItems.any((item) => item.product.id == product.id);
-                
-                if (!itemExists) {
-                  _cartItems.add(CartItem(
-                    product: product,
-                    quantity: quantity,
-                    discountType: discountType,
-                    discountValue: discountValue,
-                    isNewItem: false, // These are existing items
-                  ));
-                  loadedItems++;
+              if (discountType == 'none') {
+                final dis = double.tryParse(itemData['dis']?.toString() ?? '0') ?? 0.0;
+                final disVal = double.tryParse(itemData['disVal']?.toString() ?? '0') ?? 0.0;
+                if (dis > 0) {
+                  discountType = '%';
+                  discountValue = dis;
+                } else if (disVal > 0) {
+                  discountType = 'value';
+                  discountValue = disVal;
                 }
-              } catch (e) {
-                print('Error loading due table item: $e');
+              }
+
+              tempCartItems.add(CartItem(
+                product: product,
+                quantity: quantity,
+                discountType: discountType,
+                discountValue: discountValue,
+                isNewItem: false,
+                specialNote: itemData['special_note'] ?? itemData['note'] ?? '',
+              ));
+              loadedItems++;
+            } catch (e) {
+              print('Error loading due table item: $e');
+            }
+          }
+          
+          try {
+            final billResponse = await http.post(
+              Uri.parse(ApiConstants.getFullUrl(ApiConstants.tableBillFind)),
+              headers: headers,
+              body: json.encode({'table_name': table.name}),
+            ).timeout(const Duration(seconds: 5));
+            
+            if (billResponse.statusCode == 200) {
+              final billData = json.decode(billResponse.body);
+              final invB = billData['invB'] ?? billData['items'] ?? [];
+              
+              for (var item in invB) {
+                var productId = item['product_id'] ?? item['tbl_product_id'];
+                
+                if (!tempCartItems.any((cartItem) => cartItem.product.id == productId)) {
+                  try {
+                    Product? product = _products.firstWhere(
+                      (p) => p.id == productId,
+                      orElse: () => Product(
+                        id: productId ?? 0,
+                        name: item['name'] ?? 'Unknown Product',
+                        unit: item['unit'] ?? '',
+                        barCode: item['bar_code'] ?? '',
+                        tblStockId: item['tbl_stock_id'] ?? 0,
+                        tblCategoryId: item['tbl_category_id'] ?? 0,
+                        productImage: null,
+                        stockName: item['stock']?['stock_name'] ?? 'Main',
+                        availableQuantity: 9999,
+                        price: double.tryParse(item['price']?.toString() ?? '0') ?? 0.0,
+                        cost: double.tryParse(item['cost']?.toString() ?? '0') ?? 0.0,
+                        wsPrice: double.tryParse(item['ws_price']?.toString() ?? '0') ?? 0.0,
+                        lotNumber: item['lot_id']?.toString() ?? '',
+                        expiryDate: item['ex_date'],
+                        lotsqty: [],
+                      ),
+                    );
+
+                    final quantity = int.tryParse(item['qty']?.toString() ?? '1') ?? 1;
+                    String discountType = item['discount_type'] ?? 'none';
+                    double discountValue = double.tryParse(item['discount_value']?.toString() ?? '0') ?? 0.0;
+
+                    if (discountType == 'none') {
+                      final dis = double.tryParse(item['dis']?.toString() ?? '0') ?? 0.0;
+                      final disVal = double.tryParse(item['disVal']?.toString() ?? '0') ?? 0.0;
+                      if (dis > 0) {
+                        discountType = '%';
+                        discountValue = dis;
+                      } else if (disVal > 0) {
+                        discountType = 'value';
+                        discountValue = disVal;
+                      }
+                    }
+
+                    tempCartItems.add(CartItem(
+                      product: product,
+                      quantity: quantity,
+                      discountType: discountType,
+                      discountValue: discountValue,
+                      isNewItem: false,
+                      specialNote: item['special_note'] ?? item['note'] ?? '',
+                    ));
+                  } catch (e) {
+                    print('Error adding item from table-bill-find: $e');
+                  }
+                }
               }
             }
-            
-            _updateCartTotals();
-            
-            _showMessage('Loaded $loadedItems items from due table ${table.name}');
+          } catch (e) {
+            print('Error loading via table-bill-find: $e');
           }
+          
+          setState(() {
+            _cartItems = tempCartItems;
+            _isEditingDueTable = true;
+            _selectedTable = table;
+            _existingDueTableItems = List<Map<String, dynamic>>.from(itemsData);
+          });
+          
+          _updateCartTotals();
+          return;
         }
-      } else {
-        // If specific endpoint fails, try the general table bill find
-        await _findTableBill(table.name);
       }
+      
+      await _findTableBill(table.name);
+      
     } catch (e) {
       _showMessage('Error loading due table items: $e');
-      // Fall back to general table bill find
       await _findTableBill(table.name);
     } finally {
       if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  void _handleTableSelection(Table table) async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      barrierColor: Colors.black54,
+      builder: (context) => const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator.adaptive(valueColor: AlwaysStoppedAnimation<Color>(Colors.white)),
+            SizedBox(height: 16),
+            Text(
+              'Loading table...',
+              style: TextStyle(color: Colors.white, fontSize: 16),
+            ),
+          ],
+        ),
+      ),
+    );
+    
+    try {
+      setState(() {
+        _selectedTable = Table(
+          id: table.id,
+          name: table.name,
+          serviceCharge: table.serviceCharge,
+          hasDueOrders: table.hasDueOrders,
+          specialNote: table.specialNote,
+        );
+      });
+      
+      if (table.hasDueOrders) {
+        await _loadDueTableItems(table);
+      } else {
+        await _loadTableItems();
+      }
+      
+      Navigator.pop(context);
+      
+    } catch (e) {
+      Navigator.pop(context);
+      _showMessage('Error loading table: $e');
     }
   }
 
@@ -3221,7 +3895,7 @@ Future<List<int>> _generateReceipt(Map<String, dynamic> cartData) async {
     try {
       final headers = await _getAuthHeaders();
       final response = await http.get(
-        Uri.parse('https://api-cloudchef.sltcloud.lk/api/waiters'),
+        Uri.parse(ApiConstants.getFullUrl(ApiConstants.getWaiters)),
         headers: headers,
       ).timeout(const Duration(seconds: 30));
 
@@ -3301,7 +3975,7 @@ Future<List<int>> _generateReceipt(Map<String, dynamic> cartData) async {
     try {
       final headers = await _getAuthHeaders();
       final response = await http.get(
-        Uri.parse('https://api-cloudchef.sltcloud.lk/api/customers'),
+        Uri.parse(ApiConstants.getFullUrl(ApiConstants.getCustomers)),
         headers: headers,
       ).timeout(const Duration(seconds: 30));
 
@@ -3317,7 +3991,7 @@ Future<List<int>> _generateReceipt(Map<String, dynamic> cartData) async {
         await _handleUnauthorized();
       }
     } catch (e) {
-      // Silent fail
+      
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -3327,19 +4001,13 @@ Future<List<int>> _generateReceipt(Map<String, dynamic> cartData) async {
     try {
       final headers = await _getAuthHeaders();
       final response = await http.post(
-        Uri.parse('https://api-cloudchef.sltcloud.lk/api/customers'),
+        Uri.parse(ApiConstants.getFullUrl(ApiConstants.getCustomers)),
         headers: headers,
         body: json.encode(customer.toJson()),
       ).timeout(const Duration(seconds: 30));
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         _loadCustomers();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Customer added successfully'),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
       } else if (response.statusCode == 401) {
         await _handleUnauthorized();
       } else {
@@ -3357,27 +4025,19 @@ Future<List<int>> _generateReceipt(Map<String, dynamic> cartData) async {
     }
   }
 
-  // MODIFIED: Save invoice with special note dialog before printing KOT
   Future<void> _saveInvoice({bool isDue = false}) async {
     if (_cartItems.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('No items in cart to save'),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
       return;
     }
     
-    // Check if we're editing a due table
     if (_isEditingDueTable && _currentInvoiceId != null) {
-      // Use the UPDATE endpoint for due tables
       await _updateDueTableInvoice();
       return;
     }
     
-    // For regular saves, check kitchen printer connection
-    if (_connectedKitchenDevices.isEmpty) {
+    final hasKitchenItems = _hasKitchenItems(_cartItems);
+    
+    if (_connectedKitchenDevices.isEmpty && hasKitchenItems) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Text('Warning: Kitchen printer not connected. KOT will not be printed.'),
@@ -3385,32 +4045,41 @@ Future<List<int>> _generateReceipt(Map<String, dynamic> cartData) async {
           behavior: SnackBarBehavior.floating,
         ),
       );
-      // Continue with save even if kitchen printer is not connected
     }
     
-    // Store the current table BEFORE showing any dialog
+    if (_connectedBotDevices.isEmpty && _cartItems.isNotEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Warning: BOT printer not connected. BOT will not be printed.'),
+          backgroundColor: Colors.orange,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+    
     final Table? currentTable = _selectedTable;
     final List<CartItem> cartItemsToSave = List<CartItem>.from(_cartItems);
     
-    // Show special note dialog
     final specialNote = await _showSaveInvoiceNoteDialog();
     if (specialNote == null) {
-      // User cancelled
       return;
     }
     
-    setState(() => _isLoading = true);
+    setState(() {
+      _isSavingInvoice = true;
+    });
+    
+    _showLoadingOverlay('Saving Invoice...');
     
     try {
       final headers = await _getAuthHeaders();
-    
+      
       String saleType = _selectedTable != null 
           ? 'DINE IN'  
           : 'TAKE AWAY'; 
-    
-      // Build items array
+      
       List<Map<String, dynamic>> items = [];
-    
+      
       for (var item in cartItemsToSave) {
         double price = item.getPriceByOrderType(_selectedOrderType);
         double disVal = item.getDiscount(_selectedOrderType);
@@ -3418,13 +4087,38 @@ Future<List<int>> _generateReceipt(Map<String, dynamic> cartData) async {
         double total = item.getTotalPrice(_selectedOrderType);
         
         int lotId = 0;
+        String? lotNumber;
+        
         if (item.product.lotsqty.isNotEmpty) {
           for (var lot in item.product.lotsqty) {
-            if ((lot['qty'] ?? 0) > 0) {
-              lotId = lot['id'] ?? 0;
+            final qty = int.tryParse(lot['qty']?.toString() ?? '0') ?? 0;
+            if (qty > 0) {
+              lotId = lot['id'] ?? lot['lot_id'] ?? 0;
+              lotNumber = lot['lot_number']?.toString();
               break;
             }
           }
+          
+          if (lotId == 0) {
+            final firstLot = item.product.lotsqty.first;
+            lotId = firstLot['id'] ?? firstLot['lot_id'] ?? 1;
+            lotNumber = firstLot['lot_number']?.toString();
+          }
+        } else {
+          if (item.product.lotNumber.isNotEmpty) {
+            try {
+              lotId = int.tryParse(item.product.lotNumber) ?? 1;
+              lotNumber = item.product.lotNumber;
+            } catch (e) {
+              lotId = 1;
+            }
+          } else {
+            lotId = 1;
+          }
+        }
+        
+        if (lotId == 0) {
+          lotId = 1;
         }
         
         items.add({
@@ -3445,6 +4139,8 @@ Future<List<int>> _generateReceipt(Map<String, dynamic> cartData) async {
           'total': total.toStringAsFixed(2),
           'total_discount': disVal.toStringAsFixed(2),
           'unit': item.product.unit,
+          'special_note': item.specialNote ?? '',
+          'lot_number': lotNumber ?? item.product.lotNumber,
         });
       }
 
@@ -3468,19 +4164,19 @@ Future<List<int>> _generateReceipt(Map<String, dynamic> cartData) async {
           'nic': '',
           'address': '',
         },
-       'free_issue': 0,
-      'grossAmount': _totalSubtotal.toStringAsFixed(2),
-      'invDate': DateFormat('yyyy-MM-dd').format(DateTime.now()),
-      'items': items,
-      'netAmount': _netAmount.toStringAsFixed(2),
-      'order_now_order_info_id': _currentInvoiceId,
-      'room_booking': '',
-      'saleType': saleType,
-      'service_charge': _selectedTable != null ? _serviceAmount.toStringAsFixed(2) : '0.00',
-      'services': [],
-      'tbl_room_booking_id': '',
-      'waiter_id': _selectedWaiter?.id ?? 0,
-      'waiter_name': _selectedWaiter?.name ?? '',
+        'free_issue': 0,
+        'grossAmount': _totalSubtotal.toStringAsFixed(2),
+        'invDate': DateFormat('yyyy-MM-dd').format(DateTime.now()),
+        'items': items,
+        'netAmount': _netAmount.toStringAsFixed(2),
+        'order_now_order_info_id': [],
+        'room_booking': '',
+        'saleType': saleType,
+        'service_charge': _selectedTable != null ? _serviceAmount.toStringAsFixed(2) : '0.00',
+        'services': [],
+        'tbl_room_booking_id': '',
+        'waiter_id': _selectedWaiter?.id ?? 0,
+        'waiter_name': _selectedWaiter?.name ?? '',
       };
 
       if (currentTable != null && currentTable.id != null) {
@@ -3488,7 +4184,7 @@ Future<List<int>> _generateReceipt(Map<String, dynamic> cartData) async {
           'id': currentTable.id,
           'name': currentTable.name,
           'service_charge': currentTable.serviceCharge,
-          'special_note': specialNote, // Use the special note from dialog
+          'special_note': specialNote,
         };
       }
 
@@ -3499,12 +4195,17 @@ Future<List<int>> _generateReceipt(Map<String, dynamic> cartData) async {
 
       print('Save Invoice Payload: ${json.encode(payload)}');
 
-      String endpoint = isDue 
-          ? 'https://api-cloudchef.sltcloud.lk/api/invoice-create/dine-in-store?bill_copy=0&due=1'
-          : 'https://api-cloudchef.sltcloud.lk/api/invoice-create/dine-in-store?bill_copy=0';
+      String endpoint = ApiConstants.getFullUrl(ApiConstants.saveInvoice);
+      
+      final uri = Uri.parse(endpoint).replace(
+        queryParameters: {
+          'bill_copy': '0',
+          'due': isDue ? '1' : '0',
+        }
+      );
 
       final response = await http.post(
-        Uri.parse(endpoint),
+        uri,
         headers: headers,
         body: json.encode(payload),
       ).timeout(const Duration(seconds: 30));
@@ -3521,10 +4222,32 @@ Future<List<int>> _generateReceipt(Map<String, dynamic> cartData) async {
           invoiceNumber = responseData['invoice_number'];
         }
         
-        // Print KOT for ALL items if kitchen printer is connected
-        if (_connectedKitchenDevices.isNotEmpty) {
+        String? kotCode = responseData['kot_code'] ?? responseData['data']?['kot_code'];
+        String? botCode = responseData['bot_code'] ?? responseData['data']?['bot_code'];
+        
+        if (kotCode != null) {
+          setState(() {
+            _kotCode = kotCode;
+          });
+        }
+        
+        if (botCode != null) {
+          setState(() {
+            _botCode = botCode;
+          });
+        }
+        
+        final hasKitchenItemsInCart = _hasKitchenItems(cartItemsToSave);
+
+        if (_connectedKitchenDevices.isNotEmpty && hasKitchenItemsInCart) {
           await _printKOT(onlyNewItems: _isEditingDueTable);
         }
+
+        if (_connectedBotDevices.isNotEmpty && cartItemsToSave.isNotEmpty) {
+          await _printKOT(onlyNewItems: _isEditingDueTable, printBOT: true);
+        }
+        
+        await _updateStockInDatabaseForSave(cartItemsToSave, headers);
         
         _cartDataForPrinting = {
           'cartItems': List<CartItem>.from(cartItemsToSave),
@@ -3539,32 +4262,23 @@ Future<List<int>> _generateReceipt(Map<String, dynamic> cartData) async {
           'netAmount': _netAmount,
           'orderNumber': _orderNumber,
           'invoiceNumber': invoiceNumber ?? 'INV-${DateTime.now().millisecondsSinceEpoch}',
+          'kotCode': kotCode,
+          'botCode': botCode,
         };
         
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(isDue ? 'Due invoice saved successfully' : 'Invoice saved successfully'),
-            behavior: SnackBarBehavior.floating,
-            backgroundColor: Colors.green,
-          ),
-        );
-        
-        // ✅ FIXED: Clear ONLY cart items, keep table with special note
         setState(() {
-          // Return stock quantities
           for (var cartItem in _cartItems) {
             final product = cartItem.product;
             final productIndex = _products.indexWhere((p) => p.id == product.id);
             if (productIndex != -1) {
-              _products[productIndex].availableQuantity += cartItem.quantity;
+              _products[productIndex].availableQuantity -= cartItem.quantity;
               final filteredIndex = _filteredProducts.indexWhere((p) => p.id == product.id);
               if (filteredIndex != -1) {
-                _filteredProducts[filteredIndex].availableQuantity += cartItem.quantity;
+                _filteredProducts[filteredIndex].availableQuantity -= cartItem.quantity;
               }
             }
           }
           
-          // Clear cart items ONLY
           _cartItems.clear();
           _discountController.text = '0';
           _currentInvoiceId = null;
@@ -3572,18 +4286,17 @@ Future<List<int>> _generateReceipt(Map<String, dynamic> cartData) async {
           _isEditingDueTable = false;
           _existingDueTableItems.clear();
           _isProcessingDueTablePayment = false;
+          _kotCode = null;
           
-          // ✅ IMPORTANT: Keep the table selection with special note
           if (currentTable != null) {
             _selectedTable = Table(
               id: currentTable.id,
               name: currentTable.name,
               serviceCharge: currentTable.serviceCharge,
-              hasDueOrders: false, // Set to false after saving
-              specialNote: specialNote, // Keep the special note
+              hasDueOrders: false,
+              specialNote: specialNote,
             );
             
-            // Save the special note locally
             _saveLocalTableNote(currentTable.id, specialNote);
           }
         });
@@ -3612,276 +4325,472 @@ Future<List<int>> _generateReceipt(Map<String, dynamic> cartData) async {
         ),
       );
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      _dismissLoadingOverlay();
+      if (mounted) setState(() {
+        _isSavingInvoice = false;
+      });
     }
   }
 
-  // NEW METHOD: Update due table invoice with special note dialog
-  Future<void> _updateDueTableInvoice() async {
-  if (_cartItems.isEmpty) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text('No items in cart to save'),
-        behavior: SnackBarBehavior.floating,
+  void _showLoadingOverlay(String message) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      barrierColor: Colors.black54,
+      builder: (context) => WillPopScope(
+        onWillPop: () async => false,
+        child: Dialog(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const CircularProgressIndicator.adaptive(
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.blue),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  message,
+                  style: GoogleFonts.poppins(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.black87,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Please wait...',
+                  style: GoogleFonts.poppins(
+                    fontSize: 12,
+                    color: Colors.grey[600],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
-    return;
   }
 
-  // Show special note dialog
-  final specialNote = await _showSaveInvoiceNoteDialog();
-  if (specialNote == null) {
-    // User cancelled
-    return;
+  void _dismissLoadingOverlay() {
+    if (mounted && Navigator.of(context, rootNavigator: true).canPop()) {
+      Navigator.of(context, rootNavigator: true).pop();
+    }
   }
-  
-  // Store the current table before clearing
-  final Table? currentTable = _selectedTable;
-  
-  setState(() => _isLoading = true);
-  
-  try {
-    final headers = await _getAuthHeaders();
-    
-    String saleType = 'DINE IN'; // Due tables are always DINE IN
-    
-    // Build items array - combine existing items with new items
-    List<Map<String, dynamic>> items = [];
-    
-    // Add existing items from due table
-    if (_existingDueTableItems.isNotEmpty) {
-      for (var existingItem in _existingDueTableItems) {
-        items.add({
-          'id': existingItem['id'], // Include the existing item ID
-          'invoice_head_id': _currentInvoiceId,
-          'lot_id': existingItem['lot_id'] ?? 0,
-          'bar_code': existingItem['bar_code'] ?? '',
-          'name': existingItem['name'] ?? '',
-          's_name': existingItem['s_name'] ?? null,
-          'unit': existingItem['unit'] ?? '',
-          'ex_date': existingItem['ex_date'],
-          'qty': existingItem['qty'] ?? 1,
-          'cost': existingItem['cost'] ?? 0.0,
-          'price': existingItem['price'] ?? 0.0,
-          'dis': existingItem['dis'] ?? 0.0,
-          'disVal': existingItem['disVal'] ?? 0.0,
-          'total_discount': existingItem['total_discount'] ?? 0.0,
-          'total': existingItem['total'] ?? 0.0,
-          'profit': existingItem['profit'] ?? 0.0,
-        });
-      }
+
+  Future<void> _updateDueTableInvoice() async {
+    if (_cartItems.isEmpty) {
+      return;
+    }
+
+    final specialNote = await _showSaveInvoiceNoteDialog();
+    if (specialNote == null) {
+      return;
     }
     
-    // Add new items from cart (only new items, not existing ones)
-    for (var item in _cartItems) {
-      // Check if this item already exists in existing items
-      bool isExistingItem = false;
-      if (_existingDueTableItems.isNotEmpty) {
-        for (var existingItem in _existingDueTableItems) {
-          if (existingItem['bar_code'] == item.product.barCode || 
-              existingItem['name'] == item.product.name) {
-            isExistingItem = true;
-            break;
-          }
-        }
+    final Table? currentTable = _selectedTable;
+    
+    setState(() {
+      _isSavingInvoice = true;
+    });
+    
+    _showLoadingOverlay('Updating Due Table...');
+    
+    try {
+      final headers = await _getAuthHeaders();
+      
+      if (_currentInvoiceId == null) {
+        throw Exception('No invoice ID found for due table update');
       }
       
-      // Only add if it's a new item
-      if (!isExistingItem) {
-        double price = item.getPriceByOrderType(_selectedOrderType);
-        double disVal = item.getDiscount(_selectedOrderType);
-        double dis = item.discountType == '%' ? item.discountValue : 0.0;
-        double total = item.getTotalPrice(_selectedOrderType);
+      String saleType = 'DINE IN';
+      
+      List<Map<String, dynamic>> items = [];
+      
+      for (var cartItem in _cartItems) {
+        double price = cartItem.getPriceByOrderType(_selectedOrderType);
+        double disVal = cartItem.getDiscount(_selectedOrderType);
+        double dis = cartItem.discountType == '%' ? cartItem.discountValue : 0.0;
+        double total = cartItem.getTotalPrice(_selectedOrderType);
         
         int lotId = 0;
-        if (item.product.lotsqty.isNotEmpty) {
-          for (var lot in item.product.lotsqty) {
-            if ((lot['qty'] ?? 0) > 0) {
-              lotId = lot['id'] ?? 0;
+        String lotNumber = cartItem.product.lotNumber;
+        
+        if (cartItem.product.lotsqty.isNotEmpty) {
+          for (var lot in cartItem.product.lotsqty) {
+            final qty = int.tryParse(lot['qty']?.toString() ?? '0') ?? 0;
+            if (qty > 0) {
+              lotId = lot['id'] ?? lot['lot_id'] ?? 0;
+              lotNumber = lot['lot_number']?.toString() ?? '';
               break;
             }
           }
-        }
-        
-        items.add({
-          'aQty': item.product.availableQuantity + item.quantity,
-          'bar_code': item.product.barCode,
-          'cost': item.product.cost,
-          'dis': dis,
-          'disVal': disVal,
-          'exp': item.product.expiryDate,
-          'lot_id': lotId,
-          'lot_index': 0,
-          'name': item.product.name,
-          'price': price,
-          'qty': item.quantity,
-          's_name': null,
-          'sid': item.product.tblStockId,
-          'stock': item.product.stockName,
-          'total': total.toStringAsFixed(2),
-          'total_discount': disVal.toStringAsFixed(2),
-          'unit': item.product.unit,
-        });
-      }
-    }
-
-    Map<String, dynamic> metadata = {
-      'id': _currentInvoiceId, // THIS IS CRITICAL - include the existing invoice ID
-      'advance_payment': '',
-      'bill_copy_issued': 0,
-      'billDis': _discountPercentage.toString(),
-      'billDisVal': _globalDiscountValue.toStringAsFixed(2),
-      'customer': _selectedCustomer != null ? {
-        'id': _selectedCustomer!.id,
-        'name': _selectedCustomer!.name,
-        'phone': _selectedCustomer!.phone,
-        'email': _selectedCustomer!.email,
-        'nic': _selectedCustomer!.nic,
-        'address': _selectedCustomer!.address,
-      } : {
-        'id': 0,
-        'name': 'Walk-in Customer',
-        'phone': '',
-        'email': '',
-        'nic': '',
-        'address': '',
-      },
-      'free_issue': 0,
-      'grossAmount': _totalSubtotal.toStringAsFixed(2),
-      'invDate': DateFormat('yyyy-MM-dd').format(DateTime.now()),
-      'items': items,
-      'netAmount': _netAmount.toStringAsFixed(2),
-      'order_now_order_info_id': _currentInvoiceId, // Include this for updates
-      'room_booking': '',
-      'saleType': saleType,
-      'service_charge': _selectedTable != null ? _serviceAmount.toStringAsFixed(2) : '0.00',
-      'services': [],
-      'tbl_room_booking_id': '',
-      'waiter_id': _selectedWaiter?.id ?? 0,
-      'waiter_name': _selectedWaiter?.name ?? '',
-    };
-
-    if (_selectedTable != null && _selectedTable!.id != null) {
-      metadata['table_name_id'] = {
-        'id': _selectedTable!.id,
-        'name': _selectedTable!.name,
-        'service_charge': _selectedTable!.serviceCharge,
-        'special_note': specialNote, // ADDED: Include special note
-      };
-    }
-
-    final payload = {
-      'metadata': metadata,
-      'type': 2,
-    };
-
-    print('Update Due Table Payload: ${json.encode(payload)}');
-
-    // Use the update endpoint for due tables
-    final response = await http.post(
-      Uri.parse('https://api-cloudchef.sltcloud.lk/api/invoice-create/dine-in-store?bill_copy=0'),
-      headers: headers,
-      body: json.encode(payload),
-    ).timeout(const Duration(seconds: 30));
-
-    if (response.statusCode == 200 || response.statusCode == 201) {
-      final responseData = json.decode(response.body);
-      
-      String? invoiceNumber;
-      if (responseData['data'] != null && responseData['data']['invoice_head'] != null) {
-        invoiceNumber = responseData['data']['invoice_head']['invoice_code'];
-      }
-      
-      // ✅ FIXED: Print KOT only for NEW items if kitchen printer is connected
-      if (_connectedKitchenDevices.isNotEmpty) {
-        await _printKOT(onlyNewItems: true);
-      }
-      
-      _cartDataForPrinting = {
-        'cartItems': List<CartItem>.from(_cartItems.where((item) => item.isNewItem).toList()),
-        'selectedOrderType': _selectedOrderType,
-        'selectedCustomer': _selectedCustomer,
-        'selectedTable': _selectedTable,
-        'totalSubtotal': _totalSubtotal,
-        'totalItemDiscount': _totalItemDiscount,
-        'discountPercentage': _discountPercentage,
-        'globalDiscountValue': _globalDiscountValue,
-        'serviceAmount': _serviceAmount,
-        'netAmount': _netAmount,
-        'orderNumber': _orderNumber,
-        'invoiceNumber': invoiceNumber ?? 'INV-${DateTime.now().millisecondsSinceEpoch}',
-      };
-      
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Due table updated successfully'),
-          behavior: SnackBarBehavior.floating,
-          backgroundColor: Colors.green,
-        ),
-      );
-      
-      // ✅ FIXED: Clear only new items from cart, keep the table selected with special note
-      setState(() {
-        // Return stock quantities for new items only
-        final itemsToClear = _cartItems.where((item) => item.isNewItem).toList();
-        
-        for (var cartItem in itemsToClear) {
-          final product = cartItem.product;
-          final productIndex = _products.indexWhere((p) => p.id == product.id);
-          if (productIndex != -1) {
-            _products[productIndex].availableQuantity += cartItem.quantity;
-            final filteredIndex = _filteredProducts.indexWhere((p) => p.id == product.id);
-            if (filteredIndex != -1) {
-              _filteredProducts[filteredIndex].availableQuantity += cartItem.quantity;
+          
+          if (lotId == 0 && cartItem.product.lotsqty.isNotEmpty) {
+            final firstLot = cartItem.product.lotsqty.first;
+            lotId = firstLot['id'] ?? firstLot['lot_id'] ?? 1;
+            lotNumber = firstLot['lot_number']?.toString() ?? '';
+          }
+        } else {
+          if (cartItem.product.lotNumber.isNotEmpty) {
+            try {
+              lotId = int.tryParse(cartItem.product.lotNumber) ?? 1;
+            } catch (e) {
+              lotId = 1;
             }
+          } else {
+            lotId = 1;
           }
         }
         
-        // Clear only new cart items (keep existing items in cart if any)
-        _cartItems.removeWhere((item) => item.isNewItem);
+        if (lotId == 0) {
+          lotId = 1;
+        }
         
-        // Reset discount and service charge for new items
-        _discountController.text = '0';
-        _serviceAmountOverride = 0.0;
-        _isProcessingDueTablePayment = false;
+        Map<String, dynamic> itemData = {
+          'aQty': cartItem.product.availableQuantity + cartItem.quantity,
+          'bar_code': cartItem.product.barCode,
+          'cost': cartItem.product.cost,
+          'dis': dis,
+          'disVal': disVal,
+          'exp': cartItem.product.expiryDate,
+          'lot_id': lotId,
+          'lot_index': 0,
+          'name': cartItem.product.name,
+          'price': price,
+          'qty': cartItem.quantity,
+          's_name': null,
+          'sid': cartItem.product.tblStockId,
+          'stock': cartItem.product.stockName,
+          'total': total.toStringAsFixed(2),
+          'total_discount': disVal.toStringAsFixed(2),
+          'unit': cartItem.product.unit,
+          'special_note': cartItem.specialNote ?? '',
+          'lot_number': lotNumber,
+        };
         
-        // Keep the existing items in memory for future updates
-        _updateCartTotals(); // Recalculate totals
-        
-        // Keep the table selection with updated special note
-        if (currentTable != null) {
-          _selectedTable = Table(
-            id: currentTable.id,
-            name: currentTable.name,
-            serviceCharge: currentTable.serviceCharge,
-            hasDueOrders: true, // Still a due table since we're updating
-            specialNote: specialNote, // Keep the updated special note
+        if (!cartItem.isNewItem) {
+          final existingItem = _existingDueTableItems.firstWhere(
+            (existing) => 
+              existing['product_id'] == cartItem.product.id ||
+              existing['tbl_product_id'] == cartItem.product.id,
+            orElse: () => {},
           );
           
-          // Save the special note locally
-          _saveLocalTableNote(currentTable.id, specialNote);
+          if (existingItem.isNotEmpty && existingItem['id'] != null) {
+            itemData['id'] = existingItem['id'];
+          }
         }
-      });
-      
-    } else {
-      print('Update Due Table Error: ${response.statusCode} - ${response.body}');
-      throw Exception('Failed to update due table: ${response.statusCode} - ${response.body}');
-    }
-  } catch (e) {
-    print('Update Due Table Exception: $e');
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Error updating due table: $e'),
-        behavior: SnackBarBehavior.floating,
-        backgroundColor: Colors.red,
-      ),
-    );
-  } finally {
-    if (mounted) setState(() => _isLoading = false);
-  }
-}
+        
+        items.add(itemData);
+      }
 
-  // MODIFIED: Added printer connection check before printing bill copy
+      Map<String, dynamic> metadata = {
+        'id': _currentInvoiceId,
+        'advance_payment': '',
+        'bill_copy_issued': 0,
+        'billDis': _discountPercentage.toString(),
+        'billDisVal': _globalDiscountValue.toStringAsFixed(2),
+        'customer': _selectedCustomer != null ? {
+          'id': _selectedCustomer!.id ?? 0,
+          'name': _selectedCustomer!.name,
+          'phone': _selectedCustomer!.phone ?? '',
+          'email': _selectedCustomer!.email ?? '',
+          'nic': _selectedCustomer!.nic ?? '',
+          'address': _selectedCustomer!.address ?? '',
+        } : {
+          'id': 0,
+          'name': 'Walk-in Customer',
+          'phone': '',
+          'email': '',
+          'nic': '',
+          'address': '',
+        },
+        'free_issue': 0,
+        'grossAmount': _totalSubtotal.toStringAsFixed(2),
+        'invDate': DateFormat('yyyy-MM-dd').format(DateTime.now()),
+        'items': items,
+        'netAmount': _netAmount.toStringAsFixed(2),
+        'order_now_order_info_id': [],
+        'room_booking': '',
+        'saleType': saleType,
+        'service_charge': _selectedTable != null ? _serviceAmount.toStringAsFixed(2) : '0.00',
+        'services': [],
+        'tbl_room_booking_id': '',
+        'waiter_id': _selectedWaiter?.id ?? 0,
+        'waiter_name': _selectedWaiter?.name ?? '',
+      };
+
+      if (currentTable != null) {
+        metadata['table_name_id'] = {
+          'id': currentTable.id ?? 0,
+          'name': currentTable.name,
+          'service_charge': currentTable.serviceCharge,
+          'special_note': specialNote,
+        };
+      } else {
+        metadata['table_name_id'] = {
+          'id': 0,
+          'name': '',
+          'service_charge': 0.0,
+          'special_note': '',
+        };
+      }
+
+      final payload = {
+        'metadata': metadata,
+        'type': 2,
+      };
+
+      print('Update Due Table Payload: ${json.encode(payload)}');
+
+      String endpoint = '${ApiConstants.getFullUrl(ApiConstants.saveInvoice)}?bill_copy=0&due=1';
+
+      final response = await http.post(
+        Uri.parse(endpoint),
+        headers: headers,
+        body: json.encode(payload),
+      ).timeout(const Duration(seconds: 30));
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final responseData = json.decode(response.body);
+        
+        String? invoiceNumber;
+        if (responseData['data'] != null && responseData['data']['invoice_head'] != null) {
+          invoiceNumber = responseData['data']['invoice_head']['invoice_code'];
+        }
+        
+        String? kotCode = responseData['kot_code'] ?? responseData['data']?['kot_code'];
+        String? botCode = responseData['bot_code'] ?? responseData['data']?['bot_code'];
+        
+        if (kotCode != null) {
+          setState(() {
+            _kotCode = kotCode;
+          });
+        }
+        
+        if (botCode != null) {
+          setState(() {
+            _botCode = botCode;
+          });
+        }
+        
+        final newKitchenItems = _cartItems.where((item) => item.isNewItem).toList();
+        final hasNewKitchenItems = _hasKitchenItems(newKitchenItems);
+
+        if (_connectedKitchenDevices.isNotEmpty && hasNewKitchenItems) {
+          await _printKOT(onlyNewItems: true);
+        }
+
+        if (_connectedBotDevices.isNotEmpty && newKitchenItems.isNotEmpty) {
+          await _printKOT(onlyNewItems: true, printBOT: true);
+        }
+        
+        await _updateStockInDatabase(newKitchenItems, headers);
+        
+        _cartDataForPrinting = {
+          'cartItems': List<CartItem>.from(_cartItems.where((item) => item.isNewItem).toList()),
+          'selectedOrderType': _selectedOrderType,
+          'selectedCustomer': _selectedCustomer,
+          'selectedTable': _selectedTable,
+          'totalSubtotal': _totalSubtotal,
+          'totalItemDiscount': _totalItemDiscount,
+          'discountPercentage': _discountPercentage,
+          'globalDiscountValue': _globalDiscountValue,
+          'serviceAmount': _serviceAmount,
+          'netAmount': _netAmount,
+          'orderNumber': _orderNumber,
+          'invoiceNumber': invoiceNumber ?? 'INV-${DateTime.now().millisecondsSinceEpoch}',
+          'kotCode': kotCode,
+          'botCode': botCode,
+        };
+        
+        setState(() {
+          final newItemsToClear = _cartItems.where((item) => item.isNewItem).toList();
+          
+          for (var cartItem in newItemsToClear) {
+            final product = cartItem.product;
+            final productIndex = _products.indexWhere((p) => p.id == product.id);
+            if (productIndex != -1) {
+              _products[productIndex].availableQuantity += cartItem.quantity;
+              final filteredIndex = _filteredProducts.indexWhere((p) => p.id == product.id);
+              if (filteredIndex != -1) {
+                _filteredProducts[filteredIndex].availableQuantity += cartItem.quantity;
+              }
+            }
+          }
+          
+          _cartItems.clear();
+          _discountController.text = '0';
+          _serviceAmountOverride = 0.0;
+          _isProcessingDueTablePayment = false;
+          _kotCode = null;
+          _botCode = null;
+          
+          _cartDataForPrinting = null;
+          _isEditingDueTable = false;
+          _existingDueTableItems.clear();
+          _currentInvoiceId = null;
+          
+          _updateCartTotals();
+          
+          if (currentTable != null) {
+            _selectedTable = Table(
+              id: currentTable.id,
+              name: currentTable.name,
+              serviceCharge: currentTable.serviceCharge,
+              hasDueOrders: false,
+              specialNote: specialNote,
+            );
+            
+            _saveLocalTableNote(currentTable.id, specialNote);
+          }
+        });
+        
+      } else {
+        print('Update Due Table Error: ${response.statusCode} - ${response.body}');
+        final errorBody = json.decode(response.body);
+        
+        String errorMessage = 'Failed to update due table';
+        if (errorBody['message'] != null) {
+          errorMessage = errorBody['message'];
+        } else if (errorBody['error'] != null) {
+          errorMessage = errorBody['error'];
+        }
+        
+        throw Exception('$errorMessage (Status: ${response.statusCode})');
+      }
+    } catch (e) {
+      print('Update Due Table Exception: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error updating due table: ${e.toString().replaceAll('Exception: ', '')}'),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      _dismissLoadingOverlay();
+      if (mounted) setState(() {
+        _isSavingInvoice = false;
+      });
+    }
+  }
+
+  Future<void> _updateStockInDatabaseForSave(List<CartItem> itemsToUpdate, Map<String, String> headers) async {
+    if (itemsToUpdate.isEmpty) return;
+    
+    try {
+      for (var cartItem in itemsToUpdate) {
+        final product = cartItem.product;
+        
+        if (product.lotsqty.isNotEmpty) {
+          var selectedLot;
+          int lotId = 0;
+          
+          for (var lot in product.lotsqty) {
+            final qty = int.tryParse(lot['qty']?.toString() ?? '0') ?? 0;
+            if (qty > 0) {
+              selectedLot = lot;
+              lotId = lot['id'] ?? lot['lot_id'] ?? 0;
+              break;
+            }
+          }
+          
+          if (selectedLot == null && product.lotsqty.isNotEmpty) {
+            selectedLot = product.lotsqty.first;
+            lotId = selectedLot['id'] ?? selectedLot['lot_id'] ?? 0;
+          }
+          
+          if (lotId > 0) {
+            final currentQty = int.tryParse(selectedLot['qty']?.toString() ?? '0') ?? 0;
+            
+            if (currentQty >= cartItem.quantity) {
+              final newQty = currentQty - cartItem.quantity;
+              
+              final response = await http.post(
+                Uri.parse(ApiConstants.getFullUrl(ApiConstants.updateLotQuantity)),
+                headers: headers,
+                body: json.encode({
+                  'lot_id': lotId,
+                  'qty': newQty,
+                }),
+              ).timeout(const Duration(seconds: 10));
+              
+              if (response.statusCode == 200) {
+                print('Stock updated for product ${product.name}, lot $lotId: $currentQty -> $newQty');
+              } else {
+                print('Failed to update stock for product ${product.name}: ${response.statusCode}');
+              }
+            } else {
+              print('Insufficient stock for product ${product.name}: ${currentQty} available, ${cartItem.quantity} requested');
+            }
+          }
+        }
+      }
+    } catch (e) {
+      print('Error updating stock in database for save: $e');
+    }
+  }
+
+  Future<void> _updateStockInDatabase(List<CartItem> itemsToUpdate, Map<String, String> headers) async {
+    if (itemsToUpdate.isEmpty) return;
+    
+    try {
+      for (var cartItem in itemsToUpdate) {
+        final product = cartItem.product;
+        
+        if (product.lotsqty.isNotEmpty) {
+          var selectedLot;
+          for (var lot in product.lotsqty) {
+            final qty = int.tryParse(lot['qty']?.toString() ?? '0') ?? 0;
+            if (qty > 0) {
+              selectedLot = lot;
+              break;
+            }
+          }
+          
+          if (selectedLot == null && product.lotsqty.isNotEmpty) {
+            selectedLot = product.lotsqty.first;
+          }
+          
+          if (selectedLot != null) {
+            final lotId = selectedLot['id'];
+            final currentQty = int.tryParse(selectedLot['qty']?.toString() ?? '0') ?? 0;
+            
+            if (currentQty >= cartItem.quantity) {
+              final newQty = currentQty - cartItem.quantity;
+              
+              final response = await http.post(
+                Uri.parse(ApiConstants.getFullUrl(ApiConstants.updateLotQuantity)),
+                headers: headers,
+                body: json.encode({
+                  'lot_id': lotId,
+                  'qty': newQty,
+                }),
+              ).timeout(const Duration(seconds: 10));
+              
+              if (response.statusCode == 200) {
+                print('Stock updated for product ${product.name}, lot $lotId');
+              } else {
+                print('Failed to update stock for product ${product.name}: ${response.statusCode}');
+              }
+            }
+          }
+        }
+      }
+    } catch (e) {
+      print('Error updating stock in database: $e');
+    }
+  }
+
   Future<void> _printBillCopy() async {
     if (_cartItems.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -3899,10 +4808,8 @@ Future<List<int>> _generateReceipt(Map<String, dynamic> cartData) async {
     }
     
     try {
-      // Simply print the bill copy without saving to database
       await _printReceipt(isBillCopy: true);
       
-      // Clear cart after printing
       _clearCart();
       
       ScaffoldMessenger.of(context).showSnackBar(
@@ -3923,19 +4830,11 @@ Future<List<int>> _generateReceipt(Map<String, dynamic> cartData) async {
     }
   }
 
-  // MODIFIED: Added printer connection check before saving and printing bill copy
   Future<void> _saveAndPrintBillCopy() async {
     if (_cartItems.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('No items in cart to save'),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
       return;
     }
     
-    // Check if cashier printer is connected
     if (_connectedCashierDevices.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -3989,12 +4888,13 @@ Future<List<int>> _generateReceipt(Map<String, dynamic> cartData) async {
           'total': total.toStringAsFixed(2),
           'total_discount': disVal.toStringAsFixed(2),
           'unit': item.product.unit,
+          'special_note': item.specialNote ?? '',
         });
       }
 
       Map<String, dynamic> metadata = {
         'advance_payment': '',
-        'bill_copy_issued': 1, // Set to 1 for bill copy
+        'bill_copy_issued': 1,
         'billDis': _discountPercentage.toString(),
         'billDisVal': _globalDiscountValue.toStringAsFixed(2),
         'customer': _selectedCustomer != null ? {
@@ -4017,7 +4917,7 @@ Future<List<int>> _generateReceipt(Map<String, dynamic> cartData) async {
         'invDate': DateFormat('yyyy-MM-dd').format(DateTime.now()),
         'items': items,
         'netAmount': _netAmount.toStringAsFixed(2),
-        'order_now_order_info_id': _currentInvoiceId,
+        'order_now_order_info_id': [],
         'room_booking': '',
         'saleType': saleType,
         'service_charge': _selectedTable != null ? _serviceAmount.toStringAsFixed(2) : '0.00',
@@ -4032,7 +4932,7 @@ Future<List<int>> _generateReceipt(Map<String, dynamic> cartData) async {
           'id': _selectedTable!.id,
           'name': _selectedTable!.name,
           'service_charge': _selectedTable!.serviceCharge,
-          'special_note': _selectedTable!.specialNote, // ADDED: Include special note
+          'special_note': _selectedTable!.specialNote,
         };
       }
 
@@ -4043,9 +4943,8 @@ Future<List<int>> _generateReceipt(Map<String, dynamic> cartData) async {
 
       print('Save Bill Copy Payload: ${json.encode(payload)}');
 
-      // Call API with bill_copy=1 parameter
       final response = await http.post(
-        Uri.parse('https://api-cloudchef.sltcloud.lk/api/invoice-create/dine-in-store?bill_copy=1'),
+        Uri.parse('${ApiConstants.getFullUrl(ApiConstants.saveInvoice)}?bill_copy=1'),
         headers: headers,
         body: json.encode(payload),
       ).timeout(const Duration(seconds: 30));
@@ -4053,10 +4952,8 @@ Future<List<int>> _generateReceipt(Map<String, dynamic> cartData) async {
       if (response.statusCode == 200 || response.statusCode == 201) {
         final responseData = json.decode(response.body);
         
-        // Print the bill copy
         await _printBillCopyFromInvoice(responseData);
         
-        // IMPORTANT: Clear the cart after saving and printing bill copy
         _clearCart();
         
         ScaffoldMessenger.of(context).showSnackBar(
@@ -4105,10 +5002,10 @@ Future<List<int>> _generateReceipt(Map<String, dynamic> cartData) async {
     } else {
       _addProductToCart(
         product,
-        1,  // Default quantity = 1
-        'none',  // No discount by default
-        0.0,  // No discount value
-        null,  // Not an existing item
+        1,
+        'none',
+        0.0,
+        null,
       );
     }
   }
@@ -4121,7 +5018,6 @@ Future<List<int>> _generateReceipt(Map<String, dynamic> cartData) async {
       onSelected: (selected) {
         setState(() {
           if (selected) {
-            // Handle selection
           }
         });
       },
@@ -4154,17 +5050,21 @@ Future<List<int>> _generateReceipt(Map<String, dynamic> cartData) async {
       return;
     }
   
-    if (existingIndex != null) {
+    if (existingIndex != null && existingIndex < _cartItems.length) {
       setState(() {
-        _cartItems[existingIndex].quantity = quantity;
-        _cartItems[existingIndex].discountType = discountType;
-        _cartItems[existingIndex].discountValue = discountValue;
+        _cartItems[existingIndex] = CartItem(
+          product: product,
+          quantity: quantity,
+          discountType: discountType,
+          discountValue: discountValue,
+          isNewItem: _cartItems[existingIndex].isNewItem,
+          specialNote: _cartItems[existingIndex].specialNote,
+        );
         
         final productIndex = _products.indexWhere((p) => p.id == product.id);
         if (productIndex != -1) {
           final originalQty = _products[productIndex].availableQuantity;
-          final cartItem = _cartItems[existingIndex];
-          final previousQty = cartItem.quantity;
+          final previousQty = _cartItems[existingIndex].quantity;
           final newQty = originalQty + previousQty - quantity;
           if (newQty >= 0) {
             _products[productIndex].availableQuantity = newQty;
@@ -4182,7 +5082,8 @@ Future<List<int>> _generateReceipt(Map<String, dynamic> cartData) async {
           quantity: quantity,
           discountType: discountType,
           discountValue: discountValue,
-          isNewItem: true, // This is a new item
+          isNewItem: true,
+          specialNote: '',
         ));
         
         final productIndex = _products.indexWhere((p) => p.id == product.id);
@@ -4202,43 +5103,50 @@ Future<List<int>> _generateReceipt(Map<String, dynamic> cartData) async {
     _updateCartTotals();
   }
 
-  void _removeFromCart(Product product) {
-    setState(() {
-      final itemIndex = _cartItems.indexWhere((item) => item.product.id == product.id);
-      if (itemIndex >= 0) {
-        final removedItem = _cartItems.removeAt(itemIndex);
+  void _removeFromCart(int index) {
+    if (index >= 0 && index < _cartItems.length) {
+      setState(() {
+        final removedItem = _cartItems.removeAt(index);
         
-        final productIndex = _products.indexWhere((p) => p.id == product.id);
-        if (productIndex != -1) {
-          _products[productIndex].availableQuantity += removedItem.quantity;
-          
-          final filteredIndex = _filteredProducts.indexWhere((p) => p.id == product.id);
-          if (filteredIndex != -1) {
-            _filteredProducts[filteredIndex].availableQuantity += removedItem.quantity;
-          }
-        }
-      }
-    });
-    _updateCartTotals();
-  }
-
-  void _updateCartQuantity(Product product, int newQuantity) {
-    setState(() {
-      final itemIndex = _cartItems.indexWhere((item) => item.product.id == product.id);
-      if (itemIndex >= 0) {
-        if (newQuantity <= 0) {
-          final removedItem = _cartItems.removeAt(itemIndex);
-          final productIndex = _products.indexWhere((p) => p.id == product.id);
+        if (removedItem.isNewItem) {
+          final productIndex = _products.indexWhere((p) => p.id == removedItem.product.id);
           if (productIndex != -1) {
             _products[productIndex].availableQuantity += removedItem.quantity;
-            final filteredIndex = _filteredProducts.indexWhere((p) => p.id == product.id);
+            
+            final filteredIndex = _filteredProducts.indexWhere((p) => p.id == removedItem.product.id);
             if (filteredIndex != -1) {
               _filteredProducts[filteredIndex].availableQuantity += removedItem.quantity;
             }
           }
-        } else if (newQuantity <= product.availableQuantity + _cartItems[itemIndex].quantity) {
-          final difference = newQuantity - _cartItems[itemIndex].quantity;
-          _cartItems[itemIndex].quantity = newQuantity;
+        }
+      });
+      _updateCartTotals();
+    }
+  }
+
+  void _updateCartQuantity(int index, int newQuantity) {
+    if (index >= 0 && index < _cartItems.length) {
+      final item = _cartItems[index];
+      
+      if (_isEditingDueTable && !item.isNewItem) {
+        return;
+      }
+      
+      final product = item.product;
+      
+      setState(() {
+        if (newQuantity <= 0) {
+          _removeFromCart(index);
+        } else if (newQuantity <= product.availableQuantity + item.quantity) {
+          final difference = newQuantity - item.quantity;
+          _cartItems[index] = CartItem(
+            product: product,
+            quantity: newQuantity,
+            discountType: item.discountType,
+            discountValue: item.discountValue,
+            isNewItem: item.isNewItem,
+            specialNote: item.specialNote,
+          );
           
           final productIndex = _products.indexWhere((p) => p.id == product.id);
           if (productIndex != -1) {
@@ -4256,9 +5164,9 @@ Future<List<int>> _generateReceipt(Map<String, dynamic> cartData) async {
             ),
           );
         }
-      }
-    });
-    _updateCartTotals();
+      });
+      _updateCartTotals();
+    }
   }
 
   void _updateCartTotals() {
@@ -4298,88 +5206,114 @@ Future<List<int>> _generateReceipt(Map<String, dynamic> cartData) async {
     return base + _serviceAmount;
   }
 
-void _clearCart() {
-  setState(() {
-    // Return stock quantities
-    for (var cartItem in _cartItems) {
-      final product = cartItem.product;
-      final productIndex = _products.indexWhere((p) => p.id == product.id);
-      if (productIndex != -1) {
-        _products[productIndex].availableQuantity += cartItem.quantity;
-        final filteredIndex = _filteredProducts.indexWhere((p) => p.id == product.id);
-        if (filteredIndex != -1) {
-          _filteredProducts[filteredIndex].availableQuantity += cartItem.quantity;
-        }
-      }
+  void _clearCart() {
+    if (_cartItems.isEmpty) {
+      return;
     }
-    
-    // Clear cart items only
-    _cartItems.clear();
-    _discountController.text = '0';
-    _currentInvoiceId = null;
-    _serviceAmountOverride = 0.0;
-    _isEditingDueTable = false;
-    _existingDueTableItems.clear();
-    _isProcessingDueTablePayment = false;
-    
-    // DO NOT clear customer, waiter, or table selection
-  });
-}
-void _clearEverything() {
-  setState(() {
-    // Return stock quantities
-    for (var cartItem in _cartItems) {
-      final product = cartItem.product;
-      final productIndex = _products.indexWhere((p) => p.id == product.id);
-      if (productIndex != -1) {
-        _products[productIndex].availableQuantity += cartItem.quantity;
-        final filteredIndex = _filteredProducts.indexWhere((p) => p.id == product.id);
-        if (filteredIndex != -1) {
-          _filteredProducts[filteredIndex].availableQuantity += cartItem.quantity;
-        }
-      }
-    }
-    
-    // Clear everything
-    _cartItems.clear();
-    _discountController.text = '0';
-    _selectedCustomer = null;
-    _selectedWaiter = null;
-    _selectedTable = null;
-    _currentInvoiceId = null;
-    _serviceAmountOverride = 0.0;
-    _isEditingDueTable = false;
-    _existingDueTableItems.clear();
-    _isProcessingDueTablePayment = false;
-  });
-}
-void _selectFreshTable(Table table) {
-  setState(() {
-    // Clear everything first
-    _clearEverything();
-    
-    // Set the new table as fresh (no due orders)
-    _selectedTable = Table(
-      id: table.id,
-      name: table.name,
-      serviceCharge: table.serviceCharge,
-      hasDueOrders: false,
-      specialNote: '', // Clear special note for fresh table
-    );
-  });
   
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(
-      content: Text('Fresh table "${table.name}" selected'),
-      behavior: SnackBarBehavior.floating,
-      backgroundColor: Colors.blue,
-    ),
-  );
-}
+    _showLoadingOverlay('Clearing Cart...');
+  
+    Future.delayed(const Duration(milliseconds: 300), () {
+      setState(() {
+        for (var cartItem in _cartItems) {
+          final product = cartItem.product;
+          final productIndex = _products.indexWhere((p) => p.id == product.id);
+          if (productIndex != -1) {
+            _products[productIndex].availableQuantity += cartItem.quantity;
+            final filteredIndex = _filteredProducts.indexWhere((p) => p.id == product.id);
+            if (filteredIndex != -1) {
+              _filteredProducts[filteredIndex].availableQuantity += cartItem.quantity;
+            }
+          }
+        }
+        
+        _cartItems.clear();
+        _discountController.text = '0';
+        _currentInvoiceId = null;
+        _serviceAmountOverride = 0.0;
+        _isEditingDueTable = false;
+        _existingDueTableItems.clear();
+        _isProcessingDueTablePayment = false;
+        _paymentDataForPrinting = null;
+        _kotCode = null;
+      });
+      
+      _dismissLoadingOverlay();
+    });
+  }
+
+  void _clearEverything() {
+    if (_cartItems.isEmpty && 
+        _selectedCustomer == null && 
+        _selectedTable == null && 
+        _selectedWaiter == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Nothing to clear'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+  
+    _showLoadingOverlay('Resetting Everything...');
+  
+    Future.delayed(const Duration(milliseconds: 300), () {
+      setState(() {
+        for (var cartItem in _cartItems) {
+          final product = cartItem.product;
+          final productIndex = _products.indexWhere((p) => p.id == product.id);
+          if (productIndex != -1) {
+            _products[productIndex].availableQuantity += cartItem.quantity;
+            final filteredIndex = _filteredProducts.indexWhere((p) => p.id == product.id);
+            if (filteredIndex != -1) {
+              _filteredProducts[filteredIndex].availableQuantity += cartItem.quantity;
+            }
+          }
+        }
+        
+        _cartItems.clear();
+        _discountController.text = '0';
+        _selectedCustomer = null;
+        _selectedWaiter = null;
+        _selectedTable = null;
+        _currentInvoiceId = null;
+        _serviceAmountOverride = 0.0;
+        _isEditingDueTable = false;
+        _existingDueTableItems.clear();
+        _isProcessingDueTablePayment = false;
+        _paymentDataForPrinting = null;
+        _kotCode = null;
+      });
+    
+      _dismissLoadingOverlay();
+    });
+  }
+
+  void _selectFreshTable(Table table) {
+    setState(() {
+      _clearEverything();
+      
+      _selectedTable = Table(
+        id: table.id,
+        name: table.name,
+        serviceCharge: table.serviceCharge,
+        hasDueOrders: false,
+        specialNote: '',
+      );
+    });
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Fresh table "${table.name}" selected'),
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: Colors.blue,
+      ),
+    );
+  }
 
   void _clearCartForBillCopy() {
     setState(() {
-      // Return stock quantities
       for (var cartItem in _cartItems) {
         final product = cartItem.product;
         final productIndex = _products.indexWhere((p) => p.id == product.id);
@@ -4392,7 +5326,6 @@ void _selectFreshTable(Table table) {
         }
       }
       
-      // Clear cart items only
       _cartItems.clear();
       _discountController.text = '0';
       _currentInvoiceId = null;
@@ -4400,7 +5333,8 @@ void _selectFreshTable(Table table) {
       _isEditingDueTable = false;
       _existingDueTableItems.clear();
       _isProcessingDueTablePayment = false;
-      // Don't clear customer, waiter, or table selection
+      _paymentDataForPrinting = null;
+      _kotCode = null;
     });
   }
 
@@ -4691,7 +5625,6 @@ void _selectFreshTable(Table table) {
     );
   }
 
-  // MODIFIED: Removed special note dialog when selecting table
   void _showTableDialog() {
     _tableSearchController.clear();
     final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
@@ -4779,30 +5712,9 @@ void _selectFreshTable(Table table) {
                                         title: Text(table.name, style: GoogleFonts.poppins(fontWeight: FontWeight.w500)),
                                         subtitle: Text('Service Charge: ${table.serviceCharge}%'),
                                         trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                                       onTap: () {
+                                        onTap: () {
                                           Navigator.pop(context);
-                                          // Select table without showing special note dialog
-                                          this.setState(() {
-                                            // Clear any previous table selection first
-                                            _selectedTable = null;
-                                            _cartItems.clear();
-                                            _currentInvoiceId = null;
-                                            _serviceAmountOverride = 0.0;
-                                            _isEditingDueTable = false;
-                                            _existingDueTableItems.clear();
-                                            
-                                            // Set new table (without special note)
-                                            _selectedTable = Table(
-                                              id: table.id,
-                                              name: table.name,
-                                              serviceCharge: table.serviceCharge,
-                                              hasDueOrders: table.hasDueOrders,
-                                              specialNote: '', // Clear special note for selection
-                                            );
-                                          });
-                                          
-                                          // Now load table items
-                                          _loadTableItems();
+                                          _handleTableSelection(table);
                                         },
                                       ),
                                     ).animate().fadeIn(duration: 300.ms);
@@ -4820,22 +5732,38 @@ void _selectFreshTable(Table table) {
   }
 
   void _showDueTablesDialog() async {
-    setState(() => _isLoading = true);
-   
-    try {
-      final dueTables = await _loadDueTablesFromAPI();
-     
-      if (dueTables.isEmpty) {
-        _showMessage('No due tables found');
-        return;
-      }
-      
-      showDialog(
-        context: context,
-        builder: (context) => StatefulBuilder(
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        bool isLoading = true;
+        List<Table> currentDueTables = [];
+        
+        return StatefulBuilder(
           builder: (context, setDialogState) {
-            List<Table> currentDueTables = List.from(dueTables);
-           
+            if (isLoading) {
+              _loadDueTablesForDialog().then((tables) {
+                if (mounted) {
+                  setDialogState(() {
+                    currentDueTables = tables;
+                    isLoading = false;
+                  });
+                }
+              }).catchError((error) {
+                if (mounted) {
+                  setDialogState(() {
+                    isLoading = false;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Error loading due tables: $error'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  });
+                }
+              });
+            }
+            
             return Dialog(
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
               child: ConstrainedBox(
@@ -4876,59 +5804,80 @@ void _selectFreshTable(Table table) {
                             ),
                           ),
                           const Spacer(),
-                          IconButton(
-                            icon: Icon(Icons.refresh, color: Colors.grey[700]),
-                            onPressed: () async {
-                              setDialogState(() {});
-                              final refreshedTables = await _loadDueTablesFromAPI();
-                              setDialogState(() {
-                                currentDueTables = refreshedTables;
-                              });
-                            },
-                          ),
+                          if (!isLoading && currentDueTables.isNotEmpty)
+                            IconButton(
+                              icon: Icon(Icons.refresh, color: Colors.grey[700]),
+                              onPressed: () async {
+                                setDialogState(() {
+                                  isLoading = true;
+                                });
+                                final refreshedTables = await _loadDueTablesForDialog();
+                                setDialogState(() {
+                                  currentDueTables = refreshedTables;
+                                  isLoading = false;
+                                });
+                              },
+                            ),
                         ],
                       ),
-                     
+                      
                       const SizedBox(height: 4),
                       Divider(color: Colors.grey[300], thickness: 1),
                       const SizedBox(height: 8),
-                     
+                      
                       Expanded(
-                        child: currentDueTables.isEmpty
+                        child: isLoading
                             ? Center(
                                 child: Column(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    Icon(Icons.table_chart_outlined, size: 64, color: Colors.grey[400]),
+                                    const CircularProgressIndicator.adaptive(),
                                     const SizedBox(height: 16),
                                     Text(
-                                      'No active tables',
+                                      'Loading active tables...',
                                       style: GoogleFonts.poppins(
                                         color: Colors.grey[500],
-                                        fontSize: 16,
+                                        fontSize: 14,
                                       ),
                                     ),
                                   ],
                                 ),
                               )
-                            : GridView.builder(
-                                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                                  crossAxisCount: 3,
-                                  childAspectRatio: 3.4,
-                                  crossAxisSpacing: 12,
-                                  mainAxisSpacing: 12,
-                                ),
-                                itemCount: currentDueTables.length,
-                                itemBuilder: (context, index) {
-                                  final table = currentDueTables[index];
-                                  return _buildTableCardFromImage(table, () {
-                                    currentDueTables.removeAt(index);
-                                    setDialogState(() {});
-                                  });
-                                },
-                              ),
+                            : currentDueTables.isEmpty
+                                ? Center(
+                                    child: Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Icon(Icons.table_chart_outlined, size: 64, color: Colors.grey[400]),
+                                        const SizedBox(height: 16),
+                                        Text(
+                                          'No active tables',
+                                          style: GoogleFonts.poppins(
+                                            color: Colors.grey[500],
+                                            fontSize: 16,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  )
+                                : GridView.builder(
+                                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                                      crossAxisCount: 3,
+                                      childAspectRatio: 3.4,
+                                      crossAxisSpacing: 12,
+                                      mainAxisSpacing: 12,
+                                    ),
+                                    itemCount: currentDueTables.length,
+                                    itemBuilder: (context, index) {
+                                      final table = currentDueTables[index];
+                                      return _buildTableCardFromImage(table, () {
+                                        currentDueTables.removeAt(index);
+                                        setDialogState(() {});
+                                      });
+                                    },
+                                  ),
                       ),
-                     
+                      
                       const SizedBox(height: 20),
                       SizedBox(
                         width: double.infinity,
@@ -4959,30 +5908,95 @@ void _selectFreshTable(Table table) {
               ),
             );
           },
-        ),
-      );
+        );
+      },
+    );
+  }
+
+  Future<List<Table>> _loadDueTablesForDialog() async {
+    try {
+      final headers = await _getAuthHeaders();
+      final response = await http.get(
+        Uri.parse(ApiConstants.getFullUrl(ApiConstants.getDueTables)),
+        headers: headers,
+      ).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['status'] == 'Success' && data['data'] != null) {
+          List<dynamic> tablesData = data['data'];
+          List<Table> dueTables = [];
+          
+          for (var tableData in tablesData) {
+            Table table = Table.fromJson(tableData);
+            
+            if (_tableSpecialNotes.containsKey(table.id)) {
+              table = Table(
+                id: table.id,
+                name: table.name,
+                serviceCharge: table.serviceCharge,
+                hasDueOrders: table.hasDueOrders,
+                specialNote: _tableSpecialNotes[table.id]!,
+              );
+            }
+            
+            dueTables.add(table);
+          }
+          
+          return dueTables;
+        }
+      } else if (response.statusCode == 401) {
+        await _handleUnauthorized();
+      }
+      return [];
     } catch (e) {
-      _showMessage('Error loading due tables: $e');
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
+      print('Error loading due tables: $e');
+      return [];
     }
   }
 
-  // MODIFIED: Show special note in table card
   Widget _buildTableCardFromImage(Table table, VoidCallback onMarkAsPaid) {
     return GestureDetector(
       onTap: () {
         Navigator.pop(context);
-        setState(() {
-          _selectedTable = Table(
-            id: table.id,
-            name: table.name,
-            serviceCharge: table.serviceCharge,
-            hasDueOrders: table.hasDueOrders,
-            specialNote: table.specialNote, // Load special note from table
-          );
+        
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => const Dialog(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            child: Center(
+              child: CircularProgressIndicator.adaptive(),
+            ),
+          ),
+        );
+        
+        Future.delayed(const Duration(milliseconds: 100), () {
+          setState(() {
+            _selectedTable = Table(
+              id: table.id,
+              name: table.name,
+              serviceCharge: table.serviceCharge,
+              hasDueOrders: table.hasDueOrders,
+              specialNote: table.specialNote,
+            );
+          });
+          
+          _loadDueTableItems(table).then((_) {
+            Navigator.pop(context);
+          }).catchError((error) {
+            Navigator.pop(context);
+            
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Error loading due table: $error'),
+                backgroundColor: Colors.red,
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          });
         });
-        _loadDueTableItems(table);
       },
       child: Container(
         decoration: BoxDecoration(
@@ -5047,7 +6061,6 @@ void _selectFreshTable(Table table) {
                   ),
                 ],
               ),
-              // ADDED: Show special note if exists
               if (table.specialNote.isNotEmpty) ...[
                 const SizedBox(height: 2),
                 Container(
@@ -5080,7 +6093,7 @@ void _selectFreshTable(Table table) {
       final headers = await _getAuthHeaders();
       
       final response = await http.post(
-        Uri.parse('https://api-cloudchef.sltcloud.lk/api/invoice-create/mark-table-paid/${table.id}'),
+        Uri.parse('${ApiConstants.getFullUrl(ApiConstants.markTablePaid)}/${table.id}'),
         headers: headers,
       ).timeout(const Duration(seconds: 10));
       
@@ -5093,7 +6106,7 @@ void _selectFreshTable(Table table) {
                 name: t.name,
                 serviceCharge: t.serviceCharge,
                 hasDueOrders: false,
-                specialNote: '', // Clear special note after payment
+                specialNote: '',
               );
             }
             return t;
@@ -5101,7 +6114,6 @@ void _selectFreshTable(Table table) {
           _filteredTables = _tables;
         });
         
-        // Remove local special note
         await _removeLocalTableNote(table.id);
         
         onSuccess();
@@ -5111,7 +6123,6 @@ void _selectFreshTable(Table table) {
     }
   }
 
-  // FIXED: Updated _showAddCustomerDialog to be responsive
   void _showAddCustomerDialog(BuildContext context) {
     final nameController = TextEditingController();
     final phoneController = TextEditingController();
@@ -5342,10 +6353,11 @@ void _selectFreshTable(Table table) {
     );
   }
 
-  Widget _buildCartItem(CartItem cartItem) {
+  Widget _buildCartItem(CartItem cartItem, int index) {
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       elevation: 1,
+      color: Colors.white,
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Row(
@@ -5354,19 +6366,45 @@ void _selectFreshTable(Table table) {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    cartItem.product.name,
-                    style: GoogleFonts.poppins(
-                      fontWeight: FontWeight.w500,
-                      fontSize: 14,
-                    ),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          cartItem.product.name,
+                          style: GoogleFonts.poppins(
+                            fontWeight: FontWeight.w500,
+                            fontSize: 14,
+                            color: Colors.black87,
+                          ),
+                        ),
+                      ),
+                      if (cartItem.specialNote != null && cartItem.specialNote!.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(left: 8.0),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.yellow[100],
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              'Note',
+                              style: GoogleFonts.poppins(
+                                fontSize: 10,
+                                color: Colors.orange[800],
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
                   const SizedBox(height: 4),
                   Text(
                     'Rs.${cartItem.getPriceByOrderType(_selectedOrderType).toStringAsFixed(2)} x ${cartItem.quantity}',
                     style: GoogleFonts.poppins(
                       fontSize: 12,
-                      color: Colors.grey,
+                      color: Colors.grey[800],
                     ),
                   ),
                   Text(
@@ -5374,7 +6412,7 @@ void _selectFreshTable(Table table) {
                     style: GoogleFonts.poppins(
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
-                      color: Colors.blue,
+                      color: Colors.blue[800],
                     ),
                   ),
                 ],
@@ -5383,22 +6421,22 @@ void _selectFreshTable(Table table) {
             Row(
               children: [
                 IconButton(
-                  icon: const Icon(Icons.remove, size: 18),
-                  onPressed: () => _updateCartQuantity(cartItem.product, cartItem.quantity - 1),
+                  icon: const Icon(Icons.remove, size: 18, color: Colors.black87),
+                  onPressed: () => _updateCartQuantity(index, cartItem.quantity - 1),
                   padding: EdgeInsets.zero,
                 ),
                 Text(
                   cartItem.quantity.toString(),
-                  style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
+                  style: GoogleFonts.poppins(fontWeight: FontWeight.bold, color: Colors.black87),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.add, size: 18),
-                  onPressed: () => _updateCartQuantity(cartItem.product, cartItem.quantity + 1),
+                  icon: const Icon(Icons.add, size: 18, color: Colors.black87),
+                  onPressed: () => _updateCartQuantity(index, cartItem.quantity + 1),
                   padding: EdgeInsets.zero,
                 ),
                 IconButton(
-                  icon: const Icon(Icons.delete, size: 18, color: Colors.red),
-                  onPressed: () => _removeFromCart(cartItem.product),
+                  icon: const Icon(Icons.delete, size: 18, color: Color.fromARGB(255, 221, 49, 49)),
+                  onPressed: () => _removeFromCart(index),
                   padding: EdgeInsets.zero,
                 ),
               ],
@@ -5419,7 +6457,7 @@ void _selectFreshTable(Table table) {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: Color.fromARGB(255, 255, 255, 255),
+              color: Colors.white,
               border: Border(
                 bottom: BorderSide(color: Colors.grey[300]!, width: 1),
               ),
@@ -5429,12 +6467,12 @@ void _selectFreshTable(Table table) {
               style: GoogleFonts.poppins(
                 fontSize: 10,
                 fontWeight: FontWeight.bold,
-                color: const Color.fromARGB(255, 1, 6, 10),
-              ),
+                color: Colors.black87,
+            ),
               textAlign: TextAlign.center,
             ),
           ),
-          
+        
           Expanded(
             child: _categories.isEmpty
                 ? Center(
@@ -5494,7 +6532,7 @@ void _selectFreshTable(Table table) {
                                       style: GoogleFonts.poppins(
                                         fontSize: 10,
                                         fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                                        color: isSelected ? Colors.blue : Colors.grey[700],
+                                        color: isSelected ? Colors.blue : Colors.black87,
                                       ),
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
@@ -5588,7 +6626,7 @@ void _selectFreshTable(Table table) {
                   : ListView.builder(
                       itemCount: _cartItems.length,
                       itemBuilder: (context, index) {
-                        return _buildCartItem(_cartItems[index]);
+                        return _buildCartItem(_cartItems[index], index);
                       },
                     ),
             ),
@@ -5733,6 +6771,180 @@ void _selectFreshTable(Table table) {
     );
   }
 
+  void _showCartItemPopup(int index) {
+    final cartItem = _cartItems[index];
+    final noteController = TextEditingController(text: cartItem.specialNote ?? '');
+    
+    showDialog(
+      context: context,
+      builder: (context) {
+        final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
+        
+        return Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            width: isLandscape 
+                ? MediaQuery.of(context).size.width * 0.5
+                : MediaQuery.of(context).size.width * 0.75,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Special Note:',
+                  style: GoogleFonts.poppins(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 9),
+                
+                TextField(
+                  controller: noteController,
+                  maxLines: isLandscape ? 2 : 3,
+                  decoration: InputDecoration(
+                    hintText: 'Enter special instructions...',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                    contentPadding: const EdgeInsets.all(10),
+                  ),
+                  style: GoogleFonts.poppins(fontSize: 10),
+                ),
+                
+                const SizedBox(height: 12),
+                
+                if (isLandscape)
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      SizedBox(
+                        width: MediaQuery.of(context).size.width * 0.18,
+                        child: OutlinedButton(
+                          onPressed: () => Navigator.pop(context),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 10),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                          ),
+                          child: Text(
+                            'Cancel',
+                            style: GoogleFonts.poppins(
+                              fontWeight: FontWeight.w500,
+                              fontSize: 11,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      SizedBox(
+                        width: MediaQuery.of(context).size.width * 0.18,
+                        child: ElevatedButton(
+                          onPressed: () {
+                            setState(() {
+                              _cartItems[index] = cartItem.copyWith(
+                                specialNote: noteController.text.trim().isEmpty 
+                                    ? null 
+                                    : noteController.text.trim(),
+                              );
+                            });
+                            Navigator.pop(context);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: const Text('Item updated'),
+                                behavior: SnackBarBehavior.floating,
+                                duration: const Duration(seconds: 1),
+                              ),
+                            );
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.blue,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 10),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                          ),
+                          child: Text(
+                            'Save',
+                            style: GoogleFonts.poppins(
+                              fontWeight: FontWeight.w500,
+                              fontSize: 11,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  )
+                else
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => Navigator.pop(context),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 10),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                          ),
+                          child: Text(
+                            'Cancel',
+                            style: GoogleFonts.poppins(
+                              fontWeight: FontWeight.w500,
+                              fontSize: 11,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () {
+                            setState(() {
+                              _cartItems[index] = cartItem.copyWith(
+                                specialNote: noteController.text.trim().isEmpty 
+                                    ? null 
+                                    : noteController.text.trim(),
+                              );
+                            });
+                            Navigator.pop(context);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: const Text('Item updated'),
+                                behavior: SnackBarBehavior.floating,
+                                duration: const Duration(seconds: 1),
+                              ),
+                            );
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.blue,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 10),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                          ),
+                          child: Text(
+                            'Save',
+                            style: GoogleFonts.poppins(
+                              fontWeight: FontWeight.w500,
+                              fontSize: 11,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   Widget _buildCartPanel() {
     return Container(
       width: 280,
@@ -5759,7 +6971,6 @@ void _selectFreshTable(Table table) {
                     color: Colors.blue,
                   ),
                 ),
-                // ADDED: Show special note indicator if exists
                 if (_selectedTable != null && _selectedTable!.specialNote.isNotEmpty)
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
@@ -5815,7 +7026,7 @@ void _selectFreshTable(Table table) {
                     padding: const EdgeInsets.all(4),
                     itemCount: _cartItems.length,
                     itemBuilder: (context, index) {
-                      return _buildCartItemForPanel(_cartItems[index]);
+                      return _buildCartItemForPanel(_cartItems[index], index);
                     },
                   ),
           ),
@@ -5987,131 +7198,205 @@ void _selectFreshTable(Table table) {
       );
   }
 
-  Widget _buildCartItemForPanel(CartItem cartItem) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 4), 
-      elevation: 1,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      child: Container(
-        height: 60,
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    cartItem.product.name,
-                    style: GoogleFonts.poppins(
-                      fontWeight: FontWeight.w500,
-                      fontSize: 12, 
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 2), 
-                  Row(
-                    children: [
-                      Text(
-                        'Rs.${cartItem.getPriceByOrderType(_selectedOrderType).toStringAsFixed(2)}',
-                        style: GoogleFonts.poppins(
-                          fontSize: 10, 
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      Container(
-                        width: 1,
-                        height: 10,
-                        color: Colors.grey[300],
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        'x${cartItem.quantity}',
-                        style: GoogleFonts.poppins(
-                          fontSize: 10, 
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            
-            Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.grey[300]!),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        width: 24, 
-                        height: 20,
-                        child: IconButton(
-                          icon: const Icon(Icons.remove, size: 12),
-                          onPressed: () => _updateCartQuantity(cartItem.product, cartItem.quantity - 1),
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(),
-                        ),
-                      ),
-                      Container(
-                        width: 24,
-                        alignment: Alignment.center,
-                        child: Text(
-                          cartItem.quantity.toString(),
-                          style: GoogleFonts.poppins(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12, 
+  Widget _buildCartItemForPanel(CartItem cartItem, int index) {
+    final isDueTableItem = _isEditingDueTable && !cartItem.isNewItem;
+    
+    return InkWell(
+      onLongPress: () {
+        _showCartItemPopup(index);
+      },
+      child: Card(
+        margin: const EdgeInsets.only(bottom: 4), 
+        elevation: 1,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        color: Colors.white,
+        child: Container(
+          height: 60,
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            cartItem.product.name,
+                            style: GoogleFonts.poppins(
+                              fontWeight: FontWeight.w500,
+                              fontSize: 12, 
+                              color: Colors.black,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
+                        if (cartItem.specialNote != null && cartItem.specialNote!.isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(left: 4.0),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                              decoration: BoxDecoration(
+                                color: Colors.yellow[100],
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                'N',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 8,
+                                  color: Colors.orange[800],
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 2), 
+                    Row(
+                      children: [
+                        Text(
+                          'Rs.${cartItem.getPriceByOrderType(_selectedOrderType).toStringAsFixed(2)}',
+                          style: GoogleFonts.poppins(
+                            fontSize: 10, 
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        Container(
+                          width: 1,
+                          height: 10,
+                          color: Colors.grey[300],
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          'x${cartItem.quantity}',
+                          style: GoogleFonts.poppins(
+                            fontSize: 10, 
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              
+              if (isDueTableItem)
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.grey[100],
+                        border: Border.all(color: Colors.grey[300]!),
+                        borderRadius: BorderRadius.circular(4),
                       ),
-                      Container(
-                        width: 24,
-                        height: 20,
-                        child: IconButton(
-                          icon: const Icon(Icons.add, size: 12),
-                          onPressed: () => _updateCartQuantity(cartItem.product, cartItem.quantity + 1),
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(),
+                      child: Text(
+                        'Qty: ${cartItem.quantity}',
+                        style: GoogleFonts.poppins(
+                          fontWeight: FontWeight.w500,
+                          fontSize: 11, 
+                          color: Colors.black,
                         ),
                       ),
-                    ],
+                    ),
+                    
+                    const SizedBox(width: 8),
+                    
+                    Container(
+                      width: 24,
+                      height: 24,
+                      child: IconButton(
+                        icon: const Icon(Icons.close, size: 14, color: Colors.red),
+                        onPressed: () => _removeFromCart(index),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                      ),
+                    ),
+                  ],
+                )
+              else
+                Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        border: Border.all(color: Colors.grey[300]!),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 24, 
+                            height: 20,
+                            child: IconButton(
+                              icon: const Icon(Icons.remove, size: 12, color: Colors.black),
+                              onPressed: () => _updateCartQuantity(index, cartItem.quantity - 1),
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                            ),
+                          ),
+                          Container(
+                            width: 24,
+                            alignment: Alignment.center,
+                            child: Text(
+                              cartItem.quantity.toString(),
+                              style: GoogleFonts.poppins(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12, 
+                                color: Colors.black,
+                              ),
+                            ),
+                          ),
+                          Container(
+                            width: 24,
+                            height: 20,
+                            child: IconButton(
+                              icon: const Icon(Icons.add, size: 12, color: Colors.black),
+                              onPressed: () => _updateCartQuantity(index, cartItem.quantity + 1),
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    
+                    const SizedBox(height: 2), 
+                    
+                    Text(
+                      'Rs.${cartItem.getTotalPrice(_selectedOrderType).toStringAsFixed(2)}',
+                      style: GoogleFonts.poppins(
+                        fontSize: 11, 
+                        fontWeight: FontWeight.w600,
+                        color: Colors.blue,
+                      ),
+                    ),
+                  ],
+                ),
+              
+              if (!isDueTableItem) const SizedBox(width: 4),
+                
+              if (!isDueTableItem)
+                Container(
+                  width: 24,
+                  height: 24,
+                  child: IconButton(
+                    icon: const Icon(Icons.close, size: 14, color: Colors.black),
+                    onPressed: () => _removeFromCart(index),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
                   ),
                 ),
-                
-                const SizedBox(height: 2), 
-                
-                Text(
-                  'Rs.${cartItem.getTotalPrice(_selectedOrderType).toStringAsFixed(2)}',
-                  style: GoogleFonts.poppins(
-                    fontSize: 11, 
-                    fontWeight: FontWeight.w600,
-                    color: Colors.blue,
-                  ),
-                ),
-              ],
-            ),
-            
-            const SizedBox(width: 4),
-            Container(
-              width: 24,
-              height: 24,
-              child: IconButton(
-                icon: const Icon(Icons.close, size: 14, color: Colors.red),
-                onPressed: () => _removeFromCart(cartItem.product),
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -6157,6 +7442,7 @@ void _selectFreshTable(Table table) {
     return Card(
       elevation: 3,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      color: Colors.white,
       child: Material(
         color: Colors.transparent,
         child: InkWell(
@@ -6179,7 +7465,7 @@ void _selectFreshTable(Table table) {
                           ? DecorationImage(
                               image: NetworkImage(product.productImage!),
                               fit: BoxFit.cover,
-                            )
+                          )
                           : null,
                     ),
                     child: product.productImage == null
@@ -6205,6 +7491,7 @@ void _selectFreshTable(Table table) {
                           fontWeight: FontWeight.w600,
                           fontSize: 12,
                           height: 1.2,
+                          color: Colors.black87,
                         ),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
@@ -6244,6 +7531,7 @@ void _selectFreshTable(Table table) {
       margin: const EdgeInsets.only(bottom: 8),
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      color: Colors.white,
       child: ListTile(
         leading: product.productImage != null
             ? Container(
@@ -6271,6 +7559,7 @@ void _selectFreshTable(Table table) {
           style: GoogleFonts.poppins(
             fontWeight: FontWeight.w600,
             fontSize: 14,
+            color: Colors.black87,
           ),
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
@@ -6320,7 +7609,6 @@ void _selectFreshTable(Table table) {
     );
   }
 
-  // NEW: Load local table notes from SharedPreferences
   Future<void> _loadLocalTableNotes() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -6337,7 +7625,6 @@ void _selectFreshTable(Table table) {
     }
   }
 
-  // NEW: Save table note locally
   Future<void> _saveLocalTableNote(int tableId, String note) async {
     try {
       setState(() {
@@ -6352,7 +7639,6 @@ void _selectFreshTable(Table table) {
     }
   }
 
-  // NEW: Remove table note locally
   Future<void> _removeLocalTableNote(int tableId) async {
     try {
       setState(() {
@@ -6367,7 +7653,6 @@ void _selectFreshTable(Table table) {
     }
   }
 
-  // ADDED: Loading screen widget
   Widget _buildLoadingScreen() {
     return Scaffold(
       backgroundColor: Colors.grey[50],
@@ -6402,7 +7687,6 @@ void _selectFreshTable(Table table) {
 
   @override
   Widget build(BuildContext context) {
-    // Show loading screen if data is not loaded yet
     if (_isInitialLoading || !_dataLoaded) {
       return _buildLoadingScreen();
     }
@@ -6414,12 +7698,26 @@ void _selectFreshTable(Table table) {
         elevation: 0,
         title: Row(
           children: [
-            Text(
-              'Cloud Chef POS',
-              style: GoogleFonts.poppins(
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  'CloudChef POS',
+                  style: GoogleFonts.poppins(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                    fontSize: 14,
+                  ),
+                ),
+                Text(
+                  'v1.0005',
+                  style: GoogleFonts.poppins(
+                    color: Colors.white70,
+                    fontSize: 10,
+                  ),
+                ),
+              ],
             ),
             const Spacer(),
             if (_selectedCustomer != null)
@@ -6428,7 +7726,7 @@ void _selectFreshTable(Table table) {
                 child: Text(
                   'Customer: ${_selectedCustomer!.name}',
                   style: GoogleFonts.poppins(
-                    fontSize: 12,
+                    fontSize: 10,
                     color: Colors.white70,
                   ),
                 ),
@@ -6441,14 +7739,14 @@ void _selectFreshTable(Table table) {
                     Text(
                       'Table: ${_selectedTable!.name}',
                       style: GoogleFonts.poppins(
-                        fontSize: 12,
+                        fontSize: 10,
                         color: Colors.white70,
                       ),
                     ),
                     if (_selectedTable!.specialNote.isNotEmpty)
                       Padding(
-                        padding: const EdgeInsets.only(left: 8.0),
-                        child: Icon(Icons.note, size: 16, color: Colors.yellow),
+                        padding: const EdgeInsets.only(left: 4.0),
+                        child: Icon(Icons.note, size: 12, color: Colors.yellow),
                       ),
                   ],
                 ),
@@ -6457,14 +7755,45 @@ void _selectFreshTable(Table table) {
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.print, color: Colors.white),
+            icon: Stack(
+              children: [
+                const Icon(Icons.print, color: Colors.white, size: 20),
+                if (_getTotalConnectedPrinters() > 0)
+                  Positioned(
+                    right: 0,
+                    top: 0,
+                    child: Container(
+                      padding: const EdgeInsets.all(1),
+                      decoration: BoxDecoration(
+                        color: Colors.red,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      constraints: const BoxConstraints(
+                        minWidth: 10,
+                        minHeight: 10,
+                      ),
+                      child: Text(
+                        _getTotalConnectedPrinters().toString(),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 7,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
             onPressed: _showPrinterDialog,
             tooltip: 'Printers',
+            iconSize: 20,
           ),
           IconButton(
-            icon: const Icon(Icons.logout, color: Colors.white),
+            icon: const Icon(Icons.logout, color: Colors.white, size: 20),
             onPressed: _logout,
             tooltip: 'Logout',
+            iconSize: 20,
           ),
         ],
       ),
@@ -6725,6 +8054,72 @@ void _selectFreshTable(Table table) {
     );
   }
 
+  Widget _buildPrinterIconWithStatus() {
+    final totalPrinters = _getTotalConnectedPrinters();
+    final hasCashierPrinter = _connectedCashierDevices.isNotEmpty;
+    final hasKitchenPrinter = _connectedKitchenDevices.isNotEmpty;
+    final hasBotPrinter = _connectedBotDevices.isNotEmpty;
+    
+    Color iconColor;
+    Color badgeColor;
+    String tooltipText = 'Printers';
+    
+    if (!hasCashierPrinter) {
+      iconColor = Colors.red;
+      badgeColor = Colors.red;
+      tooltipText = 'No cashier printer connected!';
+    } else if (!hasKitchenPrinter && !hasBotPrinter) {
+      iconColor = Colors.orange;
+      badgeColor = Colors.orange;
+      tooltipText = 'Only cashier printer connected';
+    } else if (!hasKitchenPrinter || !hasBotPrinter) {
+      iconColor = Colors.amber;
+      badgeColor = Colors.amber;
+      tooltipText = 'Some printers not connected';
+    } else {
+      iconColor = Colors.green;
+      badgeColor = Colors.green;
+      tooltipText = 'All printers connected';
+    }
+    
+    return Stack(
+      children: [
+        Icon(
+          Icons.print,
+          color: iconColor,
+          size: 24,
+        ),
+        Positioned(
+          right: 0,
+          top: 0,
+          child: Container(
+            padding: const EdgeInsets.all(1),
+            decoration: BoxDecoration(
+              color: badgeColor,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.white, width: 1),
+            ),
+            constraints: const BoxConstraints(
+              minWidth: 14,
+              minHeight: 14,
+            ),
+            child: Center(
+              child: Text(
+                totalPrinters.toString(),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 8,
+                  fontWeight: FontWeight.bold,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildSelectionChip(String text, IconData icon, VoidCallback onTap) {
     return Container(
       height: 35,
@@ -6769,6 +8164,7 @@ void _selectFreshTable(Table table) {
   }
 }
 
+
 class PaymentScreen extends StatefulWidget {
   final List<CartItem> cartItems;
   final Customer? selectedCustomer;
@@ -6781,8 +8177,7 @@ class PaymentScreen extends StatefulWidget {
   final double serviceAmount;
   final double totalSubtotal;
   final int? currentInvoiceId;
-  final bool isDueTable; // Add this parameter
-  
+  final bool isDueTable;
   const PaymentScreen({
     super.key,
     required this.cartItems,
@@ -6796,9 +8191,8 @@ class PaymentScreen extends StatefulWidget {
     required this.globalDiscountValue,
     required this.serviceAmount,
     required this.totalSubtotal,
-    this.isDueTable = false, // Default to false
+    this.isDueTable = false,
   });
-  
   @override
   _PaymentScreenState createState() => _PaymentScreenState();
 }
@@ -6808,7 +8202,6 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
   final TextEditingController _bankTransferAmountController = TextEditingController();
   final TextEditingController _creditAmountController = TextEditingController();
   final TextEditingController _cardAmountController = TextEditingController();
- 
   double cashPaid = 0.0;
   double bankTransferPaid = 0.0;
   double creditUsed = 0.0;
@@ -6818,10 +8211,8 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
   bool _isProcessingPayment = false;
   String? authToken;
   Map<String, dynamic>? userData;
- 
   static const Color primaryColor = Color(0xFF1A3C34);
   static const Color accentColor = Color(0xFFFFCA28);
- 
   late TabController _tabController;
   List<Map<String, dynamic>> banks = [];
   Map<String, dynamic>? selectedBankTransferBank;
@@ -6829,119 +8220,116 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
   bool _loadingBanks = false;
   String? _bankLoadError;
   bool _initialLoadAttempted = false;
-  
   bool _cardTabVisited = false;
   bool _cashTabVisited = false;
   bool _bankTabVisited = false;
   bool _creditTabVisited = false;
-  
+ 
   @override
   void initState() {
     super.initState();
-    
+ 
     _tabController = TabController(length: 4, vsync: this);
-    remainingBalance = widget.netAmount;
-    
+ 
     cashPaid = 0.0;
     bankTransferPaid = 0.0;
     creditUsed = 0.0;
     cardPaid = 0.0;
     totalPaid = 0.0;
     remainingBalance = widget.netAmount;
-    
+ 
     _cashAmountController.clear();
     _bankTransferAmountController.clear();
     _creditAmountController.clear();
     _cardAmountController.clear();
-    
+ 
     _cashTabVisited = false;
     _bankTabVisited = false;
     _creditTabVisited = false;
     _cardTabVisited = false;
-    
+ 
     _tabController.addListener(_handleTabChange);
     _loadAuthTokenAndUserData();
-    
-    // Auto-fill card amount if it's a due table
-    if (widget.isDueTable) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _autoFillCardAmountForDueTable();
-      });
-    }
   }
-  
+ 
   void _handleTabChange() {
     if (!_tabController.indexIsChanging) {
       final currentIndex = _tabController.index;
-      
+   
       switch (currentIndex) {
-        case 0:
+        case 0: 
           if (!_cashTabVisited) {
             setState(() {
               _cashTabVisited = true;
             });
           }
           break;
-        case 1:
+        case 1: 
           if (!_bankTabVisited) {
             setState(() {
               _bankTabVisited = true;
             });
           }
           break;
-        case 2:
+        case 2: 
           if (!_creditTabVisited) {
             setState(() {
               _creditTabVisited = true;
             });
           }
           break;
-        case 3:
+        case 3: 
           if (!_cardTabVisited) {
             setState(() {
               _cardTabVisited = true;
+              if (widget.isDueTable) {
+                _autoFillCardAmountForDueTable();
+              } else {
+                _autoFillCardAmount();
+              }
             });
-            // Auto-fill card amount with remaining balance when card tab is first visited
-            _autoFillCardAmount();
           } else {
-            // When revisiting card tab, auto-fill with remaining balance
-            _autoFillCardAmount();
+            if (!widget.isDueTable) {
+              _autoFillCardAmount();
+            }
           }
           break;
       }
     }
   }
-  
+ 
   void _autoFillCardAmount() {
-    // Calculate remaining balance
-    double currentTotalPaid = cashPaid + bankTransferPaid + creditUsed + cardPaid;
+    double currentTotalPaid = cashPaid + bankTransferPaid + creditUsed;
     double currentRemainingBalance = widget.netAmount - currentTotalPaid;
-    
-    // If there's remaining balance, auto-fill card amount with it
+ 
     if (currentRemainingBalance > 0) {
       setState(() {
         cardPaid = currentRemainingBalance;
         _cardAmountController.text = cardPaid.toStringAsFixed(2);
-        
-        // Recalculate total paid and remaining balance
+     
         totalPaid = cashPaid + bankTransferPaid + creditUsed + cardPaid;
         remainingBalance = widget.netAmount - totalPaid;
       });
     }
   }
-  
+ 
   void _autoFillCardAmountForDueTable() {
-    // For due tables, auto-fill card amount with the full net amount
     setState(() {
       cardPaid = widget.netAmount;
       _cardAmountController.text = cardPaid.toStringAsFixed(2);
-      
-      // Recalculate total paid and remaining balance
+   
+      cashPaid = 0.0;
+      bankTransferPaid = 0.0;
+      creditUsed = 0.0;
+      _cashAmountController.text = '';
+      _bankTransferAmountController.text = '';
+      _creditAmountController.text = '';
+   
       totalPaid = cashPaid + bankTransferPaid + creditUsed + cardPaid;
       remainingBalance = widget.netAmount - totalPaid;
     });
   }
-  
+ 
   @override
   void dispose() {
     _tabController.removeListener(_handleTabChange);
@@ -6952,7 +8340,7 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
     _cardAmountController.dispose();
     super.dispose();
   }
-  
+ 
   Future<void> _loadAuthTokenAndUserData() async {
     setState(() {
       _loadingBanks = true;
@@ -6974,17 +8362,15 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
         _loadingBanks = false;
       });
     }
-
     setState(() {
       _initialLoadAttempted = true;
     });
   }
-  
+ 
   Future<void> _loadUserData() async {
     try {
       final SharedPreferences prefs = await SharedPreferences.getInstance();
       final String? userDataString = prefs.getString('user_data');
-   
       if (userDataString != null) {
         final Map<String, dynamic> userDataMap = json.decode(userDataString);
         setState(() {
@@ -6997,37 +8383,35 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
       await _fetchUserDataFromAPI();
     }
   }
-  
+ 
   Future<void> _fetchUserDataFromAPI() async {
     if (authToken == null) return;
-
     try {
       final response = await http.get(
-        Uri.parse('https://api-cloudchef.sltcloud.lk/api/user'),
+        Uri.parse(ApiConstants.getFullUrl(ApiConstants.getUser)),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $authToken',
-          'referer': REFERER_HEADER,
+          'referer': ApiConstants.REFERER_HEADER,
         },
       ).timeout(const Duration(seconds: 10));
-   
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-     
+  
         if (data is Map<String, dynamic>) {
           setState(() {
             userData = data;
           });
-       
+    
           final SharedPreferences prefs = await SharedPreferences.getInstance();
           await prefs.setString('user_data', json.encode(data));
         }
       }
     } catch (e) {
-      // Silent fail
+     
     }
   }
-  
+ 
   Future<void> _loadBanks() async {
     if (authToken == null) {
       setState(() {
@@ -7036,22 +8420,20 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
       });
       return;
     }
-
     try {
       final response = await http.get(
-        Uri.parse('https://api-cloudchef.sltcloud.lk/api/bank-list'),
+        Uri.parse(ApiConstants.getFullUrl(ApiConstants.bankList)),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $authToken',
-          'referer': REFERER_HEADER,
+          'referer': ApiConstants.REFERER_HEADER,
         },
       ).timeout(const Duration(seconds: 10));
-   
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-     
+  
         List<dynamic> banksList = [];
-     
+  
         if (data is List) {
           banksList = data;
         } else if (data['data'] is List) {
@@ -7065,7 +8447,7 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
             banksList = data[listKey];
           }
         }
-     
+  
         if (banksList.isNotEmpty) {
           setState(() {
             banks = List<Map<String, dynamic>>.from(banksList);
@@ -7093,11 +8475,11 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
       });
     }
   }
-  
+ 
   void _retryBankLoad() {
     _loadAuthTokenAndUserData();
   }
-  
+ 
   void _handleUnauthorizedError() {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -7111,10 +8493,46 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
       ),
     );
   }
-  
+ 
   void _updatePaymentAmount(String method, String value) {
     double amount = double.tryParse(value) ?? 0.0;
-    
+   
+    double currentMethodAmount = 0.0;
+    switch (method) {
+      case 'Cash':
+        currentMethodAmount = cashPaid;
+        break;
+      case 'Bank Transfer':
+        currentMethodAmount = bankTransferPaid;
+        break;
+      case 'Credit':
+        currentMethodAmount = creditUsed;
+        break;
+      case 'Card':
+        currentMethodAmount = cardPaid;
+        break;
+    }
+   
+    double otherMethodsTotal = totalPaid - currentMethodAmount;
+   
+    double maxAllowed = (widget.netAmount - otherMethodsTotal);
+   
+    if (method != 'Cash' && amount > maxAllowed) {
+      amount = maxAllowed > 0 ? maxAllowed : 0;
+     
+      switch (method) {
+        case 'Bank Transfer':
+          _bankTransferAmountController.text = amount > 0 ? amount.toStringAsFixed(2) : '';
+          break;
+        case 'Credit':
+          _creditAmountController.text = amount > 0 ? amount.toStringAsFixed(2) : '';
+          break;
+        case 'Card':
+          _cardAmountController.text = amount > 0 ? amount.toStringAsFixed(2) : '';
+          break;
+      }
+    }
+   
     setState(() {
       switch (method) {
         case 'Cash':
@@ -7137,101 +8555,80 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
           cardPaid = amount;
           break;
       }
-      
+     
       totalPaid = cashPaid + bankTransferPaid + creditUsed + cardPaid;
       remainingBalance = widget.netAmount - totalPaid;
     });
   }
-
-  void _adjustPaymentsForOverpayment(String changedMethod, double attemptedAmount) {
-    double newCardPaid = 0.0;
-    double newCashPaid = 0.0;
-    double newBankPaid = 0.0;
-    double newCreditUsed = 0.0;
-    
-    switch (changedMethod) {
-      case 'Cash':
-        newCashPaid = attemptedAmount > widget.netAmount ? widget.netAmount : attemptedAmount;
-        break;
-      case 'Bank Transfer':
-        newBankPaid = attemptedAmount > widget.netAmount ? widget.netAmount : attemptedAmount;
-        break;
-      case 'Credit':
-        newCreditUsed = attemptedAmount > widget.netAmount ? widget.netAmount : attemptedAmount;
-        break;
-      case 'Card':
-        newCardPaid = attemptedAmount > widget.netAmount ? widget.netAmount : attemptedAmount;
-        break;
-    }
-    
-    setState(() {
-      cashPaid = newCashPaid;
-      bankTransferPaid = newBankPaid;
-      creditUsed = newCreditUsed;
-      cardPaid = newCardPaid;
-      
-      _cashAmountController.text = newCashPaid > 0 ? newCashPaid.toStringAsFixed(2) : '';
-      _bankTransferAmountController.text = newBankPaid > 0 ? newBankPaid.toStringAsFixed(2) : '';
-      _creditAmountController.text = newCreditUsed > 0 ? newCreditUsed.toStringAsFixed(2) : '';
-      _cardAmountController.text = newCardPaid > 0 ? newCardPaid.toStringAsFixed(2) : '';
-      
-      totalPaid = cashPaid + bankTransferPaid + creditUsed + cardPaid;
-      remainingBalance = widget.netAmount - totalPaid;
-    });
-  }
-
+ 
   Future<Map<String, dynamic>> _processPayment() async {
     if (_isProcessingPayment) return {'success': false, 'invoiceNumber': null};
     setState(() => _isProcessingPayment = true);
-    
+ 
     if (widget.selectedTable != null && widget.selectedTable!.id == null) {
       _showError('Selected table has no valid ID. Please select a different table.');
       setState(() => _isProcessingPayment = false);
       return {'success': false, 'invoiceNumber': null};
     }
-    
+   
+    double nonCashTotal = bankTransferPaid + creditUsed + cardPaid;
+    double cashPayment = cashPaid;
+   
+    if (nonCashTotal > widget.netAmount) {
+      _showError('Total non-cash payment (${nonCashTotal.toStringAsFixed(2)}) exceeds invoice amount (${widget.netAmount.toStringAsFixed(2)})');
+      setState(() => _isProcessingPayment = false);
+      return {'success': false, 'invoiceNumber': null};
+    }
+   
     if (totalPaid < widget.netAmount) {
       _showError('Total payment (${totalPaid.toStringAsFixed(2)}) is less than invoice amount (${widget.netAmount.toStringAsFixed(2)})');
       setState(() => _isProcessingPayment = false);
       return {'success': false, 'invoiceNumber': null};
     }
-    
+ 
     if (creditUsed > 0 && widget.selectedCustomer?.id == null) {
       _showError('Customer ID is required for credit payment');
       setState(() => _isProcessingPayment = false);
       return {'success': false, 'invoiceNumber': null};
     }
-    
+ 
     try {
       final paymentPayload = await _buildPaymentPayload();
-  
       print('Payment Payload: ${json.encode(paymentPayload)}');
-  
       final response = await http.post(
-        Uri.parse('https://api-cloudchef.sltcloud.lk/api/payment'),
+        Uri.parse(ApiConstants.getFullUrl(ApiConstants.processPayment)),
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
           'Authorization': 'Bearer $authToken',
-          'referer': REFERER_HEADER,
+          'referer': ApiConstants.REFERER_HEADER,
         },
         body: json.encode(paymentPayload),
       ).timeout(const Duration(seconds: 30));
-     
+  
       print('Response Status: ${response.statusCode}');
       print('Response Body: ${response.body}');
-      
+   
       if (response.statusCode == 200 || response.statusCode == 201) {
         final responseData = json.decode(response.body);
-        
-        // FIXED: Extract invoice number from response
+     
         String? invoiceNumber;
         if (responseData['data'] != null && responseData['data']['invoice_head'] != null) {
           invoiceNumber = responseData['data']['invoice_head']['invoice_code'];
         }
-        
+     
         await _showSuccessDialog(responseData, invoiceNumber);
-        return {'success': true, 'invoiceNumber': invoiceNumber};
+        
+        return {
+          'success': true, 
+          'invoiceNumber': invoiceNumber,
+          'paymentData': {
+            'cash': cashPaid,
+            'bank': bankTransferPaid,
+            'credit': creditUsed,
+            'card': cardPaid,
+          }
+        };
       } else {
         throw Exception('Payment failed: ${response.statusCode} - ${response.body}');
       }
@@ -7242,7 +8639,7 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
       setState(() => _isProcessingPayment = false);
     }
   }
-
+ 
   Future<void> _showSuccessDialog(Map<String, dynamic> responseData, String? invoiceNumber) async {
     return showDialog(
       context: context,
@@ -7293,7 +8690,16 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
             ElevatedButton(
               onPressed: () {
                 Navigator.of(context).pop();
-                Navigator.of(context).pop({'success': true, 'invoiceNumber': invoiceNumber});
+                Navigator.of(context).pop({
+                  'success': true, 
+                  'invoiceNumber': invoiceNumber,
+                  'paymentData': {
+                    'cash': cashPaid,
+                    'bank': bankTransferPaid,
+                    'credit': creditUsed,
+                    'card': cardPaid,
+                  }
+                });
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: primaryColor,
@@ -7313,221 +8719,209 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
       },
     );
   }
-
-  Future<Map<String, dynamic>> _buildPaymentPayload() async {
-    if (userData == null) {
-      throw Exception('User data not loaded. Please try again.');
-    }
-    
-    String branch = userData!['branch_id']?.toString() ?? '1';
-    String userName = userData!['name']?.toString() ?? 'Unknown';
-    String userId = userData!['id']?.toString() ?? '0';
-    
-    String saleType = widget.selectedTable != null 
-        ? 'DINE IN'  
-        : 'TAKE AWAY'; 
-    
-    List<Map<String, dynamic>> items = [];
-    for (var item in widget.cartItems) {
-      double price = item.getPriceByOrderType(widget.selectedOrderType);
-      double disVal = item.getDiscount(widget.selectedOrderType);
-      double dis = item.discountType == '%' ? item.discountValue : 0.0;
-      double total = item.getTotalPrice(widget.selectedOrderType);
-      
-      int lotId = 0;
-      String lotNumber = item.product.lotNumber;
-      
-      if (item.product.lotsqty.isNotEmpty) {
-        for (var lot in item.product.lotsqty) {
-          final qty = int.tryParse(lot['qty']?.toString() ?? '0') ?? 0;
-          if (qty > 0) {
-            lotId = lot['id'] ?? lot['lot_id'] ?? 0;
-            lotNumber = lot['lot_number']?.toString() ?? '';
-            break;
-          }
+ 
+ Future<Map<String, dynamic>> _buildPaymentPayload() async {
+  if (userData == null) {
+    throw Exception('User data not loaded. Please try again.');
+  }
+  String branch = userData!['branch_id']?.toString() ?? '1';
+  String userName = userData!['name']?.toString() ?? 'Unknown';
+  String userId = userData!['id']?.toString() ?? '0';
+  String saleType = widget.selectedTable != null
+      ? 'DINE IN'
+      : 'TAKE AWAY';
+  List<Map<String, dynamic>> items = [];
+  for (var item in widget.cartItems) {
+    double price = item.getPriceByOrderType(widget.selectedOrderType);
+    double disVal = item.getDiscount(widget.selectedOrderType);
+    double dis = item.discountType == '%' ? item.discountValue : 0.0;
+    double total = item.getTotalPrice(widget.selectedOrderType);
+ 
+    int lotId = 0;
+    String lotNumber = item.product.lotNumber;
+ 
+    if (item.product.lotsqty.isNotEmpty) {
+      for (var lot in item.product.lotsqty) {
+        final qty = int.tryParse(lot['qty']?.toString() ?? '0') ?? 0;
+        if (qty > 0) {
+          lotId = lot['id'] ?? lot['lot_id'] ?? 0;
+          lotNumber = lot['lot_number']?.toString() ?? '';
+          break;
         }
-        
-        if (lotId == 0 && lotNumber.isNotEmpty) {
-          try {
-            lotId = int.tryParse(lotNumber) ?? 0;
-          } catch (e) {
-            print('Failed to parse lot number: $lotNumber');
-          }
+      }
+   
+      if (lotId == 0 && lotNumber.isNotEmpty) {
+        try {
+          lotId = int.tryParse(lotNumber) ?? 0;
+        } catch (e) {
+          print('Failed to parse lot number: $lotNumber');
         }
-        
-        if (lotId == 0) {
-          final firstLot = item.product.lotsqty.first;
-          lotId = firstLot['id'] ?? firstLot['lot_id'] ?? 1;
-        }
-      } else {
-        if (item.product.lotNumber.isNotEmpty) {
-          try {
-            lotId = int.tryParse(item.product.lotNumber) ?? 1;
-          } catch (e) {
-            lotId = 1;
-          }
-        } else {
+      }
+   
+      if (lotId == 0) {
+        final firstLot = item.product.lotsqty.first;
+        lotId = firstLot['id'] ?? firstLot['lot_id'] ?? 1;
+      }
+    } else {
+      if (item.product.lotNumber.isNotEmpty) {
+        try {
+          lotId = int.tryParse(item.product.lotNumber) ?? 1;
+        } catch (e) {
           lotId = 1;
         }
-      }
-      
-      if (lotId == 0) {
+      } else {
         lotId = 1;
       }
-      
-      items.add({
-        'aQty': item.product.availableQuantity + item.quantity,
-        'bar_code': item.product.barCode,
-        'cost': item.product.cost,
-        'dis': dis,
-        'disVal': disVal,
-        'exp': item.product.expiryDate,
-        'lot_id': lotId,
-        'lot_index': 0,
-        'name': item.product.name,
-        'price': price,
-        'qty': item.quantity,
-        's_name': null,
-        'sid': item.product.tblStockId,
-        'stock': item.product.stockName,
-        'total': total.toStringAsFixed(2),
-        'total_discount': disVal.toStringAsFixed(2),
-        'unit': item.product.unit,
-      });
     }
-    
-    Map<String, dynamic> metadata = {
-      'id': widget.currentInvoiceId,
-      'advance_payment': '',
-      'bill_copy_issued': 0,
-      'billDis': widget.discountPercentage.toString(),
-      'billDisVal': widget.globalDiscountValue.toStringAsFixed(2),
-      'customer': widget.selectedCustomer != null ? {
-        'id': widget.selectedCustomer!.id,
-        'name': widget.selectedCustomer!.name,
-        'phone': widget.selectedCustomer!.phone ?? '',
-        'email': widget.selectedCustomer!.email ?? '',
-        'nic': widget.selectedCustomer!.nic ?? '',
-        'address': widget.selectedCustomer!.address ?? '',
-      } : {
-        'id': 0,
-        'name': 'Walk-in Customer',
-        'phone': '',
-        'email': '',
-        'nic': '',
-        'address': '',
-      },
-      'free_issue': 0,
-      'grossAmount': widget.totalSubtotal.toStringAsFixed(2),
-      'invDate': DateFormat('yyyy-MM-dd').format(DateTime.now()),
-      'items': items,
-      'netAmount': widget.netAmount.toStringAsFixed(2),
-      'order_now_order_info_id': null,
-      'room_booking': '',
-      'saleType': saleType,
-      'service_charge': widget.selectedTable != null ? widget.serviceAmount.toStringAsFixed(2) : '0.00',
-      'services': [],
-      'tbl_room_booking_id': '',
-      'waiter_id': widget.selectedWaiter?.id ?? 0,
-      'waiter_name': widget.selectedWaiter?.name ?? '',
-    };
-    
-    if (widget.selectedTable != null) {
-      metadata['table_name_id'] = {
-        'id': widget.selectedTable!.id,
-        'name': widget.selectedTable!.name,
-        'service_charge': widget.selectedTable!.serviceCharge,
-        'special_note': widget.selectedTable!.specialNote, // ADDED: Include special note
-      };
+ 
+    if (lotId == 0) {
+      lotId = 1;
     }
-    
-    // Build bank data - FIXED: Ensure all fields are properly formatted
-    Map<String, dynamic> bankData = {};
-    if (bankTransferPaid > 0) {
-      bankData = {
-        'amount': bankTransferPaid.toStringAsFixed(2),
-        'code': selectedBankTransferBank?['id']?.toString() ?? "",
-        'branch': branch,
-        'user_name': userName,
-        'user_id': userId,
-      };
-    }
-    
-    // Build card data - FIXED: cardBank should not be an empty object when not selected
-    Map<String, dynamic> cardData = {};
-    if (cardPaid > 0) {
-      cardData = {
-        'card_no': '0000',
-        'cardAmount': cardPaid.toStringAsFixed(2),
-        'cardType': 'VISA',
-      };
-      
-      // Only add cardBank if a bank is selected and has valid data
-      if (selectedCardBank != null && selectedCardBank!.isNotEmpty) {
-        cardData['cardBank'] = {
-          'account_no': selectedCardBank!['account_no']?.toString() ?? '123456',
-          'account_type': selectedCardBank!['account_type']?.toString() ?? 'Saving',
-          'bank_code': selectedCardBank!['bank_code']?.toString() ?? 'BOC',
-          'bank_name': selectedCardBank!['bank_name']?.toString() ?? 'BOC',
-          'branch': selectedCardBank!['branch']?.toString() ?? 'Kurunegala',
-          'created_at': selectedCardBank!['created_at']?.toString() ?? '2025-04-07T11:35:51.000000Z',
-          'id': selectedCardBank!['id'] ?? 1,
-          'updated_at': selectedCardBank!['updated_at']?.toString() ?? '2025-04-07T11:35:51.000000Z',
-        };
-      } else {
-        // Provide a default cardBank structure to avoid null
-        cardData['cardBank'] = {
-          'account_no': '123456',
-          'account_type': 'Saving',
-          'bank_code': 'BOC',
-          'bank_name': 'Bank of Ceylon',
-          'branch': 'Kurunegala',
-          'created_at': '2025-04-07T11:35:51.000000Z',
-          'id': 1,
-          'updated_at': '2025-04-07T11:35:51.000000Z',
-        };
-      }
-    }
-    
-    Map<String, dynamic> creditData = {};
-    if (creditUsed > 0) {
-      creditData = {
-        'amount': creditUsed.toStringAsFixed(2),
-        'customer_id': widget.selectedCustomer?.id?.toString() ?? "",
-      };
-    }
-    
-    // FIXED: Ensure all payment method objects have proper structure
-    return {
-      'advancePaymentApplied': 0,
-      'bank': bankTransferPaid > 0 ? bankData : {
-        'amount': "",
-        'code': "",
-        'branch': "",
-        'user_name': "",
-        'user_id': "",
-      },
-      'card': cardPaid > 0 ? cardData : {
-        'card_no': "",
-        'cardAmount': "",
-        'cardBank': {},  // Empty object instead of null
-        'cardType': "",
-      },
-      'cash': cashPaid > 0 ? cashPaid.toStringAsFixed(2) : "",
-      'cheque': {
-        'amount': "",
-        'bank': "",
-        'chequeDate': "",
-        'chequeNo': "",
-      },
-      'credit': creditUsed > 0 ? creditUsed.toStringAsFixed(2) : "",
-      'date': DateFormat('yyyy-MM-dd').format(DateTime.now()),
-      'metadata': metadata,
-      'overBal': "",
-      'type': 2,
+ 
+    items.add({
+      'aQty': item.product.availableQuantity + item.quantity,
+      'bar_code': item.product.barCode,
+      'cost': item.product.cost,
+      'dis': dis,
+      'disVal': disVal,
+      'exp': item.product.expiryDate,
+      'lot_id': lotId,
+      'lot_index': 0,
+      'name': item.product.name,
+      'price': price,
+      'qty': item.quantity,
+      's_name': null,
+      'sid': item.product.tblStockId,
+      'stock': item.product.stockName,
+      'total': total.toStringAsFixed(2),
+      'total_discount': disVal.toStringAsFixed(2),
+      'unit': item.product.unit,
+      'special_note': item.specialNote ?? '', 
+    });
+  }
+  Map<String, dynamic> metadata = {
+    'id': widget.currentInvoiceId,
+    'advance_payment': '',
+    'bill_copy_issued': 0,
+    'billDis': widget.discountPercentage.toString(),
+    'billDisVal': widget.globalDiscountValue.toStringAsFixed(2),
+    'customer': widget.selectedCustomer != null ? {
+      'id': widget.selectedCustomer!.id,
+      'name': widget.selectedCustomer!.name,
+      'phone': widget.selectedCustomer!.phone ?? '',
+      'email': widget.selectedCustomer!.email ?? '',
+      'nic': widget.selectedCustomer!.nic ?? '',
+      'address': widget.selectedCustomer!.address ?? '',
+    } : {
+      'id': 0,
+      'name': 'Walk-in Customer',
+      'phone': '',
+      'email': '',
+      'nic': '',
+      'address': '',
+    },
+    'free_issue': 0,
+    'grossAmount': widget.totalSubtotal.toStringAsFixed(2),
+    'invDate': DateFormat('yyyy-MM-dd').format(DateTime.now()),
+    'items': items,
+    'netAmount': widget.netAmount.toStringAsFixed(2),
+    'order_now_order_info_id': "",
+    'room_booking': '',
+    'saleType': saleType,
+    'service_charge': widget.selectedTable != null ? widget.serviceAmount.toStringAsFixed(2) : '0.00',
+    'services': [],
+    'tbl_room_booking_id': '',
+    'waiter_id': widget.selectedWaiter?.id ?? 0,
+    'waiter_name': widget.selectedWaiter?.name ?? '',
+  };
+  if (widget.selectedTable != null) {
+    metadata['table_name_id'] = {
+      'id': widget.selectedTable!.id,
+      'name': widget.selectedTable!.name,
+      'service_charge': widget.selectedTable!.serviceCharge,
+      'special_note': widget.selectedTable!.specialNote,
     };
   }
-
+  Map<String, dynamic> bankData = {};
+  if (bankTransferPaid > 0) {
+    bankData = {
+      'amount': bankTransferPaid.toStringAsFixed(2),
+      'code': selectedBankTransferBank?['id']?.toString() ?? "",
+      'branch': branch,
+      'user_name': userName,
+      'user_id': userId,
+    };
+  }
+  Map<String, dynamic> cardData = {};
+  if (cardPaid > 0) {
+    cardData = {
+      'card_no': '0000',
+      'cardAmount': cardPaid.toStringAsFixed(2),
+      'cardType': 'VISA',
+    };
+ 
+    if (selectedCardBank != null && selectedCardBank!.isNotEmpty) {
+      cardData['cardBank'] = {
+        'account_no': selectedCardBank!['account_no']?.toString() ?? '123456',
+        'account_type': selectedCardBank!['account_type']?.toString() ?? 'Saving',
+        'bank_code': selectedCardBank!['bank_code']?.toString() ?? 'BOC',
+        'bank_name': selectedCardBank!['bank_name']?.toString() ?? 'BOC',
+        'branch': selectedCardBank!['branch']?.toString() ?? 'Kurunegala',
+        'created_at': selectedCardBank!['created_at']?.toString() ?? '2025-04-07T11:35:51.000000Z',
+        'id': selectedCardBank!['id'] ?? 1,
+        'updated_at': selectedCardBank!['updated_at']?.toString() ?? '2025-04-07T11:35:51.000000Z',
+      };
+    } else {
+      cardData['cardBank'] = {
+        'account_no': '123456',
+        'account_type': 'Saving',
+        'bank_code': 'BOC',
+        'bank_name': 'Bank of Ceylon',
+        'branch': 'Kurunegala',
+        'created_at': '2025-04-07T11:35:51.000000Z',
+        'id': 1,
+        'updated_at': '2025-04-07T11:35:51.000000Z',
+      };
+    }
+  }
+  Map<String, dynamic> creditData = {};
+  if (creditUsed > 0) {
+    creditData = {
+      'amount': creditUsed.toStringAsFixed(2),
+      'customer_id': widget.selectedCustomer?.id?.toString() ?? "",
+    };
+  }
+  String overBal = "";
+  return {
+    'advancePaymentApplied': 0,
+    'bank': bankTransferPaid > 0 ? bankData : {
+      'amount': "",
+      'code': "",
+      'branch': "",
+      'user_name': "",
+      'user_id': "",
+    },
+    'card': cardPaid > 0 ? cardData : {
+      'card_no': "",
+      'cardAmount': "",
+      'cardBank': {},
+      'cardType': "",
+    },
+    'cash': cashPaid > 0 ? cashPaid.toStringAsFixed(2) : "",
+    'cheque': {
+      'amount': "",
+      'bank': "",
+      'chequeDate': "",
+      'chequeNo': "",
+    },
+    'credit': creditUsed > 0 ? creditUsed.toStringAsFixed(2) : "",
+    'date': DateFormat('yyyy-MM-dd').format(DateTime.now()),
+    'metadata': metadata,
+    'overBal': overBal,
+    'type': 2,
+  };
+}
+ 
   void _showError(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -7540,7 +8934,7 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
       ),
     );
   }
-
+ 
   Widget _buildBankDropdownSection(String type) {
     if (!_initialLoadAttempted) {
       return Container(
@@ -7564,7 +8958,7 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
         ),
       );
     }
-    
+ 
     if (_loadingBanks) {
       return Container(
         padding: const EdgeInsets.all(16),
@@ -7587,7 +8981,7 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
         ),
       );
     }
-    
+ 
     if (_bankLoadError != null) {
       return Container(
         padding: const EdgeInsets.all(16),
@@ -7625,7 +9019,7 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
         ),
       );
     }
-    
+ 
     if (banks.isEmpty) {
       return Container(
         padding: const EdgeInsets.all(16),
@@ -7639,7 +9033,7 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
         ),
       );
     }
-    
+ 
     return _buildBankDropdown(
       value: type == 'transfer' ? selectedBankTransferBank : selectedCardBank,
       onChanged: (Map<String, dynamic>? newValue) {
@@ -7654,7 +9048,7 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
       label: type == 'transfer' ? 'Select Bank for Transfer' : 'Select Bank for Card',
     );
   }
-  
+ 
   Widget _buildBankDropdown({
     required Map<String, dynamic>? value,
     required Function(Map<String, dynamic>?) onChanged,
@@ -7684,7 +9078,7 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
       onChanged: onChanged,
     );
   }
-  
+ 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -7701,264 +9095,415 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
           onPressed: () => Navigator.of(context).pop({'success': false, 'invoiceNumber': null}),
         ),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Card(
-              elevation: 2,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  children: [
-                    _buildPaymentSummaryRow("Invoice Amount", _fmt(widget.netAmount), isBold: true),
-                    _buildPaymentSummaryRow("Total Paid", _fmt(totalPaid)),
-                    _buildPaymentSummaryRow(
-                      "Remaining Balance",
-                      _fmt(remainingBalance),
-                      isBold: true,
-                      isNegative: remainingBalance < 0
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            
-            Container(
-              decoration: BoxDecoration(
-                color: primaryColor.withOpacity(0.1),
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-              ),
-              child: TabBar(
-                controller: _tabController,
-                indicatorColor: primaryColor,
-                labelColor: primaryColor,
-                unselectedLabelColor: Colors.grey[600],
-                labelStyle: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 12),
-                unselectedLabelStyle: GoogleFonts.poppins(fontSize: 12),
-                tabs: const [
-                  Tab(text: 'Cash'),
-                  Tab(text: 'Bank'),
-                  Tab(text: 'Credit'),
-                  Tab(text: 'Card'),
-                ],
-              ),
-            ),
-            
-            Expanded(
-              child: TabBarView(
-                controller: _tabController,
-                children: [
-                  SingleChildScrollView(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      children: [
-                        TextField(
-                          controller: _cashAmountController,
-                          decoration: InputDecoration(
-                            labelText: 'Cash Amount',
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                            hintText: 'Enter cash amount',
-                            suffixText: 'LKR',
-                          ),
-                          keyboardType: TextInputType.numberWithOptions(decimal: true),
-                          onChanged: (value) => _updatePaymentAmount('Cash', value),
-                        ),
-                      ],
-                    ),
-                  ),
-                  
-                  SingleChildScrollView(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      children: [
-                        TextField(
-                          controller: _bankTransferAmountController,
-                          decoration: InputDecoration(
-                            labelText: 'Transfer Amount',
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                            hintText: 'Enter transfer amount',
-                            suffixText: 'LKR',
-                          ),
-                          keyboardType: TextInputType.numberWithOptions(decimal: true),
-                          onChanged: (value) => _updatePaymentAmount('Bank Transfer', value),
-                        ),
-                        const SizedBox(height: 12),
-                        _buildBankDropdownSection('transfer'),
-                      ],
-                    ),
-                  ),
-                  
-                  SingleChildScrollView(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      children: [
-                        if (widget.selectedCustomer == null)
-                          Container(
-                            padding: const EdgeInsets.all(20),
-                            decoration: BoxDecoration(
-                              color: Colors.red[50],
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Column(
-                              children: [
-                                Icon(Icons.warning_amber, color: Colors.red[800], size: 32),
-                                const SizedBox(height: 8),
-                                Text(
-                                  'Please select a customer to use Credit payment.',
-                                  style: TextStyle(
-                                    color: Colors.red[800],
-                                    fontWeight: FontWeight.w500,
-                                    fontSize: 14,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
-                              ],
-                            ),
-                          )
-                        else
-                          Column(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(12),
-                                decoration: BoxDecoration(
-                                  color: Colors.blue[50],
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Text(
-                                  "Available Credit: Rs. 10000.00",
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.blue,
-                                    fontSize: 14,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
-                              ),
-                              const SizedBox(height: 16),
-                              TextField(
-                                controller: _creditAmountController,
-                                decoration: InputDecoration(
-                                  labelText: 'Credit Amount to Use',
-                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                                  hintText: 'Enter credit amount',
-                                  suffixText: 'LKR',
-                                ),
-                                keyboardType: TextInputType.numberWithOptions(decimal: true),
-                                onChanged: (value) => _updatePaymentAmount('Credit', value),
-                              ),
-                            ],
-                          ),
-                      ],
-                    ),
-                  ),
-                  
-                  SingleChildScrollView(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      children: [
-                        // Card Amount field - will auto-fill with remaining balance
-                        TextField(
-                          controller: _cardAmountController,
-                          decoration: InputDecoration(
-                            labelText: 'Card Amount',
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                            hintText: 'Enter card amount',
-                            suffixText: 'LKR',
-                            // Add a note about auto-fill
-                            helperText: widget.isDueTable 
-                                ? 'Auto-filled with due table amount' 
-                                : 'Auto-filled with remaining balance',
-                            helperStyle: TextStyle(color: primaryColor),
-                          ),
-                          keyboardType: TextInputType.numberWithOptions(decimal: true),
-                          onChanged: (value) => _updatePaymentAmount('Card', value),
-                        ),
-                        const SizedBox(height: 12),
-                        // Bank selection dropdown
-                        _buildBankDropdownSection('card'),
-                        const SizedBox(height: 12),
-                        // Card type dropdown
-                        DropdownButtonFormField<String>(
-                          value: 'VISA',
-                          decoration: InputDecoration(
-                            labelText: 'Card Type',
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                          ),
-                          items: const [
-                            DropdownMenuItem(value: 'VISA', child: Text('VISA')),
-                            DropdownMenuItem(value: 'MASTER', child: Text('MasterCard')),
-                            DropdownMenuItem(value: 'AMEX', child: Text('American Express')),
-                            DropdownMenuItem(value: 'OTHER', child: Text('Other')),
-                          ],
-                          onChanged: (value) {
-                            // Handle card type change
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            
-            const SizedBox(height: 16),
-            Row(
+      body: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            flex: 3,
+            child: Column(
               children: [
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () => Navigator.of(context).pop({'success': false, 'invoiceNumber': null}),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.grey[300],
-                      foregroundColor: Colors.black87,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                    ),
-                    child: Text(
-                      "CANCEL",
-                      style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+                Container(
+                  decoration: BoxDecoration(
+                    color: primaryColor.withOpacity(0.1),
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+                  ),
+                  child: Center(
+                    child: SizedBox(
+                      height: 48,
+                      child: TabBar(
+                        controller: _tabController,
+                        indicatorColor: primaryColor,
+                        labelColor: primaryColor,
+                        unselectedLabelColor: Colors.grey[600],
+                        labelStyle: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 12),
+                        unselectedLabelStyle: GoogleFonts.poppins(fontSize: 12),
+                        isScrollable: true,
+                        tabAlignment: TabAlignment.center,
+                        tabs: const [
+                          Tab(text: 'Cash'),
+                          Tab(text: 'Bank'),
+                          Tab(text: 'Credit'),
+                          Tab(text: 'Card'),
+                        ],
+                      ),
                     ),
                   ),
                 ),
-                const SizedBox(width: 16),
+             
                 Expanded(
-                  child: ElevatedButton(
-                    onPressed: _isProcessingPayment ? null : () async {
-                      final result = await _processPayment();
-                      if (result['success'] == true) {
-                        // Do nothing - the dialog will handle navigation
-                      }
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: _isProcessingPayment ? Colors.grey : accentColor,
-                      foregroundColor: Colors.black87,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                    ),
-                    child: _isProcessingPayment
-                        ? const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation<Color>(Colors.black87)),
-                          )
-                        : Text(
-                            "PROCESS PAYMENT",
-                            style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
-                          ),
+                  child: TabBarView(
+                    controller: _tabController,
+                    children: [
+                      SingleChildScrollView(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.start,
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Text(
+                              'Cash Payment',
+                              style: GoogleFonts.poppins(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w600,
+                                color: primaryColor,
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                            TextField(
+                              controller: _cashAmountController,
+                              decoration: InputDecoration(
+                                labelText: 'Cash Amount',
+                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                                hintText: 'Enter cash amount',
+                                suffixText: 'LKR',
+                                prefixIcon: const Icon(Icons.money),
+                              ),
+                              keyboardType: TextInputType.numberWithOptions(decimal: true),
+                              onChanged: (value) => _updatePaymentAmount('Cash', value),
+                            ),
+                          ],
+                        ),
+                      ),
+                   
+                      SingleChildScrollView(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.start,
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Text(
+                              'Bank Transfer Payment',
+                              style: GoogleFonts.poppins(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w600,
+                                color: primaryColor,
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                            TextField(
+                              controller: _bankTransferAmountController,
+                              decoration: InputDecoration(
+                                labelText: 'Transfer Amount',
+                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                                hintText: 'Enter transfer amount',
+                                suffixText: 'LKR',
+                                prefixIcon: const Icon(Icons.account_balance),
+                              ),
+                              keyboardType: TextInputType.numberWithOptions(decimal: true),
+                              onChanged: (value) => _updatePaymentAmount('Bank Transfer', value),
+                            ),
+                            const SizedBox(height: 16),
+                            _buildBankDropdownSection('transfer'),
+                          ],
+                        ),
+                      ),
+                   
+                      SingleChildScrollView(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.start,
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            if (widget.selectedCustomer == null)
+                              Container(
+                                padding: const EdgeInsets.all(20),
+                                decoration: BoxDecoration(
+                                  color: Colors.red[50],
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Column(
+                                  children: [
+                                    Icon(Icons.warning_amber, color: Colors.red[800], size: 32),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      'Please select a customer to use Credit payment.',
+                                      style: TextStyle(
+                                        color: Colors.red[800],
+                                        fontWeight: FontWeight.w500,
+                                        fontSize: 14,
+                                      ),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  ],
+                                ),
+                              )
+                            else
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: [
+                                  Text(
+                                    'Credit Payment',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w600,
+                                      color: primaryColor,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 16),
+                                  Container(
+                                    padding: const EdgeInsets.all(12),
+                                    decoration: BoxDecoration(
+                                      color: Colors.blue[50],
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Column(
+                                      children: [
+                                        Text(
+                                          'Customer: ${widget.selectedCustomer!.name}',
+                                          style: GoogleFonts.poppins(
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 14,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          "Available Credit: Rs. 10000.00",
+                                          style: TextStyle(
+                                            color: Colors.blue[700],
+                                            fontSize: 14,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(height: 20),
+                                  TextField(
+                                    controller: _creditAmountController,
+                                    decoration: InputDecoration(
+                                      labelText: 'Credit Amount to Use',
+                                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                                      hintText: 'Enter credit amount',
+                                      suffixText: 'LKR',
+                                      prefixIcon: const Icon(Icons.credit_card),
+                                    ),
+                                    keyboardType: TextInputType.numberWithOptions(decimal: true),
+                                    onChanged: (value) => _updatePaymentAmount('Credit', value),
+                                  ),
+                                ],
+                              ),
+                          ],
+                        ),
+                      ),
+                   
+                      SingleChildScrollView(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.start,
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Text(
+                              'Card Payment',
+                              style: GoogleFonts.poppins(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w600,
+                                color: primaryColor,
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                            TextField(
+                              controller: _cardAmountController,
+                              decoration: InputDecoration(
+                                labelText: 'Card Amount',
+                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                                hintText: 'Enter card amount',
+                                suffixText: 'LKR',
+                                prefixIcon: const Icon(Icons.credit_score),
+                                helperText: widget.isDueTable
+                                    ? 'Auto-filled with due table amount'
+                                    : 'Auto-filled with remaining balance',
+                                helperStyle: TextStyle(
+                                  color: primaryColor,
+                                  fontSize: 12,
+                                ),
+                              ),
+                              keyboardType: TextInputType.numberWithOptions(decimal: true),
+                              onChanged: (value) => _updatePaymentAmount('Card', value),
+                            ),
+                            const SizedBox(height: 16),
+                            _buildBankDropdownSection('card'),
+                            const SizedBox(height: 16),
+                            DropdownButtonFormField<String>(
+                              value: 'VISA',
+                              decoration: InputDecoration(
+                                labelText: 'Card Type',
+                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                                prefixIcon: const Icon(Icons.credit_card),
+                              ),
+                              items: const [
+                                DropdownMenuItem(value: 'VISA', child: Text('VISA')),
+                                DropdownMenuItem(value: 'MASTER', child: Text('MasterCard')),
+                                DropdownMenuItem(value: 'AMEX', child: Text('American Express')),
+                                DropdownMenuItem(value: 'OTHER', child: Text('Other')),
+                              ],
+                              onChanged: (value) {
+                                
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
             ),
-          ],
-        ),
+          ),
+       
+          Expanded(
+            flex: 2,
+            child: Container(
+              margin: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Card(
+                    elevation: 2,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        children: [
+                          _buildPaymentSummaryRow("Invoice Amount", _fmt(widget.netAmount), isBold: true),
+                          const SizedBox(height: 16),
+                          _buildPaymentSummaryRow("Total Paid", _fmt(totalPaid)),
+                          const SizedBox(height: 16),
+                          _buildPaymentSummaryRow(
+                            "Remaining Balance",
+                            _fmt(remainingBalance),
+                            isBold: true,
+                            isNegative: remainingBalance < 0
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+               
+                  const Spacer(),
+               
+                  Card(
+                    elevation: 2,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Payment Breakdown',
+                            style: GoogleFonts.poppins(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: primaryColor,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          _buildPaymentBreakdownRow('Cash:', cashPaid),
+                          _buildPaymentBreakdownRow('Bank Transfer:', bankTransferPaid),
+                          _buildPaymentBreakdownRow('Credit:', creditUsed),
+                          _buildPaymentBreakdownRow('Card:', cardPaid),
+                          const Divider(height: 20),
+                          _buildPaymentBreakdownRow('TOTAL:', totalPaid, isTotal: true),
+                        ],
+                      ),
+                    ),
+                  ),
+               
+                  const SizedBox(height: 20),
+               
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      SizedBox(
+                        width: MediaQuery.of(context).size.width * 0.18,
+                        child: ElevatedButton(
+                          onPressed: () => Navigator.of(context).pop({'success': false, 'invoiceNumber': null}),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.grey[300],
+                            foregroundColor: Colors.black87,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                          ),
+                          child: Text(
+                            "CANCEL",
+                            style: GoogleFonts.poppins(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      SizedBox(
+                        width: MediaQuery.of(context).size.width * 0.18,
+                        child: ElevatedButton(
+                          onPressed: _isProcessingPayment ? null : () async {
+                            final result = await _processPayment();
+                            if (result['success'] == true) {
+                             
+                            }
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: _isProcessingPayment ? Colors.grey : accentColor,
+                            foregroundColor: Colors.black87,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                          ),
+                          child: _isProcessingPayment
+                              ? const SizedBox(
+                                  height: 20,
+                                  width: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation<Color>(Colors.black87),
+                                  ),
+                                )
+                              : Text(
+                                  "PROCESS PAYMENT",
+                                  style: GoogleFonts.poppins(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
-  
+ 
   Widget _buildPaymentSummaryRow(String label, String value, {bool isBold = false, bool isNegative = false}) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Expanded(
+          child: Text(
+            label,
+            style: GoogleFonts.poppins(
+              fontSize: 16,
+              fontWeight: isBold ? FontWeight.w600 : FontWeight.normal,
+              color: Colors.black87,
+            ),
+          ),
+        ),
+        Text(
+          value,
+          style: GoogleFonts.poppins(
+            fontSize: 16,
+            fontWeight: isBold ? FontWeight.w600 : FontWeight.normal,
+            color: isNegative ? Colors.red : primaryColor,
+          ),
+        ),
+      ],
+    );
+  }
+ 
+  Widget _buildPaymentBreakdownRow(String label, double amount, {bool isTotal = false}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6.0),
       child: Row(
@@ -7967,23 +9512,23 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
           Text(
             label,
             style: GoogleFonts.poppins(
-              fontSize: 15,
-              fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
-              color: Colors.black87,
+              fontSize: 14,
+              fontWeight: isTotal ? FontWeight.w600 : FontWeight.normal,
+              color: isTotal ? primaryColor : Colors.black87,
             ),
           ),
           Text(
-            value,
+            _fmt(amount),
             style: GoogleFonts.poppins(
-              fontSize: 15,
-              fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
-              color: isNegative ? Colors.red : primaryColor,
+              fontSize: 14,
+              fontWeight: isTotal ? FontWeight.w600 : FontWeight.normal,
+              color: isTotal ? primaryColor : Colors.black87,
             ),
           ),
         ],
-      )
+      ),
     );
   }
-  
+ 
   String _fmt(double v) => 'Rs. ${v.toStringAsFixed(2)}';
 }

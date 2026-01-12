@@ -28,7 +28,7 @@ class MainDashboardScreen extends StatelessWidget {
           ),
         ),
       ),
-      home: WelcomeScreen(), // WelcomeScreen as home
+      home: WelcomeScreen(), 
     );
   }
 }
