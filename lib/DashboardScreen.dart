@@ -893,6 +893,7 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
+  
   List<Customer> _customers = [];
   List<Customer> _filteredCustomers = [];
   List<Waiter> _waiters = [];
@@ -948,6 +949,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Map<String, double>? _paymentDataForPrinting;
   String? _kotCode;
   String? _botCode;
+  
 
   @override
   void initState() {
@@ -999,6 +1001,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
          _connectedBotDevices.length;
   }
 
+Future<bool> _verifyAdmin() async {
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    final userDataString = prefs.getString('user_data');
+    
+    if (userDataString == null) return false;
+    
+    final userData = json.decode(userDataString);
+    
+    // Check user type (0 = admin, 1 = user)
+    final userType = userData['type'] ?? 0;
+    final userName = userData['name']?.toString().toLowerCase() ?? '';
+    
+    // Type 0 is admin, also check for admin in username as backup
+    return userType == 0 || userName.contains('admin');
+  } catch (e) {
+    print('Admin verification error: $e');
+    return false;
+  }
+}
   Future<void> _loadOrders() async {
     if (!_dataLoaded) return;
     
@@ -1077,9 +1099,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final headers = await _getAuthHeaders();
     
       final endpoints = [
-        'https://api-cloudchef.sltcloud.lk/api/invoice-create/table-bill-find',
-        'https://api-cloudchef.sltcloud.lk/api/table-bill-find',
-        'https://api-cloudchef.sltcloud.lk/api/invoices/table/$tableName',
+        'https://api-kafenio.sltcloud.lk/api/invoice-create/table-bill-find',
+        'https://api-kafenio.sltcloud.lk/api/table-bill-find',
+        'https://api-kafenio.sltcloud.lk/api/invoices/table/$tableName',
       ];
 
       http.Response? response;
@@ -1419,6 +1441,214 @@ class _DashboardScreenState extends State<DashboardScreen> {
       ),
     ];
   }
+Future<bool> _showAdminPasswordDialog() async {
+  final passwordController = TextEditingController();
+  final usernameController = TextEditingController();
+  
+  bool? result = await showDialog<bool>(
+    context: context,
+    barrierDismissible: false,
+    builder: (BuildContext context) {
+      return Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          constraints: BoxConstraints(
+            maxWidth: MediaQuery.of(context).size.width * 0.3,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Admin Verification',
+                style: GoogleFonts.poppins(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.red,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Due table items can only be removed with admin authorization.',
+                style: GoogleFonts.poppins(
+                  fontSize: 12,
+                  color: Colors.grey[700],
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              
+              TextField(
+                controller: usernameController,
+                decoration: InputDecoration(
+                  labelText: 'Admin Username',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                  prefixIcon: const Icon(Icons.person),
+                ),
+              ),
+              
+              const SizedBox(height: 12),
+              
+              TextField(
+                controller: passwordController,
+                obscureText: true,
+                decoration: InputDecoration(
+                  labelText: 'Password',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                  prefixIcon: const Icon(Icons.lock),
+                ),
+              ),
+              
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextButton(
+                      onPressed: () {
+                        Navigator.of(context).pop(false);
+                      },
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      child: Text(
+                        'Cancel',
+                        style: GoogleFonts.poppins(
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        final username = usernameController.text.trim();
+                        final password = passwordController.text.trim();
+                        
+                        if (username.isEmpty || password.isEmpty) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: const Text('Please enter username and password'),
+                              backgroundColor: Colors.red,
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
+                          return;
+                        }
+                        
+                        showDialog(
+                          context: context,
+                          barrierDismissible: false,
+                          builder: (context) => const Center(
+                            child: CircularProgressIndicator(),
+                          ),
+                        );
+                        
+                        try {
+                          final response = await http.post(
+                            Uri.parse(ApiConstants.getFullUrl(ApiConstants.authLogin)),
+                            headers: {
+                              'Content-Type': 'application/json',
+                              'Accept': 'application/json',
+                              'referer': ApiConstants.refererHeader,
+                            },
+                            body: json.encode({
+                              'name': username,
+                              'password': password,
+                            }),
+                          ).timeout(const Duration(seconds: 30));
+                          
+                          if (mounted) Navigator.pop(context);
+                          
+                          if (response.statusCode == 200) {
+                            final data = json.decode(response.body);
+                            String? token = data['data']?['token'] ?? data['token'] ?? data['access_token'];
+                            
+                            if (token != null && token.isNotEmpty) {
+                              final userResponse = await http.get(
+                                Uri.parse(ApiConstants.getFullUrl(ApiConstants.getUser)),
+                                headers: {
+                                  'Content-Type': 'application/json',
+                                  'Accept': 'application/json',
+                                  'Authorization': 'Bearer $token',
+                                  'referer': ApiConstants.refererHeader,
+                                },
+                              ).timeout(const Duration(seconds: 10));
+                              
+                              if (userResponse.statusCode == 200) {
+                                final userData = json.decode(userResponse.body);
+                                final userType = userData['type'] ?? 0;
+                                
+                                // Check if user is admin (type 0)
+                                final isAdmin = userType == 0;
+                                
+                                if (isAdmin) {
+                                  Navigator.of(context).pop(true);
+                                } else {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: const Text('User is not authorized as admin'),
+                                      backgroundColor: Colors.red,
+                                      behavior: SnackBarBehavior.floating,
+                                    ),
+                                  );
+                                  usernameController.clear();
+                                  passwordController.clear();
+                                }
+                              } else {
+                                throw Exception('Failed to fetch user data');
+                              }
+                            } else {
+                              throw Exception('No token received');
+                            }
+                          } else {
+                            throw Exception('Authentication failed');
+                          }
+                        } catch (e) {
+                          if (mounted && Navigator.of(context, rootNavigator: true).canPop()) {
+                            Navigator.of(context, rootNavigator: true).pop();
+                          }
+                          
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Authentication failed: ${e.toString().replaceAll('Exception: ', '')}'),
+                              backgroundColor: Colors.red,
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
+                          passwordController.clear();
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      child: Text(
+                        'Verify',
+                        style: GoogleFonts.poppins(
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      );
+    },
+  );
+  
+  return result ?? false;
+}
 
   Future<void> _requestPermissions() async {
     try {
@@ -5103,11 +5333,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
     _updateCartTotals();
   }
 
-  void _removeFromCart(int index) {
-    if (index >= 0 && index < _cartItems.length) {
-      setState(() {
-        final removedItem = _cartItems.removeAt(index);
-        
+ void _removeFromCart(int index) {
+  if (index >= 0 && index < _cartItems.length) {
+    setState(() {
+      final removedItem = _cartItems.removeAt(index);
+      
+    
+      final isDueTableItem = _isEditingDueTable && !removedItem.isNewItem;
+      
+      if (!isDueTableItem) {
+     
         if (removedItem.isNewItem) {
           final productIndex = _products.indexWhere((p) => p.id == removedItem.product.id);
           if (productIndex != -1) {
@@ -5119,10 +5354,442 @@ class _DashboardScreenState extends State<DashboardScreen> {
             }
           }
         }
-      });
-      _updateCartTotals();
+      } else {
+     
+        _existingDueTableItems.removeWhere((existingItem) => 
+          existingItem['product_id'] == removedItem.product.id ||
+          existingItem['tbl_product_id'] == removedItem.product.id
+        );
+        
+     
+        // ScaffoldMessenger.of(context).showSnackBar(
+        //   SnackBar(
+        //     content: Text('Due table item "${removedItem.product.name}" removed successfully'),
+        //     backgroundColor: Colors.green,
+        //     behavior: SnackBarBehavior.floating,
+        //   ),
+        // );
+      }
+    });
+    _updateCartTotals();
+  }
+}
+
+Future<void> _removeDueTableItemWithVerification(int index) async {
+  if (index < 0 || index >= _cartItems.length) return;
+  
+  final item = _cartItems[index];
+  
+  // Check if it's a due table item
+  final isDueTableItem = _isEditingDueTable && !item.isNewItem;
+  
+  if (!isDueTableItem) {
+    // For non-due table items, remove normally
+    _removeFromCart(index);
+    return;
+  }
+  
+  // Check current user role
+  final currentUserIsAdmin = await _verifyCurrentUserIsAdmin();
+  
+  if (currentUserIsAdmin) {
+    // Current user is admin, show cancellation reason dialog
+    final reason = await _showCancellationReasonDialog(item);
+    if (reason != null) {
+      await _cancelItemAndRemoveFromCart(item, reason, index);
+    }
+  } else {
+    // Current user is not admin, show appropriate message
+    final prefs = await SharedPreferences.getInstance();
+    final userDataString = prefs.getString('user_data');
+    final userData = json.decode(userDataString ?? '{}');
+    final userName = userData['name'] ?? 'User';
+    final userType = userData['type'] ?? 1;
+    
+    if (userType == 1) {
+      // Regular user - require admin login
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('$userName (User) cannot remove due table items. Admin authorization required.'),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+      
+      // Show admin verification dialog
+      final isAuthorized = await _showAdminPasswordDialog();
+      
+      if (isAuthorized && mounted) {
+        final reason = await _showCancellationReasonDialog(item);
+        if (reason != null) {
+          await _cancelItemAndRemoveFromCart(item, reason, index);
+        }
+      }
+    } else {
+      // Unknown user type - show general message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Admin verification required to remove due table items'),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     }
   }
+}
+
+Future<String?> _showCancellationReasonDialog(CartItem item) async {
+  final reasonController = TextEditingController();
+  final selectedReason = ValueNotifier<String>('Wrong Order');
+  final customReasonController = TextEditingController();
+  
+  final List<String> predefinedReasons = [
+    'Wrong Order',
+    'Customer Changed Mind',
+    'Out of Stock',
+    'Preparation Error',
+    'Quality Issue',
+    'Other'
+  ];
+  
+  return showDialog<String>(
+    context: context,
+    barrierDismissible: false,
+    builder: (context) {
+      final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
+      
+      return Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        insetPadding: EdgeInsets.all(isLandscape ? 40 : 20),
+        child: StatefulBuilder(
+          builder: (context, setState) {
+            return Container(
+              padding: const EdgeInsets.all(16),
+              constraints: BoxConstraints(
+                maxWidth: isLandscape 
+                    ? MediaQuery.of(context).size.width * 0.5
+                    : MediaQuery.of(context).size.width * 0.8,
+                maxHeight: MediaQuery.of(context).size.height * 0.6,
+              ),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      'Cancel Item: ${item.product.name}',
+                      style: GoogleFonts.poppins(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.red,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    
+                    const SizedBox(height: 8),
+                    
+                    Text(
+                      'Quantity: ${item.quantity} | Price: Rs.${item.getPriceByOrderType(_selectedOrderType).toStringAsFixed(2)}',
+                      style: GoogleFonts.poppins(
+                        fontSize: 11,
+                        color: Colors.grey[600],
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    
+                    const SizedBox(height: 16),
+                    
+                    Text(
+                      'Select Cancellation Reason:',
+                      style: GoogleFonts.poppins(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    
+                    const SizedBox(height: 8),
+                    
+                    // Predefined reasons
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: predefinedReasons.map((reason) {
+                        final isSelected = selectedReason.value == reason;
+                        return ChoiceChip(
+                          label: Text(
+                            reason,
+                            style: GoogleFonts.poppins(
+                              fontSize: 10,
+                              color: isSelected ? Colors.white : Colors.black87,
+                            ),
+                          ),
+                          selected: isSelected,
+                          selectedColor: Colors.red,
+                          backgroundColor: Colors.grey[200],
+                          onSelected: (selected) {
+                            setState(() {
+                              selectedReason.value = reason;
+                              if (reason != 'Other') {
+                                reasonController.text = reason;
+                              } else {
+                                reasonController.text = '';
+                              }
+                            });
+                          },
+                        );
+                      }).toList(),
+                    ),
+                    
+                    const SizedBox(height: 16),
+                    
+                    // Custom reason input (only for "Other")
+                    if (selectedReason.value == 'Other')
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Enter Custom Reason:',
+                            style: GoogleFonts.poppins(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Container(
+                            decoration: BoxDecoration(
+                              border: Border.all(color: Colors.grey[300]!),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: TextField(
+                              controller: customReasonController,
+                              minLines: 2,
+                              maxLines: 3,
+                              decoration: InputDecoration(
+                                hintText: 'Enter reason for cancellation...',
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                border: InputBorder.none,
+                                isDense: true,
+                              ),
+                              style: GoogleFonts.poppins(fontSize: 11),
+                              onChanged: (value) {
+                                reasonController.text = value;
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                    
+                    const SizedBox(height: 20),
+                    
+                    // Buttons
+                    if (isLandscape)
+                      Row(
+                        children: _buildCancellationDialogButtons(
+                          reasonController,
+                          selectedReason,
+                          customReasonController,
+                        ),
+                      )
+                    else
+                      Column(
+                        children: _buildCancellationDialogButtons(
+                          reasonController,
+                          selectedReason,
+                          customReasonController,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
+      );
+    },
+  );
+}
+
+List<Widget> _buildCancellationDialogButtons(
+  TextEditingController reasonController,
+  ValueNotifier<String> selectedReason,
+  TextEditingController customReasonController,
+) {
+  return [
+    Expanded(
+      child: TextButton(
+        onPressed: () => Navigator.pop(context, null),
+        style: TextButton.styleFrom(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(6),
+          ),
+        ),
+        child: Text(
+          'Cancel',
+          style: GoogleFonts.poppins(
+            fontWeight: FontWeight.w500,
+            fontSize: 11,
+          ),
+        ),
+      ),
+    ),
+    const SizedBox(width: 12, height: 12),
+    Expanded(
+      child: ElevatedButton(
+        onPressed: () {
+          String finalReason;
+          
+          if (selectedReason.value == 'Other') {
+            finalReason = customReasonController.text.trim();
+            if (finalReason.isEmpty) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: const Text('Please enter a cancellation reason'),
+                  backgroundColor: Colors.red,
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+              return;
+            }
+          } else {
+            finalReason = selectedReason.value;
+          }
+          
+          Navigator.pop(context, finalReason);
+        },
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.red,
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(6),
+          ),
+        ),
+        child: Text(
+          'Confirm Cancellation',
+          style: GoogleFonts.poppins(
+            fontWeight: FontWeight.w500,
+            fontSize: 11,
+          ),
+        ),
+      ),
+    ),
+  ];
+}
+
+Future<void> _cancelItemAndRemoveFromCart(CartItem item, String reason, int index) async {
+  if (_currentInvoiceId == null) {
+    // If no invoice ID, just remove from cart
+    _removeFromCart(index);
+    return;
+  }
+  
+  // Show loading
+  showDialog(
+    context: context,
+    barrierDismissible: false,
+    builder: (context) => const Center(
+      child: CircularProgressIndicator(),
+    ),
+  );
+  
+  try {
+    final headers = await _getAuthHeaders();
+    
+    // Find the existing due table item data
+    final existingItem = _existingDueTableItems.firstWhere(
+      (existing) => 
+        existing['product_id'] == item.product.id ||
+        existing['tbl_product_id'] == item.product.id,
+      orElse: () => {},
+    );
+    
+    // Prepare payload for API
+    final payload = {
+      'invoice_head_id': _currentInvoiceId,
+      'invoice_body_id': existingItem['id'] ?? existingItem['invoice_body_id'] ?? null,
+      'item_name': item.product.name,
+      'bar_code': item.product.barCode,
+      'price': item.getPriceByOrderType(_selectedOrderType),
+      'qty': item.quantity,
+      'reason': reason,
+    };
+    
+    // Remove null values from payload
+    payload.removeWhere((key, value) => value == null);
+    
+    print('Cancellation payload: $payload');
+    
+    final response = await http.post(
+       Uri.parse(ApiConstants.getFullUrl(ApiConstants.cancelItem)),
+      headers: headers,
+      body: json.encode(payload),
+    ).timeout(const Duration(seconds: 30));
+    
+    // Close loading dialog
+    if (mounted) Navigator.pop(context);
+    
+    if (response.statusCode == 200) {
+      final responseData = json.decode(response.body);
+      
+      if (responseData['success'] == true) {
+        // Remove from cart
+        _removeFromCart(index);
+        
+        // Show success message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Item cancelled and reason logged: $reason'),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      } else {
+        throw Exception(responseData['error'] ?? 'Failed to cancel item');
+      }
+    } else {
+      throw Exception('API error: ${response.statusCode} - ${response.body}');
+    }
+  } catch (e) {
+    // Close loading dialog if still open
+    if (mounted && Navigator.of(context, rootNavigator: true).canPop()) {
+      Navigator.of(context, rootNavigator: true).pop();
+    }
+    
+    // Show error but still remove from cart locally
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Failed to log cancellation: $e. Item removed locally only.'),
+        backgroundColor: Colors.orange,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+    
+    // Remove from cart even if API fails
+    _removeFromCart(index);
+  }
+}
+Future<bool> _verifyCurrentUserIsAdmin() async {
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    final userDataString = prefs.getString('user_data');
+    
+    if (userDataString == null) return false;
+    
+    final userData = json.decode(userDataString);
+    
+    // Check user type (0 = admin, 1 = user)
+    final userType = userData['type'] ?? 0;
+    final userName = userData['name']?.toString().toLowerCase() ?? '';
+    
+    // Only type 0 is admin
+    return userType == 0;
+  } catch (e) {
+    print('Current user admin verification error: $e');
+    return false;
+  }
+}
 
   void _updateCartQuantity(int index, int newQuantity) {
     if (index >= 0 && index < _cartItems.length) {
@@ -7198,209 +7865,209 @@ class _DashboardScreenState extends State<DashboardScreen> {
       );
   }
 
-  Widget _buildCartItemForPanel(CartItem cartItem, int index) {
-    final isDueTableItem = _isEditingDueTable && !cartItem.isNewItem;
-    
-    return InkWell(
-      onLongPress: () {
-        _showCartItemPopup(index);
-      },
-      child: Card(
-        margin: const EdgeInsets.only(bottom: 4), 
-        elevation: 1,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        color: Colors.white,
-        child: Container(
-          height: 60,
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Row(
+Widget _buildCartItemForPanel(CartItem cartItem, int index) {
+  final isDueTableItem = _isEditingDueTable && !cartItem.isNewItem;
+  
+  return InkWell(
+    onLongPress: () {
+      _showCartItemPopup(index);
+    },
+    child: Card(
+      margin: const EdgeInsets.only(bottom: 4), 
+      elevation: 1,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      color: Colors.white,
+      child: Container(
+        height: 60,
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          cartItem.product.name,
+                          style: GoogleFonts.poppins(
+                            fontWeight: FontWeight.w500,
+                            fontSize: 12, 
+                            color: Colors.black,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      if (cartItem.specialNote != null && cartItem.specialNote!.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(left: 4.0),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                            decoration: BoxDecoration(
+                              color: Colors.yellow[100],
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              'N',
+                              style: GoogleFonts.poppins(
+                                fontSize: 8,
+                                color: Colors.orange[800],
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 2), 
+                  Row(
+                    children: [
+                      Text(
+                        'Rs.${cartItem.getPriceByOrderType(_selectedOrderType).toStringAsFixed(2)}',
+                        style: GoogleFonts.poppins(
+                          fontSize: 10, 
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Container(
+                        width: 1,
+                        height: 10,
+                        color: Colors.grey[300],
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        'x${cartItem.quantity}',
+                        style: GoogleFonts.poppins(
+                          fontSize: 10, 
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            
+            if (isDueTableItem)
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[100],
+                      border: Border.all(color: Colors.grey[300]!),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      'Qty: ${cartItem.quantity}',
+                      style: GoogleFonts.poppins(
+                        fontWeight: FontWeight.w500,
+                        fontSize: 11, 
+                        color: Colors.black,
+                      ),
+                    ),
+                  ),
+                  
+                  const SizedBox(width: 8),
+                  
+                  Container(
+                    width: 24,
+                    height: 24,
+                    child: IconButton(
+                      icon: const Icon(Icons.close, size: 14, color: Colors.red),
+                      onPressed: () => _removeDueTableItemWithVerification(index),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                    ),
+                  ),
+                ],
+              )
+            else
+              Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      border: Border.all(color: Colors.grey[300]!),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        Expanded(
+                        Container(
+                          width: 24, 
+                          height: 20,
+                          child: IconButton(
+                            icon: const Icon(Icons.remove, size: 12, color: Colors.black),
+                            onPressed: () => _updateCartQuantity(index, cartItem.quantity - 1),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                          ),
+                        ),
+                        Container(
+                          width: 24,
+                          alignment: Alignment.center,
                           child: Text(
-                            cartItem.product.name,
+                            cartItem.quantity.toString(),
                             style: GoogleFonts.poppins(
-                              fontWeight: FontWeight.w500,
+                              fontWeight: FontWeight.bold,
                               fontSize: 12, 
                               color: Colors.black,
                             ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        if (cartItem.specialNote != null && cartItem.specialNote!.isNotEmpty)
-                          Padding(
-                            padding: const EdgeInsets.only(left: 4.0),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                              decoration: BoxDecoration(
-                                color: Colors.yellow[100],
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: Text(
-                                'N',
-                                style: GoogleFonts.poppins(
-                                  fontSize: 8,
-                                  color: Colors.orange[800],
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                    const SizedBox(height: 2), 
-                    Row(
-                      children: [
-                        Text(
-                          'Rs.${cartItem.getPriceByOrderType(_selectedOrderType).toStringAsFixed(2)}',
-                          style: GoogleFonts.poppins(
-                            fontSize: 10, 
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                        const SizedBox(width: 4),
                         Container(
-                          width: 1,
-                          height: 10,
-                          color: Colors.grey[300],
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          'x${cartItem.quantity}',
-                          style: GoogleFonts.poppins(
-                            fontSize: 10, 
-                            color: Colors.grey[600],
+                          width: 24,
+                          height: 20,
+                          child: IconButton(
+                            icon: const Icon(Icons.add, size: 12, color: Colors.black),
+                            onPressed: () => _updateCartQuantity(index, cartItem.quantity + 1),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
                           ),
                         ),
                       ],
                     ),
-                  ],
+                  ),
+                  
+                  const SizedBox(height: 2), 
+                  
+                  Text(
+                    'Rs.${cartItem.getTotalPrice(_selectedOrderType).toStringAsFixed(2)}',
+                    style: GoogleFonts.poppins(
+                      fontSize: 11, 
+                      fontWeight: FontWeight.w600,
+                      color: Colors.blue,
+                    ),
+                  ),
+                ],
+              ),
+            
+            if (!isDueTableItem) const SizedBox(width: 4),
+              
+            if (!isDueTableItem)
+              Container(
+                width: 24,
+                height: 24,
+                child: IconButton(
+                  icon: const Icon(Icons.close, size: 14, color: Colors.black),
+                  onPressed: () => _removeFromCart(index),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
                 ),
               ),
-              
-              if (isDueTableItem)
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.grey[100],
-                        border: Border.all(color: Colors.grey[300]!),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                        'Qty: ${cartItem.quantity}',
-                        style: GoogleFonts.poppins(
-                          fontWeight: FontWeight.w500,
-                          fontSize: 11, 
-                          color: Colors.black,
-                        ),
-                      ),
-                    ),
-                    
-                    const SizedBox(width: 8),
-                    
-                    Container(
-                      width: 24,
-                      height: 24,
-                      child: IconButton(
-                        icon: const Icon(Icons.close, size: 14, color: Colors.red),
-                        onPressed: () => _removeFromCart(index),
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
-                      ),
-                    ),
-                  ],
-                )
-              else
-                Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        border: Border.all(color: Colors.grey[300]!),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            width: 24, 
-                            height: 20,
-                            child: IconButton(
-                              icon: const Icon(Icons.remove, size: 12, color: Colors.black),
-                              onPressed: () => _updateCartQuantity(index, cartItem.quantity - 1),
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(),
-                            ),
-                          ),
-                          Container(
-                            width: 24,
-                            alignment: Alignment.center,
-                            child: Text(
-                              cartItem.quantity.toString(),
-                              style: GoogleFonts.poppins(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 12, 
-                                color: Colors.black,
-                              ),
-                            ),
-                          ),
-                          Container(
-                            width: 24,
-                            height: 20,
-                            child: IconButton(
-                              icon: const Icon(Icons.add, size: 12, color: Colors.black),
-                              onPressed: () => _updateCartQuantity(index, cartItem.quantity + 1),
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    
-                    const SizedBox(height: 2), 
-                    
-                    Text(
-                      'Rs.${cartItem.getTotalPrice(_selectedOrderType).toStringAsFixed(2)}',
-                      style: GoogleFonts.poppins(
-                        fontSize: 11, 
-                        fontWeight: FontWeight.w600,
-                        color: Colors.blue,
-                      ),
-                    ),
-                  ],
-                ),
-              
-              if (!isDueTableItem) const SizedBox(width: 4),
-                
-              if (!isDueTableItem)
-                Container(
-                  width: 24,
-                  height: 24,
-                  child: IconButton(
-                    icon: const Icon(Icons.close, size: 14, color: Colors.black),
-                    onPressed: () => _removeFromCart(index),
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                  ),
-                ),
-            ],
-          ),
+          ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildSummaryRow(String label, double amount) {
     return Padding(
@@ -8164,7 +8831,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 }
 
-
 class PaymentScreen extends StatefulWidget {
   final List<CartItem> cartItems;
   final Customer? selectedCustomer;
@@ -8220,75 +8886,82 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
   bool _loadingBanks = false;
   String? _bankLoadError;
   bool _initialLoadAttempted = false;
-  bool _cardTabVisited = false;
   bool _cashTabVisited = false;
   bool _bankTabVisited = false;
   bool _creditTabVisited = false;
- 
+  bool _cardTabVisited = false;
+  
+  // Track if auto-fill has been triggered for due table
+  bool _dueTableAutoFillTriggered = false;
+  
   @override
   void initState() {
     super.initState();
- 
+    
     _tabController = TabController(length: 4, vsync: this);
- 
+    
     cashPaid = 0.0;
     bankTransferPaid = 0.0;
     creditUsed = 0.0;
     cardPaid = 0.0;
     totalPaid = 0.0;
     remainingBalance = widget.netAmount;
- 
+    
     _cashAmountController.clear();
     _bankTransferAmountController.clear();
     _creditAmountController.clear();
     _cardAmountController.clear();
- 
+    
     _cashTabVisited = false;
     _bankTabVisited = false;
     _creditTabVisited = false;
     _cardTabVisited = false;
- 
+    _dueTableAutoFillTriggered = false;
+    
     _tabController.addListener(_handleTabChange);
     _loadAuthTokenAndUserData();
   }
- 
+  
   void _handleTabChange() {
     if (!_tabController.indexIsChanging) {
       final currentIndex = _tabController.index;
-   
+      
       switch (currentIndex) {
-        case 0: 
+        case 0: // Cash
           if (!_cashTabVisited) {
             setState(() {
               _cashTabVisited = true;
             });
           }
           break;
-        case 1: 
+        case 1: // Bank Transfer
           if (!_bankTabVisited) {
             setState(() {
               _bankTabVisited = true;
             });
           }
           break;
-        case 2: 
+        case 2: // Credit
           if (!_creditTabVisited) {
             setState(() {
               _creditTabVisited = true;
             });
           }
           break;
-        case 3: 
+        case 3: // Card
           if (!_cardTabVisited) {
             setState(() {
               _cardTabVisited = true;
-              if (widget.isDueTable) {
+              // For due tables, only auto-fill if no payment has been entered yet
+              if (widget.isDueTable && !_dueTableAutoFillTriggered && totalPaid == 0) {
                 _autoFillCardAmountForDueTable();
-              } else {
+                _dueTableAutoFillTriggered = true;
+              } else if (!widget.isDueTable) {
                 _autoFillCardAmount();
               }
             });
           } else {
+            // For regular tables, auto-fill card with remaining balance
             if (!widget.isDueTable) {
               _autoFillCardAmount();
             }
@@ -8297,39 +8970,74 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
       }
     }
   }
- 
+  
   void _autoFillCardAmount() {
     double currentTotalPaid = cashPaid + bankTransferPaid + creditUsed;
     double currentRemainingBalance = widget.netAmount - currentTotalPaid;
- 
+    
     if (currentRemainingBalance > 0) {
       setState(() {
         cardPaid = currentRemainingBalance;
         _cardAmountController.text = cardPaid.toStringAsFixed(2);
-     
+        
+        totalPaid = cashPaid + bankTransferPaid + creditUsed + cardPaid;
+        remainingBalance = widget.netAmount - totalPaid;
+      });
+    } else if (currentRemainingBalance == 0) {
+      setState(() {
+        cardPaid = 0.0;
+        _cardAmountController.text = '';
+        
         totalPaid = cashPaid + bankTransferPaid + creditUsed + cardPaid;
         remainingBalance = widget.netAmount - totalPaid;
       });
     }
   }
- 
+  
   void _autoFillCardAmountForDueTable() {
-    setState(() {
-      cardPaid = widget.netAmount;
-      _cardAmountController.text = cardPaid.toStringAsFixed(2);
-   
-      cashPaid = 0.0;
-      bankTransferPaid = 0.0;
-      creditUsed = 0.0;
-      _cashAmountController.text = '';
-      _bankTransferAmountController.text = '';
-      _creditAmountController.text = '';
-   
-      totalPaid = cashPaid + bankTransferPaid + creditUsed + cardPaid;
-      remainingBalance = widget.netAmount - totalPaid;
-    });
+    // Only auto-fill if no payment has been entered yet
+    if (totalPaid == 0) {
+      setState(() {
+        cardPaid = widget.netAmount;
+        _cardAmountController.text = cardPaid.toStringAsFixed(2);
+        
+        cashPaid = 0.0;
+        bankTransferPaid = 0.0;
+        creditUsed = 0.0;
+        _cashAmountController.text = '';
+        _bankTransferAmountController.text = '';
+        _creditAmountController.text = '';
+        
+        totalPaid = cashPaid + bankTransferPaid + creditUsed + cardPaid;
+        remainingBalance = widget.netAmount - totalPaid;
+      });
+    }
   }
- 
+  
+  // New method to auto-fill card with remaining balance for due tables
+  void _updateCardAmountForDueTable() {
+    double currentTotalPaid = cashPaid + bankTransferPaid + creditUsed;
+    double currentRemainingBalance = widget.netAmount - currentTotalPaid;
+    
+    if (currentRemainingBalance > 0) {
+      setState(() {
+        cardPaid = currentRemainingBalance;
+        _cardAmountController.text = cardPaid.toStringAsFixed(2);
+        
+        totalPaid = cashPaid + bankTransferPaid + creditUsed + cardPaid;
+        remainingBalance = widget.netAmount - totalPaid;
+      });
+    } else if (currentRemainingBalance == 0) {
+      setState(() {
+        cardPaid = 0.0;
+        _cardAmountController.text = '';
+        
+        totalPaid = cashPaid + bankTransferPaid + creditUsed + cardPaid;
+        remainingBalance = widget.netAmount - totalPaid;
+      });
+    }
+  }
+  
   @override
   void dispose() {
     _tabController.removeListener(_handleTabChange);
@@ -8340,7 +9048,7 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
     _cardAmountController.dispose();
     super.dispose();
   }
- 
+  
   Future<void> _loadAuthTokenAndUserData() async {
     setState(() {
       _loadingBanks = true;
@@ -8366,7 +9074,7 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
       _initialLoadAttempted = true;
     });
   }
- 
+  
   Future<void> _loadUserData() async {
     try {
       final SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -8383,7 +9091,7 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
       await _fetchUserDataFromAPI();
     }
   }
- 
+  
   Future<void> _fetchUserDataFromAPI() async {
     if (authToken == null) return;
     try {
@@ -8392,26 +9100,26 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $authToken',
-          'referer': ApiConstants.REFERER_HEADER,
+          'referer': ApiConstants.refererHeader,
         },
       ).timeout(const Duration(seconds: 10));
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-  
+        
         if (data is Map<String, dynamic>) {
           setState(() {
             userData = data;
           });
-    
+          
           final SharedPreferences prefs = await SharedPreferences.getInstance();
           await prefs.setString('user_data', json.encode(data));
         }
       }
     } catch (e) {
-     
+      // Silently handle error
     }
   }
- 
+  
   Future<void> _loadBanks() async {
     if (authToken == null) {
       setState(() {
@@ -8426,14 +9134,14 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $authToken',
-          'referer': ApiConstants.REFERER_HEADER,
+          'referer': ApiConstants.refererHeader,
         },
       ).timeout(const Duration(seconds: 10));
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-  
+        
         List<dynamic> banksList = [];
-  
+        
         if (data is List) {
           banksList = data;
         } else if (data['data'] is List) {
@@ -8447,7 +9155,7 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
             banksList = data[listKey];
           }
         }
-  
+        
         if (banksList.isNotEmpty) {
           setState(() {
             banks = List<Map<String, dynamic>>.from(banksList);
@@ -8475,11 +9183,11 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
       });
     }
   }
- 
+  
   void _retryBankLoad() {
     _loadAuthTokenAndUserData();
   }
- 
+  
   void _handleUnauthorizedError() {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -8493,10 +9201,29 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
       ),
     );
   }
- 
+  
   void _updatePaymentAmount(String method, String value) {
     double amount = double.tryParse(value) ?? 0.0;
-   
+    
+    // Validate the amount is not negative
+    if (amount < 0) {
+      amount = 0.0;
+      switch (method) {
+        case 'Cash':
+          _cashAmountController.text = '';
+          break;
+        case 'Bank Transfer':
+          _bankTransferAmountController.text = '';
+          break;
+        case 'Credit':
+          _creditAmountController.text = '';
+          break;
+        case 'Card':
+          _cardAmountController.text = '';
+          break;
+      }
+    }
+    
     double currentMethodAmount = 0.0;
     switch (method) {
       case 'Cash':
@@ -8512,14 +9239,14 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
         currentMethodAmount = cardPaid;
         break;
     }
-   
+    
     double otherMethodsTotal = totalPaid - currentMethodAmount;
-   
+    
     double maxAllowed = (widget.netAmount - otherMethodsTotal);
-   
+    
     if (method != 'Cash' && amount > maxAllowed) {
       amount = maxAllowed > 0 ? maxAllowed : 0;
-     
+      
       switch (method) {
         case 'Bank Transfer':
           _bankTransferAmountController.text = amount > 0 ? amount.toStringAsFixed(2) : '';
@@ -8532,7 +9259,7 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
           break;
       }
     }
-   
+    
     setState(() {
       switch (method) {
         case 'Cash':
@@ -8555,43 +9282,53 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
           cardPaid = amount;
           break;
       }
-     
+      
       totalPaid = cashPaid + bankTransferPaid + creditUsed + cardPaid;
       remainingBalance = widget.netAmount - totalPaid;
+      
+      // For due tables, update card amount when other methods are changed
+      if (widget.isDueTable && method != 'Card') {
+        _updateCardAmountForDueTable();
+      }
+      
+      // For regular tables, update card amount when other methods are changed
+      if (!widget.isDueTable && method != 'Card' && _cardTabVisited) {
+        _autoFillCardAmount();
+      }
     });
   }
- 
+  
   Future<Map<String, dynamic>> _processPayment() async {
     if (_isProcessingPayment) return {'success': false, 'invoiceNumber': null};
     setState(() => _isProcessingPayment = true);
- 
+    
     if (widget.selectedTable != null && widget.selectedTable!.id == null) {
       _showError('Selected table has no valid ID. Please select a different table.');
       setState(() => _isProcessingPayment = false);
       return {'success': false, 'invoiceNumber': null};
     }
-   
+    
     double nonCashTotal = bankTransferPaid + creditUsed + cardPaid;
     double cashPayment = cashPaid;
-   
+    
     if (nonCashTotal > widget.netAmount) {
       _showError('Total non-cash payment (${nonCashTotal.toStringAsFixed(2)}) exceeds invoice amount (${widget.netAmount.toStringAsFixed(2)})');
       setState(() => _isProcessingPayment = false);
       return {'success': false, 'invoiceNumber': null};
     }
-   
+    
     if (totalPaid < widget.netAmount) {
       _showError('Total payment (${totalPaid.toStringAsFixed(2)}) is less than invoice amount (${widget.netAmount.toStringAsFixed(2)})');
       setState(() => _isProcessingPayment = false);
       return {'success': false, 'invoiceNumber': null};
     }
- 
+    
     if (creditUsed > 0 && widget.selectedCustomer?.id == null) {
       _showError('Customer ID is required for credit payment');
       setState(() => _isProcessingPayment = false);
       return {'success': false, 'invoiceNumber': null};
     }
- 
+    
     try {
       final paymentPayload = await _buildPaymentPayload();
       print('Payment Payload: ${json.encode(paymentPayload)}');
@@ -8601,22 +9338,22 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
           'Content-Type': 'application/json',
           'Accept': 'application/json',
           'Authorization': 'Bearer $authToken',
-          'referer': ApiConstants.REFERER_HEADER,
+          'referer': ApiConstants.refererHeader,
         },
         body: json.encode(paymentPayload),
       ).timeout(const Duration(seconds: 30));
-  
+      
       print('Response Status: ${response.statusCode}');
       print('Response Body: ${response.body}');
-   
+      
       if (response.statusCode == 200 || response.statusCode == 201) {
         final responseData = json.decode(response.body);
-     
+        
         String? invoiceNumber;
         if (responseData['data'] != null && responseData['data']['invoice_head'] != null) {
           invoiceNumber = responseData['data']['invoice_head']['invoice_code'];
         }
-     
+        
         await _showSuccessDialog(responseData, invoiceNumber);
         
         return {
@@ -8639,7 +9376,7 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
       setState(() => _isProcessingPayment = false);
     }
   }
- 
+  
   Future<void> _showSuccessDialog(Map<String, dynamic> responseData, String? invoiceNumber) async {
     return showDialog(
       context: context,
@@ -8719,209 +9456,209 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
       },
     );
   }
- 
- Future<Map<String, dynamic>> _buildPaymentPayload() async {
-  if (userData == null) {
-    throw Exception('User data not loaded. Please try again.');
-  }
-  String branch = userData!['branch_id']?.toString() ?? '1';
-  String userName = userData!['name']?.toString() ?? 'Unknown';
-  String userId = userData!['id']?.toString() ?? '0';
-  String saleType = widget.selectedTable != null
-      ? 'DINE IN'
-      : 'TAKE AWAY';
-  List<Map<String, dynamic>> items = [];
-  for (var item in widget.cartItems) {
-    double price = item.getPriceByOrderType(widget.selectedOrderType);
-    double disVal = item.getDiscount(widget.selectedOrderType);
-    double dis = item.discountType == '%' ? item.discountValue : 0.0;
-    double total = item.getTotalPrice(widget.selectedOrderType);
- 
-    int lotId = 0;
-    String lotNumber = item.product.lotNumber;
- 
-    if (item.product.lotsqty.isNotEmpty) {
-      for (var lot in item.product.lotsqty) {
-        final qty = int.tryParse(lot['qty']?.toString() ?? '0') ?? 0;
-        if (qty > 0) {
-          lotId = lot['id'] ?? lot['lot_id'] ?? 0;
-          lotNumber = lot['lot_number']?.toString() ?? '';
-          break;
+  
+  Future<Map<String, dynamic>> _buildPaymentPayload() async {
+    if (userData == null) {
+      throw Exception('User data not loaded. Please try again.');
+    }
+    String branch = userData!['branch_id']?.toString() ?? '1';
+    String userName = userData!['name']?.toString() ?? 'Unknown';
+    String userId = userData!['id']?.toString() ?? '0';
+    String saleType = widget.selectedTable != null
+        ? 'DINE IN'
+        : 'TAKE AWAY';
+    List<Map<String, dynamic>> items = [];
+    for (var item in widget.cartItems) {
+      double price = item.getPriceByOrderType(widget.selectedOrderType);
+      double disVal = item.getDiscount(widget.selectedOrderType);
+      double dis = item.discountType == '%' ? item.discountValue : 0.0;
+      double total = item.getTotalPrice(widget.selectedOrderType);
+      
+      int lotId = 0;
+      String lotNumber = item.product.lotNumber;
+      
+      if (item.product.lotsqty.isNotEmpty) {
+        for (var lot in item.product.lotsqty) {
+          final qty = int.tryParse(lot['qty']?.toString() ?? '0') ?? 0;
+          if (qty > 0) {
+            lotId = lot['id'] ?? lot['lot_id'] ?? 0;
+            lotNumber = lot['lot_number']?.toString() ?? '';
+            break;
+          }
         }
-      }
-   
-      if (lotId == 0 && lotNumber.isNotEmpty) {
-        try {
-          lotId = int.tryParse(lotNumber) ?? 0;
-        } catch (e) {
-          print('Failed to parse lot number: $lotNumber');
+        
+        if (lotId == 0 && lotNumber.isNotEmpty) {
+          try {
+            lotId = int.tryParse(lotNumber) ?? 0;
+          } catch (e) {
+            print('Failed to parse lot number: $lotNumber');
+          }
         }
-      }
-   
-      if (lotId == 0) {
-        final firstLot = item.product.lotsqty.first;
-        lotId = firstLot['id'] ?? firstLot['lot_id'] ?? 1;
-      }
-    } else {
-      if (item.product.lotNumber.isNotEmpty) {
-        try {
-          lotId = int.tryParse(item.product.lotNumber) ?? 1;
-        } catch (e) {
-          lotId = 1;
+        
+        if (lotId == 0) {
+          final firstLot = item.product.lotsqty.first;
+          lotId = firstLot['id'] ?? firstLot['lot_id'] ?? 1;
         }
       } else {
+        if (item.product.lotNumber.isNotEmpty) {
+          try {
+            lotId = int.tryParse(item.product.lotNumber) ?? 1;
+          } catch (e) {
+            lotId = 1;
+          }
+        } else {
+          lotId = 1;
+        }
+      }
+      
+      if (lotId == 0) {
         lotId = 1;
       }
+      
+      items.add({
+        'aQty': item.product.availableQuantity + item.quantity,
+        'bar_code': item.product.barCode,
+        'cost': item.product.cost,
+        'dis': dis,
+        'disVal': disVal,
+        'exp': item.product.expiryDate,
+        'lot_id': lotId,
+        'lot_index': 0,
+        'name': item.product.name,
+        'price': price,
+        'qty': item.quantity,
+        's_name': null,
+        'sid': item.product.tblStockId,
+        'stock': item.product.stockName,
+        'total': total.toStringAsFixed(2),
+        'total_discount': disVal.toStringAsFixed(2),
+        'unit': item.product.unit,
+        'special_note': item.specialNote ?? '', 
+      });
     }
- 
-    if (lotId == 0) {
-      lotId = 1;
-    }
- 
-    items.add({
-      'aQty': item.product.availableQuantity + item.quantity,
-      'bar_code': item.product.barCode,
-      'cost': item.product.cost,
-      'dis': dis,
-      'disVal': disVal,
-      'exp': item.product.expiryDate,
-      'lot_id': lotId,
-      'lot_index': 0,
-      'name': item.product.name,
-      'price': price,
-      'qty': item.quantity,
-      's_name': null,
-      'sid': item.product.tblStockId,
-      'stock': item.product.stockName,
-      'total': total.toStringAsFixed(2),
-      'total_discount': disVal.toStringAsFixed(2),
-      'unit': item.product.unit,
-      'special_note': item.specialNote ?? '', 
-    });
-  }
-  Map<String, dynamic> metadata = {
-    'id': widget.currentInvoiceId,
-    'advance_payment': '',
-    'bill_copy_issued': 0,
-    'billDis': widget.discountPercentage.toString(),
-    'billDisVal': widget.globalDiscountValue.toStringAsFixed(2),
-    'customer': widget.selectedCustomer != null ? {
-      'id': widget.selectedCustomer!.id,
-      'name': widget.selectedCustomer!.name,
-      'phone': widget.selectedCustomer!.phone ?? '',
-      'email': widget.selectedCustomer!.email ?? '',
-      'nic': widget.selectedCustomer!.nic ?? '',
-      'address': widget.selectedCustomer!.address ?? '',
-    } : {
-      'id': 0,
-      'name': 'Walk-in Customer',
-      'phone': '',
-      'email': '',
-      'nic': '',
-      'address': '',
-    },
-    'free_issue': 0,
-    'grossAmount': widget.totalSubtotal.toStringAsFixed(2),
-    'invDate': DateFormat('yyyy-MM-dd').format(DateTime.now()),
-    'items': items,
-    'netAmount': widget.netAmount.toStringAsFixed(2),
-    'order_now_order_info_id': "",
-    'room_booking': '',
-    'saleType': saleType,
-    'service_charge': widget.selectedTable != null ? widget.serviceAmount.toStringAsFixed(2) : '0.00',
-    'services': [],
-    'tbl_room_booking_id': '',
-    'waiter_id': widget.selectedWaiter?.id ?? 0,
-    'waiter_name': widget.selectedWaiter?.name ?? '',
-  };
-  if (widget.selectedTable != null) {
-    metadata['table_name_id'] = {
-      'id': widget.selectedTable!.id,
-      'name': widget.selectedTable!.name,
-      'service_charge': widget.selectedTable!.serviceCharge,
-      'special_note': widget.selectedTable!.specialNote,
+    Map<String, dynamic> metadata = {
+      'id': widget.currentInvoiceId,
+      'advance_payment': '',
+      'bill_copy_issued': 0,
+      'billDis': widget.discountPercentage.toString(),
+      'billDisVal': widget.globalDiscountValue.toStringAsFixed(2),
+      'customer': widget.selectedCustomer != null ? {
+        'id': widget.selectedCustomer!.id,
+        'name': widget.selectedCustomer!.name,
+        'phone': widget.selectedCustomer!.phone ?? '',
+        'email': widget.selectedCustomer!.email ?? '',
+        'nic': widget.selectedCustomer!.nic ?? '',
+        'address': widget.selectedCustomer!.address ?? '',
+      } : {
+        'id': 0,
+        'name': 'Walk-in Customer',
+        'phone': '',
+        'email': '',
+        'nic': '',
+        'address': '',
+      },
+      'free_issue': 0,
+      'grossAmount': widget.totalSubtotal.toStringAsFixed(2),
+      'invDate': DateFormat('yyyy-MM-dd').format(DateTime.now()),
+      'items': items,
+      'netAmount': widget.netAmount.toStringAsFixed(2),
+      'order_now_order_info_id': "",
+      'room_booking': '',
+      'saleType': saleType,
+      'service_charge': widget.selectedTable != null ? widget.serviceAmount.toStringAsFixed(2) : '0.00',
+      'services': [],
+      'tbl_room_booking_id': '',
+      'waiter_id': widget.selectedWaiter?.id ?? 0,
+      'waiter_name': widget.selectedWaiter?.name ?? '',
     };
-  }
-  Map<String, dynamic> bankData = {};
-  if (bankTransferPaid > 0) {
-    bankData = {
-      'amount': bankTransferPaid.toStringAsFixed(2),
-      'code': selectedBankTransferBank?['id']?.toString() ?? "",
-      'branch': branch,
-      'user_name': userName,
-      'user_id': userId,
-    };
-  }
-  Map<String, dynamic> cardData = {};
-  if (cardPaid > 0) {
-    cardData = {
-      'card_no': '0000',
-      'cardAmount': cardPaid.toStringAsFixed(2),
-      'cardType': 'VISA',
-    };
- 
-    if (selectedCardBank != null && selectedCardBank!.isNotEmpty) {
-      cardData['cardBank'] = {
-        'account_no': selectedCardBank!['account_no']?.toString() ?? '123456',
-        'account_type': selectedCardBank!['account_type']?.toString() ?? 'Saving',
-        'bank_code': selectedCardBank!['bank_code']?.toString() ?? 'BOC',
-        'bank_name': selectedCardBank!['bank_name']?.toString() ?? 'BOC',
-        'branch': selectedCardBank!['branch']?.toString() ?? 'Kurunegala',
-        'created_at': selectedCardBank!['created_at']?.toString() ?? '2025-04-07T11:35:51.000000Z',
-        'id': selectedCardBank!['id'] ?? 1,
-        'updated_at': selectedCardBank!['updated_at']?.toString() ?? '2025-04-07T11:35:51.000000Z',
-      };
-    } else {
-      cardData['cardBank'] = {
-        'account_no': '123456',
-        'account_type': 'Saving',
-        'bank_code': 'BOC',
-        'bank_name': 'Bank of Ceylon',
-        'branch': 'Kurunegala',
-        'created_at': '2025-04-07T11:35:51.000000Z',
-        'id': 1,
-        'updated_at': '2025-04-07T11:35:51.000000Z',
+    if (widget.selectedTable != null) {
+      metadata['table_name_id'] = {
+        'id': widget.selectedTable!.id,
+        'name': widget.selectedTable!.name,
+        'service_charge': widget.selectedTable!.serviceCharge,
+        'special_note': widget.selectedTable!.specialNote,
       };
     }
-  }
-  Map<String, dynamic> creditData = {};
-  if (creditUsed > 0) {
-    creditData = {
-      'amount': creditUsed.toStringAsFixed(2),
-      'customer_id': widget.selectedCustomer?.id?.toString() ?? "",
+    Map<String, dynamic> bankData = {};
+    if (bankTransferPaid > 0) {
+      bankData = {
+        'amount': bankTransferPaid.toStringAsFixed(2),
+        'code': selectedBankTransferBank?['id']?.toString() ?? "",
+        'branch': branch,
+        'user_name': userName,
+        'user_id': userId,
+      };
+    }
+    Map<String, dynamic> cardData = {};
+    if (cardPaid > 0) {
+      cardData = {
+        'card_no': '0000',
+        'cardAmount': cardPaid.toStringAsFixed(2),
+        'cardType': 'VISA',
+      };
+      
+      if (selectedCardBank != null && selectedCardBank!.isNotEmpty) {
+        cardData['cardBank'] = {
+          'account_no': selectedCardBank!['account_no']?.toString() ?? '123456',
+          'account_type': selectedCardBank!['account_type']?.toString() ?? 'Saving',
+          'bank_code': selectedCardBank!['bank_code']?.toString() ?? 'BOC',
+          'bank_name': selectedCardBank!['bank_name']?.toString() ?? 'BOC',
+          'branch': selectedCardBank!['branch']?.toString() ?? 'Kurunegala',
+          'created_at': selectedCardBank!['created_at']?.toString() ?? '2025-04-07T11:35:51.000000Z',
+          'id': selectedCardBank!['id'] ?? 1,
+          'updated_at': selectedCardBank!['updated_at']?.toString() ?? '2025-04-07T11:35:51.000000Z',
+        };
+      } else {
+        cardData['cardBank'] = {
+          'account_no': '123456',
+          'account_type': 'Saving',
+          'bank_code': 'BOC',
+          'bank_name': 'Bank of Ceylon',
+          'branch': 'Kurunegala',
+          'created_at': '2025-04-07T11:35:51.000000Z',
+          'id': 1,
+          'updated_at': '2025-04-07T11:35:51.000000Z',
+        };
+      }
+    }
+    Map<String, dynamic> creditData = {};
+    if (creditUsed > 0) {
+      creditData = {
+        'amount': creditUsed.toStringAsFixed(2),
+        'customer_id': widget.selectedCustomer?.id?.toString() ?? "",
+      };
+    }
+    String overBal = "";
+    return {
+      'advancePaymentApplied': 0,
+      'bank': bankTransferPaid > 0 ? bankData : {
+        'amount': "",
+        'code': "",
+        'branch': "",
+        'user_name': "",
+        'user_id': "",
+      },
+      'card': cardPaid > 0 ? cardData : {
+        'card_no': "",
+        'cardAmount': "",
+        'cardBank': {},
+        'cardType': "",
+      },
+      'cash': cashPaid > 0 ? cashPaid.toStringAsFixed(2) : "",
+      'cheque': {
+        'amount': "",
+        'bank': "",
+        'chequeDate': "",
+        'chequeNo': "",
+      },
+      'credit': creditUsed > 0 ? creditUsed.toStringAsFixed(2) : "",
+      'date': DateFormat('yyyy-MM-dd').format(DateTime.now()),
+      'metadata': metadata,
+      'overBal': overBal,
+      'type': 2,
     };
   }
-  String overBal = "";
-  return {
-    'advancePaymentApplied': 0,
-    'bank': bankTransferPaid > 0 ? bankData : {
-      'amount': "",
-      'code': "",
-      'branch': "",
-      'user_name': "",
-      'user_id': "",
-    },
-    'card': cardPaid > 0 ? cardData : {
-      'card_no': "",
-      'cardAmount': "",
-      'cardBank': {},
-      'cardType': "",
-    },
-    'cash': cashPaid > 0 ? cashPaid.toStringAsFixed(2) : "",
-    'cheque': {
-      'amount': "",
-      'bank': "",
-      'chequeDate': "",
-      'chequeNo': "",
-    },
-    'credit': creditUsed > 0 ? creditUsed.toStringAsFixed(2) : "",
-    'date': DateFormat('yyyy-MM-dd').format(DateTime.now()),
-    'metadata': metadata,
-    'overBal': overBal,
-    'type': 2,
-  };
-}
- 
+  
   void _showError(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -8934,7 +9671,7 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
       ),
     );
   }
- 
+  
   Widget _buildBankDropdownSection(String type) {
     if (!_initialLoadAttempted) {
       return Container(
@@ -8958,7 +9695,7 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
         ),
       );
     }
- 
+    
     if (_loadingBanks) {
       return Container(
         padding: const EdgeInsets.all(16),
@@ -8981,7 +9718,7 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
         ),
       );
     }
- 
+    
     if (_bankLoadError != null) {
       return Container(
         padding: const EdgeInsets.all(16),
@@ -9019,7 +9756,7 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
         ),
       );
     }
- 
+    
     if (banks.isEmpty) {
       return Container(
         padding: const EdgeInsets.all(16),
@@ -9033,7 +9770,7 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
         ),
       );
     }
- 
+    
     return _buildBankDropdown(
       value: type == 'transfer' ? selectedBankTransferBank : selectedCardBank,
       onChanged: (Map<String, dynamic>? newValue) {
@@ -9048,7 +9785,7 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
       label: type == 'transfer' ? 'Select Bank for Transfer' : 'Select Bank for Card',
     );
   }
- 
+  
   Widget _buildBankDropdown({
     required Map<String, dynamic>? value,
     required Function(Map<String, dynamic>?) onChanged,
@@ -9078,7 +9815,7 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
       onChanged: onChanged,
     );
   }
- 
+  
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -9129,7 +9866,7 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
                     ),
                   ),
                 ),
-             
+                
                 Expanded(
                   child: TabBarView(
                     controller: _tabController,
@@ -9157,6 +9894,13 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
                                 hintText: 'Enter cash amount',
                                 suffixText: 'LKR',
                                 prefixIcon: const Icon(Icons.money),
+                                helperText: widget.isDueTable 
+                                    ? 'Enter cash amount - card will auto-adjust to remaining balance'
+                                    : null,
+                                helperStyle: TextStyle(
+                                  color: primaryColor,
+                                  fontSize: 12,
+                                ),
                               ),
                               keyboardType: TextInputType.numberWithOptions(decimal: true),
                               onChanged: (value) => _updatePaymentAmount('Cash', value),
@@ -9164,7 +9908,7 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
                           ],
                         ),
                       ),
-                   
+                      
                       SingleChildScrollView(
                         padding: const EdgeInsets.all(16),
                         child: Column(
@@ -9188,6 +9932,13 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
                                 hintText: 'Enter transfer amount',
                                 suffixText: 'LKR',
                                 prefixIcon: const Icon(Icons.account_balance),
+                                helperText: widget.isDueTable 
+                                    ? 'Enter bank transfer amount - card will auto-adjust to remaining balance'
+                                    : null,
+                                helperStyle: TextStyle(
+                                  color: primaryColor,
+                                  fontSize: 12,
+                                ),
                               ),
                               keyboardType: TextInputType.numberWithOptions(decimal: true),
                               onChanged: (value) => _updatePaymentAmount('Bank Transfer', value),
@@ -9197,7 +9948,7 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
                           ],
                         ),
                       ),
-                   
+                      
                       SingleChildScrollView(
                         padding: const EdgeInsets.all(16),
                         child: Column(
@@ -9275,6 +10026,13 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
                                       hintText: 'Enter credit amount',
                                       suffixText: 'LKR',
                                       prefixIcon: const Icon(Icons.credit_card),
+                                      helperText: widget.isDueTable 
+                                          ? 'Enter credit amount - card will auto-adjust to remaining balance'
+                                          : null,
+                                      helperStyle: TextStyle(
+                                        color: primaryColor,
+                                        fontSize: 12,
+                                      ),
                                     ),
                                     keyboardType: TextInputType.numberWithOptions(decimal: true),
                                     onChanged: (value) => _updatePaymentAmount('Credit', value),
@@ -9284,7 +10042,7 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
                           ],
                         ),
                       ),
-                   
+                      
                       SingleChildScrollView(
                         padding: const EdgeInsets.all(16),
                         child: Column(
@@ -9309,7 +10067,7 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
                                 suffixText: 'LKR',
                                 prefixIcon: const Icon(Icons.credit_score),
                                 helperText: widget.isDueTable
-                                    ? 'Auto-filled with due table amount'
+                                    ? 'Auto-adjusted based on other payment methods'
                                     : 'Auto-filled with remaining balance',
                                 helperStyle: TextStyle(
                                   color: primaryColor,
@@ -9336,7 +10094,7 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
                                 DropdownMenuItem(value: 'OTHER', child: Text('Other')),
                               ],
                               onChanged: (value) {
-                                
+                                // Handle card type change
                               },
                             ),
                           ],
@@ -9348,7 +10106,7 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
               ],
             ),
           ),
-       
+          
           Expanded(
             flex: 2,
             child: Container(
@@ -9377,9 +10135,9 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
                       ),
                     ),
                   ),
-               
+                  
                   const Spacer(),
-               
+                  
                   Card(
                     elevation: 2,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -9407,9 +10165,9 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
                       ),
                     ),
                   ),
-               
+                  
                   const SizedBox(height: 20),
-               
+                  
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -9439,7 +10197,7 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
                           onPressed: _isProcessingPayment ? null : () async {
                             final result = await _processPayment();
                             if (result['success'] == true) {
-                             
+                              // Success handled in _showSuccessDialog
                             }
                           },
                           style: ElevatedButton.styleFrom(
@@ -9476,7 +10234,7 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
       ),
     );
   }
- 
+  
   Widget _buildPaymentSummaryRow(String label, String value, {bool isBold = false, bool isNegative = false}) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -9502,7 +10260,7 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
       ],
     );
   }
- 
+  
   Widget _buildPaymentBreakdownRow(String label, double amount, {bool isTotal = false}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6.0),
@@ -9529,6 +10287,6 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
       ),
     );
   }
- 
+  
   String _fmt(double v) => 'Rs. ${v.toStringAsFixed(2)}';
 }

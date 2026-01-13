@@ -1,9 +1,11 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+
 import 'package:resturant/DashboardScreen.dart';
 import 'package:resturant/InvoiceManagementScreen.dart';
 import 'package:resturant/StockScreen.dart';
+
 import 'package:shared_preferences/shared_preferences.dart';
 
 class MainDashboardScreen extends StatelessWidget {
@@ -200,11 +202,13 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                 MaterialPageRoute(builder: (_) => InvoiceManagementScreen()),
               );
             }),
-            // _buildDrawerItem(Icons.inventory_2_outlined, "Job History", () {
+
+
+            // _buildDrawerItem(Icons.inventory_2_outlined, "Teller CashBook", () {
             //   Navigator.pop(context);
             //   Navigator.push(
             //     context,
-            //     MaterialPageRoute(builder: (_) => JobHistoryScreen()),
+            //     MaterialPageRoute(builder: (_) => TellerCashBook()),
             //   );
             // }),
             // _buildDrawerItem(Icons.payments_outlined, "Cash Book", () {
@@ -214,6 +218,9 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
             //     MaterialPageRoute(builder: (_) => CashBookScreen()),
             //   );
             // }),
+
+
+
             // _buildDrawerItem(Icons.account_balance_outlined, "Teller Cash Book", () {
             //   Navigator.pop(context);
             //   Navigator.push(

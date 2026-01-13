@@ -60,6 +60,7 @@ dependencies:
   device_info_plus: ^9.0.0
   esc_pos_printer: ^4.1.0
   image_picker: ^0.8.7+4
+
   
 
 dev_dependencies:

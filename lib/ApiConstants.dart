@@ -2,9 +2,9 @@
 // =============================
 class ApiConstants {
   // Base URLs
-  static const String baseUrl = 'https://api-cloudchef.sltcloud.lk';
-  static const String refererHeader = 'https://api-cloudchef.sltcloud.lk';
-  static const String REFERER_HEADER = 'https://api-cloudchef.sltcloud.lk';
+  static const String baseUrl = 'https://api-kafenio.sltcloud.lk';
+  static const String refererHeader = 'https://api-kafenio.sltcloud.lk';
+  static const String REFERER_HEADER = 'https://api-kafenio.sltcloud.lk';
 
   // Helper method to get full URL
   static String getFullUrl(String endpoint) {
@@ -94,6 +94,7 @@ class ApiConstants {
   // Stock/Lot endpoints
   static const String updateLotQuantity = '/api/lot/update-qty';
 
+
   // Suppliers endpoint
   static const String suppliers = '/api/suppliers';
 
@@ -124,6 +125,9 @@ class ApiConstants {
     return '$cardBook?from_date=$fromDate&to_date=$toDate&bank_code=$bankCode&page=$page';
   }
 
+
+
+
   // Debtor/Creditor management endpoints
   static const String debtorManagement = '/api/debtor-management';
   static const String creditorManagement = '/api/creditor-management';
@@ -145,6 +149,9 @@ class ApiConstants {
   static String getSupplierLedgerUrl(String supplierId) {
     return '$creditorManagement/$supplierId/get-ledger';
   }
+
+  // Cancellation endpoint
+  static const String cancelItem = '/api/invoice/cancel-item';
 
   static String getSupplierBillsUrl(String supplierId, {bool unpaidOnly = true}) {
     return '$creditorManagement/$supplierId/get-grns?paid=${unpaidOnly ? 0 : 1}';
