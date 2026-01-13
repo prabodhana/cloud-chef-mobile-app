@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
+import 'package:resturant/ApiConstants.dart';
 
 class StockScreen extends StatefulWidget {
   const StockScreen({Key? key}) : super(key: key);
@@ -19,7 +20,7 @@ class _StockScreenState extends State<StockScreen> {
   List<StockItem> filteredItems = [];
   bool isLoading = true;
   String searchQuery = '';
-  String baseUrl = 'https://api-kafenio.sltcloud.lk/api';
+  String get baseUrl => '${ApiConstants.baseUrl}/api';
   int _rowsPerPage = 10;
   int _currentPage = 0;
   String? _sortColumn;

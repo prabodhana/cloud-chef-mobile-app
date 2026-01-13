@@ -2,9 +2,13 @@
 // =============================
 class ApiConstants {
   // Base URLs
-  static const String baseUrl = 'https://api-kafenio.sltcloud.lk';
-  static const String refererHeader = 'https://api-kafenio.sltcloud.lk';
-  static const String REFERER_HEADER = 'https://api-kafenio.sltcloud.lk';
+  static const String baseUrl = 'https://api-slt-cloudchef.posbill.net';
+  static const String refererHeader = 'https://api-slt-cloudchef.posbill.net';
+  static const String REFERER_HEADER = 'https://api-slt-cloudchef.posbill.net';
+
+  // static const String baseUrl = 'https://api-kafenio.sltcloud.lk';
+  // static const String refererHeader = 'https://api-kafenio.sltcloud.lk';
+  // static const String REFERER_HEADER = 'https://api-kafenio.sltcloud.lk';
 
   // Helper method to get full URL
   static String getFullUrl(String endpoint) {
