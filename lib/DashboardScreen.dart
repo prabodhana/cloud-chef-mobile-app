@@ -80,14 +80,27 @@ class _AuthCheckScreenState extends State<AuthCheckScreen> {
   Future<void> _checkAuthStatus() async {
     final token = await AuthService.getToken();
 
-    if (mounted) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (context) =>
-              token != null ? const DashboardScreen() : const LoginScreen(),
-        ),
-      );
+    if (token == null) {
+      // No token found, go to login
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const LoginScreen()),
+        );
+      }
+    } else {
+      // Token exists, validate it
+      final isValid = await AuthService.validateToken();
+
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) =>
+                isValid ? const DashboardScreen() : const LoginScreen(),
+          ),
+        );
+      }
     }
 
     setState(() => _isLoading = false);
@@ -170,7 +183,13 @@ class _LoginScreenState extends State<LoginScreen> {
             data['data']?['token'] ?? data['token'] ?? data['access_token'];
 
         if (token != null && token.isNotEmpty) {
-          await AuthService.saveToken(token);
+          // Save token with error handling
+          try {
+            await AuthService.saveToken(token);
+            print('Token saved successfully');
+          } catch (e) {
+            throw Exception('Failed to save authentication token: $e');
+          }
 
           final userResponse = await http.get(
             Uri.parse(ApiConstants.getFullUrl(ApiConstants.getUser)),
@@ -186,6 +205,7 @@ class _LoginScreenState extends State<LoginScreen> {
             final userData = json.decode(userResponse.body);
             final prefs = await SharedPreferences.getInstance();
             await prefs.setString('user_data', json.encode(userData));
+            print('User data saved successfully');
           } else {
             throw Exception(
                 'Failed to fetch user data: ${userResponse.statusCode}');
@@ -348,24 +368,46 @@ class AuthService {
   static const String _tokenKey = 'auth_token';
 
   static Future<void> saveToken(String token) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_tokenKey, token);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final success = await prefs.setString(_tokenKey, token);
+      if (!success) {
+        throw Exception('Failed to save token to SharedPreferences');
+      }
+      // Verify token was saved
+      final savedToken = prefs.getString(_tokenKey);
+      if (savedToken != token) {
+        throw Exception('Token verification failed after save');
+      }
+    } catch (e) {
+      print('Error saving token: $e');
+      rethrow;
+    }
   }
 
   static Future<String?> getToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_tokenKey);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getString(_tokenKey);
+    } catch (e) {
+      print('Error getting token: $e');
+      return null;
+    }
   }
 
   static Future<void> logout() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_tokenKey);
-    await prefs.remove('user_data');
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_tokenKey);
+      await prefs.remove('user_data');
+    } catch (e) {
+      print('Error during logout: $e');
+    }
   }
 
   static Future<bool> validateToken() async {
     final token = await getToken();
-    if (token == null) return false;
+    if (token == null || token.isEmpty) return false;
 
     try {
       final response = await http.get(
@@ -381,6 +423,7 @@ class AuthService {
 
       return response.statusCode >= 200 && response.statusCode < 300;
     } catch (e) {
+      print('Token validation error: $e');
       return false;
     }
   }
@@ -1032,6 +1075,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     final token = await AuthService.getToken();
     if (token == null) {
+      await _handleUnauthorized();
+      return;
+    }
+
+    // Validate token before loading data
+    final isValid = await AuthService.validateToken();
+    if (!isValid) {
       await _handleUnauthorized();
       return;
     }
@@ -5683,7 +5733,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     _invalidateCache();
     _updateCartTotals();
-    Navigator.pop(context);
   }
 
   void _removeFromCart(int index) {
