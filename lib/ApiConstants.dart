@@ -1,14 +1,11 @@
+
 // API CONSTANTS (Centralized API URLs)
 // =============================
 class ApiConstants {
   // Base URLs
-  static const String baseUrl = 'https://api-slt-cloudchef.posbill.net';
-  static const String refererHeader = 'https://api-slt-cloudchef.posbill.net';
-  static const String REFERER_HEADER = 'https://api-slt-cloudchef.posbill.net';
-
-  // static const String baseUrl = 'https://api-kafenio.sltcloud.lk';
-  // static const String refererHeader = 'https://api-kafenio.sltcloud.lk';
-  // static const String REFERER_HEADER = 'https://api-kafenio.sltcloud.lk';
+  static const String baseUrl = 'https://api-kafenio.sltcloud.lk';
+  static const String refererHeader = 'https://api-kafenio.sltcloud.lk';
+  static const String REFERER_HEADER = 'https://api-kafenio.sltcloud.lk';
 
   // Helper method to get full URL
   static String getFullUrl(String endpoint) {
@@ -24,6 +21,19 @@ class ApiConstants {
 
   // Users endpoints
   static const String users = '/api/users';
+
+  // Bank endpoints
+  static const String bankList = '/api/bank-list';
+  static String bankListWithPagination(int page, int perPage) => '$bankList?page=$page&per_page=$perPage';
+  static String bankListById(int id) => '$bankList/$id';
+
+  // Tables endpoints
+  static const String getTables = '/api/table-name';
+  static String tableById(int id) => '$getTables/$id';
+
+  // Waiters endpoints
+  static const String getWaiters = '/api/waiters';
+  static String waiterById(int id) => '$getWaiters/$id';
 
   // Stock/Category endpoints
   static const String getCategories = '/api/stock/create-data/category/get';
@@ -59,15 +69,11 @@ class ApiConstants {
   static String locationGet = '/api/stock/create-data/location/get';
   static String locationRemove(int id) => '/api/stock/create-data/location/$id/remove';
 
-  // Tables endpoints
-  static const String getTables = '/api/table-name';
+  // Table bill endpoints
   static const String tableBillFind = '/api/invoice-create/table-bill-find';
   static const String getDueTables = '/api/invoice-create/get-due-tables';
   static const String getDueTableItems = '/api/invoice-create/get-due-table-items';
   static const String markTablePaid = '/api/invoice-create/mark-table-paid';
-
-  // Waiters endpoints
-  static const String getWaiters = '/api/waiters';
 
   // Orders endpoints
   static const String getOrders = '/api/order';
@@ -82,7 +88,6 @@ class ApiConstants {
   static const String processPayment = '/api/payment';
   static const String payment = '/api/payment';
   static const String createPayment = '/api/payment';
-  static const String bankList = '/api/bank-list';
 
   // Invoice management endpoints
   static const String invoiceManagementBase = '/api/invoice-management';
@@ -97,7 +102,6 @@ class ApiConstants {
 
   // Stock/Lot endpoints
   static const String updateLotQuantity = '/api/lot/update-qty';
-
 
   // Suppliers endpoint
   static const String suppliers = '/api/suppliers';
@@ -128,9 +132,6 @@ class ApiConstants {
   static String getCardBookUrl(String fromDate, String toDate, String bankCode, int page) {
     return '$cardBook?from_date=$fromDate&to_date=$toDate&bank_code=$bankCode&page=$page';
   }
-
-
-
 
   // Debtor/Creditor management endpoints
   static const String debtorManagement = '/api/debtor-management';

@@ -48,7 +48,8 @@ class MyApp extends StatelessWidget {
             shadowColor: Colors.blue.withOpacity(0.3),
           ),
         ),
-        cardTheme: CardThemeData(
+        
+        cardTheme: CardTheme(
           elevation: 2,
           shadowColor: Colors.black.withOpacity(0.1),
           shape:
@@ -80,14 +81,27 @@ class _AuthCheckScreenState extends State<AuthCheckScreen> {
   Future<void> _checkAuthStatus() async {
     final token = await AuthService.getToken();
 
-    if (mounted) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (context) =>
-              token != null ? const DashboardScreen() : const LoginScreen(),
-        ),
-      );
+    if (token == null) {
+      // No token found, go to login
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const LoginScreen()),
+        );
+      }
+    } else {
+      // Token exists, validate it
+      final isValid = await AuthService.validateToken();
+
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) =>
+                isValid ? const DashboardScreen() : const LoginScreen(),
+          ),
+        );
+      }
     }
 
     setState(() => _isLoading = false);
@@ -119,6 +133,10 @@ class _AuthCheckScreenState extends State<AuthCheckScreen> {
     );
   }
 }
+
+
+
+
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -170,7 +188,13 @@ class _LoginScreenState extends State<LoginScreen> {
             data['data']?['token'] ?? data['token'] ?? data['access_token'];
 
         if (token != null && token.isNotEmpty) {
-          await AuthService.saveToken(token);
+          // Save token with error handling
+          try {
+            await AuthService.saveToken(token);
+            print('Token saved successfully');
+          } catch (e) {
+            throw Exception('Failed to save authentication token: $e');
+          }
 
           final userResponse = await http.get(
             Uri.parse(ApiConstants.getFullUrl(ApiConstants.getUser)),
@@ -186,6 +210,7 @@ class _LoginScreenState extends State<LoginScreen> {
             final userData = json.decode(userResponse.body);
             final prefs = await SharedPreferences.getInstance();
             await prefs.setString('user_data', json.encode(userData));
+            print('User data saved successfully');
           } else {
             throw Exception(
                 'Failed to fetch user data: ${userResponse.statusCode}');
@@ -223,149 +248,363 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.grey[50],
-      body: Center(
-        child: SingleChildScrollView(
-          child: Container(
-            constraints: const BoxConstraints(maxWidth: 400),
-            margin: const EdgeInsets.all(20),
-            child: Card(
-              elevation: 8,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(24)),
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        color: Colors.blue.withOpacity(0.1),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(Icons.point_of_sale,
-                          size: 64, color: Colors.blue),
-                    ).animate().fadeIn(duration: 600.ms),
-                    const SizedBox(height: 20),
-                    Text(
-                      'Cloud Chef POS',
-                      style: GoogleFonts.poppins(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.blue,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Welcome back! Please sign in',
-                      style: GoogleFonts.poppins(
-                        color: Colors.grey[600],
-                        fontSize: 14,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 24),
-                    TextField(
-                      controller: _usernameController,
-                      decoration: InputDecoration(
-                        labelText: 'Username',
-                        prefixIcon: const Icon(Icons.person_outline),
-                        border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12)),
-                        filled: true,
-                        fillColor: Colors.grey[50],
-                      ),
-                      onSubmitted: (_) => _login(),
-                    ),
-                    const SizedBox(height: 16),
-                    TextField(
-                      controller: _passwordController,
-                      obscureText: _obscurePassword,
-                      decoration: InputDecoration(
-                        labelText: 'Password',
-                        prefixIcon: const Icon(Icons.lock_outline),
-                        suffixIcon: IconButton(
-                          icon: Icon(
-                            _obscurePassword
-                                ? Icons.visibility_outlined
-                                : Icons.visibility_off_outlined,
-                            color: Colors.grey,
+@override
+Widget build(BuildContext context) {
+  return Scaffold(
+    body: Stack(
+      children: [
+        // Background image with Kafenio Colombo design
+        Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Colors.black.withOpacity(0.7),
+                Colors.black.withOpacity(0.8),
+              ],
+            ),
+          ),
+          child: Image.asset(
+            'images/kafenio.jpeg',
+            fit: BoxFit.cover,
+            width: double.infinity,
+            height: double.infinity,
+          ),
+        ),
+        
+        // Dark overlay for better text readability
+        Container(
+          color: Colors.black.withOpacity(0.4),
+        ),
+
+        // Left-aligned login form - COMPACT VERSION
+        Align(
+          alignment: Alignment.centerLeft,
+          child: SingleChildScrollView(
+            child: Container(
+              constraints: const BoxConstraints(
+                maxWidth: 300,  // Reduced from 350
+                maxHeight: 450, // Reduced from 500
+              ),
+              margin: const EdgeInsets.only(left: 20, right: 20), // Reduced left margin
+              child: Card(
+                elevation: 12, // Reduced from 16
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16), // Smaller radius
+                ),
+                color: Colors.white.withOpacity(0.95),
+                child: Padding(
+                  padding: const EdgeInsets.all(16), // Reduced from 20
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Logo/Icon with Kafenio style - More compact
+                      // Center(
+                      //   child: Container(
+                      //     padding: const EdgeInsets.all(8), // Reduced from 10
+                      //     decoration: BoxDecoration(
+                      //       color: const Color(0xFFD4AF37).withOpacity(0.1),
+                      //       shape: BoxShape.circle,
+                      //       border: Border.all(
+                      //         color: const Color(0xFFD4AF37),
+                      //         width: 1.5, // Reduced from 2
+                      //       ),
+                      //     ),
+                      //     child: const Icon(
+                      //       Icons.coffee,
+                      //       size: 32, // Reduced from 40
+                      //       color: Color(0xFF8B4513),
+                      //     ),
+                      //   ).animate().fadeIn(duration: 600.ms),
+                      // ),
+                      
+                      // const SizedBox(height: 8), // Reduced from 12
+                      
+                      // // Kafenio Colombo Title - More compact
+                      Center(
+                        child: Text(
+                          'KAFENIO COLOMBO',
+                          style: GoogleFonts.playfairDisplay(
+                            fontSize: 20, // Reduced from 22
+                            fontWeight: FontWeight.w700,
+                            color: const Color(0xFF8B4513),
+                            letterSpacing: 1.0, // Reduced from 1.2
                           ),
-                          onPressed: () => setState(
-                              () => _obscurePassword = !_obscurePassword),
                         ),
-                        border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12)),
-                        filled: true,
-                        fillColor: Colors.grey[50],
                       ),
-                      onSubmitted: (_) => _login(),
-                    ),
-                    const SizedBox(height: 24),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 50,
-                      child: ElevatedButton(
-                        onPressed: _isLoading ? null : _login,
-                        style: ElevatedButton.styleFrom(
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12)),
-                          backgroundColor: Colors.blue,
-                          foregroundColor: Colors.white,
+                      
+                      const SizedBox(height: 2), // Reduced from 4
+                      
+                      // Subtitle - More compact
+                      Center(
+                        child: Text(
+                          'Premium Coffee Experience',
+                          style: GoogleFonts.lato(
+                            fontSize: 11, // Reduced from 12
+                            fontWeight: FontWeight.w500,
+                            color: const Color(0xFFD4AF37),
+                            letterSpacing: 0.8, // Reduced from 1.0
+                          ),
                         ),
-                        child: _isLoading
-                            ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                    strokeWidth: 2, color: Colors.white),
-                              )
-                            : Text(
-                                'SIGN IN',
-                                style: GoogleFonts.poppins(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16,
+                      ),
+                      
+                      const SizedBox(height: 16), // Reduced from 20
+                      
+                      // Username field - More compact
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Username',
+                            style: GoogleFonts.lato(
+                              fontSize: 12, // Reduced from 13
+                              fontWeight: FontWeight.w600,
+                              color: Colors.grey[800],
+                            ),
+                          ),
+                          const SizedBox(height: 3), // Reduced from 4
+                          TextField(
+                            controller: _usernameController,
+                            style: GoogleFonts.lato(fontSize: 13), // Reduced from 14
+                            decoration: InputDecoration(
+                              hintText: 'Enter username',
+                              hintStyle: GoogleFonts.lato(
+                                fontSize: 12, // Reduced from 13
+                                color: Colors.grey[500],
+                              ),
+                              prefixIcon: const Icon(
+                                Icons.person_outline,
+                                color: Color(0xFF8B4513),
+                                size: 16, // Reduced from 18
+                              ),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(6), // Smaller radius
+                                borderSide: BorderSide(
+                                  color: const Color(0xFFD4AF37).withOpacity(0.5),
                                 ),
                               ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(6),
+                                borderSide: BorderSide(
+                                  color: const Color(0xFFD4AF37).withOpacity(0.5),
+                                ),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(6),
+                                borderSide: const BorderSide(
+                                  color: Color(0xFF8B4513),
+                                  width: 1.2, // Reduced from 1.5
+                                ),
+                              ),
+                              filled: true,
+                              fillColor: Colors.white,
+                              contentPadding: const EdgeInsets.symmetric(
+                                vertical: 10, // Reduced from 12
+                                horizontal: 12, // Reduced from 14
+                              ),
+                              isDense: true,
+                            ),
+                            onSubmitted: (_) => _login(),
+                          ),
+                        ],
                       ),
-                    ),
-                  ],
+                      
+                      const SizedBox(height: 12), // Reduced from 14
+                      
+                      // Password field - More compact
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Password',
+                            style: GoogleFonts.lato(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.grey[800],
+                            ),
+                          ),
+                          const SizedBox(height: 3),
+                          TextField(
+                            controller: _passwordController,
+                            obscureText: _obscurePassword,
+                            style: GoogleFonts.lato(fontSize: 13),
+                            decoration: InputDecoration(
+                              hintText: 'Enter password',
+                              hintStyle: GoogleFonts.lato(
+                                fontSize: 12,
+                                color: Colors.grey[500],
+                              ),
+                              prefixIcon: const Icon(
+                                Icons.lock_outline,
+                                color: Color(0xFF8B4513),
+                                size: 16,
+                              ),
+                              suffixIcon: IconButton(
+                                icon: Icon(
+                                  _obscurePassword
+                                      ? Icons.visibility_outlined
+                                      : Icons.visibility_off_outlined,
+                                  color: const Color(0xFF8B4513),
+                                  size: 16,
+                                ),
+                                onPressed: () => setState(
+                                  () => _obscurePassword = !_obscurePassword,
+                                ),
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(),
+                              ),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(6),
+                                borderSide: BorderSide(
+                                  color: const Color(0xFFD4AF37).withOpacity(0.5),
+                                ),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(6),
+                                borderSide: BorderSide(
+                                  color: const Color(0xFFD4AF37).withOpacity(0.5),
+                                ),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(6),
+                                borderSide: const BorderSide(
+                                  color: Color(0xFF8B4513),
+                                  width: 1.2,
+                                ),
+                              ),
+                              filled: true,
+                              fillColor: Colors.white,
+                              contentPadding: const EdgeInsets.symmetric(
+                                vertical: 10,
+                                horizontal: 12,
+                              ),
+                              isDense: true,
+                            ),
+                            onSubmitted: (_) => _login(),
+                          ),
+                        ],
+                      ),
+                      
+                      const SizedBox(height: 16), // Reduced from 20
+                      
+                      // Sign in button - More compact
+                      SizedBox(
+                        width: double.infinity,
+                        height: 40, // Reduced from 44
+                        child: ElevatedButton(
+                          onPressed: _isLoading ? null : _login,
+                          style: ElevatedButton.styleFrom(
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(6), // Smaller radius
+                            ),
+                            backgroundColor: const Color(0xFF8B4513),
+                            foregroundColor: Colors.white,
+                            elevation: 3, // Reduced from 4
+                            shadowColor: const Color(0xFF8B4513).withOpacity(0.3),
+                            padding: const EdgeInsets.symmetric(horizontal: 14), // Reduced
+                          ),
+                          child: _isLoading
+                              ? const SizedBox(
+                                  width: 16, // Smaller
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 1.8, // Reduced
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Text(
+                                      'SIGN IN',
+                                      style: GoogleFonts.lato(
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 13, // Reduced from 14
+                                        letterSpacing: 0.8, // Reduced
+                                      ),
+                                    ),
+                                    const SizedBox(width: 4), // Reduced from 6
+                                    const Icon(
+                                      Icons.arrow_forward,
+                                      size: 14, // Smaller icon
+                                    ),
+                                  ],
+                                ),
+                        ),
+                      ),
+                      
+                      const SizedBox(height: 12), // Reduced from 16
+                      
+                      // Footer text - More compact
+                      // Center(
+                      //   child: Text(
+                      //     'Experience the authentic taste of Colombo',
+                      //     style: GoogleFonts.lato(
+                      //       fontSize: 9, // Reduced from 10
+                      //       color: Colors.grey[600],
+                      //       fontStyle: FontStyle.italic,
+                      //     ),
+                      //   ),
+                      // ),
+                    ],
+                  ),
                 ),
               ),
             ),
           ),
         ),
-      ),
-    );
-  }
+      ],
+    ),
+  );
+}
 }
 
 class AuthService {
   static const String _tokenKey = 'auth_token';
 
   static Future<void> saveToken(String token) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_tokenKey, token);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final success = await prefs.setString(_tokenKey, token);
+      if (!success) {
+        throw Exception('Failed to save token to SharedPreferences');
+      }
+      // Verify token was saved
+      final savedToken = prefs.getString(_tokenKey);
+      if (savedToken != token) {
+        throw Exception('Token verification failed after save');
+      }
+    } catch (e) {
+      print('Error saving token: $e');
+      rethrow;
+    }
   }
 
   static Future<String?> getToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_tokenKey);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getString(_tokenKey);
+    } catch (e) {
+      print('Error getting token: $e');
+      return null;
+    }
   }
 
   static Future<void> logout() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_tokenKey);
-    await prefs.remove('user_data');
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_tokenKey);
+      await prefs.remove('user_data');
+    } catch (e) {
+      print('Error during logout: $e');
+    }
   }
 
   static Future<bool> validateToken() async {
     final token = await getToken();
-    if (token == null) return false;
+    if (token == null || token.isEmpty) return false;
 
     try {
       final response = await http.get(
@@ -381,6 +620,7 @@ class AuthService {
 
       return response.statusCode >= 200 && response.statusCode < 300;
     } catch (e) {
+      print('Token validation error: $e');
       return false;
     }
   }
@@ -956,9 +1196,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
   bool _isScanning = false;
   bool _isBluetoothEnabled = false;
   int _orderNumber = 1;
-  static const String defaultCashierPrinterName = 'Printer001';
-  static const String defaultKitchenPrinterName = '4B-2023PA-EE15';
-  static const String defaultBotPrinterName = 'BOT-Printer';
+  static const String defaultCashierPrinterName = '';
+  static const String defaultKitchenPrinterName = 'Printer001';
+  static const String defaultBotPrinterName = 'Printer001-4B82';
   double _serviceAmountOverride = 0.0;
   Map<String, dynamic>? _cartDataForPrinting;
   bool _showListView = true;
@@ -1032,6 +1272,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     final token = await AuthService.getToken();
     if (token == null) {
+      await _handleUnauthorized();
+      return;
+    }
+
+    // Validate token before loading data
+    final isValid = await AuthService.validateToken();
+    if (!isValid) {
       await _handleUnauthorized();
       return;
     }
@@ -4552,323 +4799,326 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
-  Future<void> _saveInvoice({bool isDue = false}) async {
-    if (_cartItems.isEmpty) {
-      return;
+ Future<void> _saveInvoice({bool isDue = false}) async {
+  if (_cartItems.isEmpty) {
+    return;
+  }
+  
+  // Check if this is an update to a due table
+  final bool isDueTableUpdate = _isEditingDueTable && _currentInvoiceId != null;
+  
+  if (isDueTableUpdate && _currentInvoiceId != null) {
+    await _updateDueTableInvoice();
+    return;
+  }
+  
+  final hasKitchenItems = _hasKitchenItems(_cartItems);
+  
+  if (_connectedKitchenDevices.isEmpty && hasKitchenItems) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text('Warning: Kitchen printer not connected. KOT will not be printed.'),
+        backgroundColor: Colors.orange,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+  
+  if (_connectedBotDevices.isEmpty && _cartItems.isNotEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text('Warning: BOT printer not connected. BOT will not be printed.'),
+        backgroundColor: Colors.orange,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+  
+  final Table? currentTable = _selectedTable;
+  final List<CartItem> cartItemsToSave = List<CartItem>.from(_cartItems);
+  
+  String specialNote = '';
+  
+  // For new tables (not due table updates), show note dialog
+  // For due table updates, this method returns early above
+  if (_selectedTable != null && _selectedTable!.specialNote.isEmpty) {
+    // Only ask for note if table doesn't have one
+    final noteResult = await _showSaveInvoiceNoteDialog();
+    if (noteResult == null) {
+      return; // User cancelled
     }
-
-    if (_isEditingDueTable && _currentInvoiceId != null) {
-      await _updateDueTableInvoice();
-      return;
-    }
-
-    final hasKitchenItems = _hasKitchenItems(_cartItems);
-
-    if (_connectedKitchenDevices.isEmpty && hasKitchenItems) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text(
-              'Warning: Kitchen printer not connected. KOT will not be printed.'),
-          backgroundColor: Colors.orange,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-    }
-
-    if (_connectedBotDevices.isEmpty && _cartItems.isNotEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text(
-              'Warning: BOT printer not connected. BOT will not be printed.'),
-          backgroundColor: Colors.orange,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-    }
-
-    final Table? currentTable = _selectedTable;
-    final List<CartItem> cartItemsToSave = List<CartItem>.from(_cartItems);
-
-    final specialNote = await _showSaveInvoiceNoteDialog();
-    if (specialNote == null) {
-      return;
-    }
-
-    setState(() {
-      _isSavingInvoice = true;
-    });
-
-    _showLoadingOverlay('Saving Invoice...');
-
-    try {
-      final headers = await _getAuthHeaders();
-
-      String saleType = _selectedTable != null ? 'DINE IN' : 'TAKE AWAY';
-
-      List<Map<String, dynamic>> items = [];
-
-      for (var item in cartItemsToSave) {
-        double price = item.getPriceByOrderType(_selectedOrderType);
-        double disVal = item.getDiscount(_selectedOrderType);
-        double dis = item.discountType == '%' ? item.discountValue : 0.0;
-        double total = item.getTotalPrice(_selectedOrderType);
-
-        int lotId = 0;
-        String? lotNumber;
-
-        if (item.product.lotsqty.isNotEmpty) {
-          for (var lot in item.product.lotsqty) {
-            final qty = int.tryParse(lot['qty']?.toString() ?? '0') ?? 0;
-            if (qty > 0) {
-              lotId = lot['id'] ?? lot['lot_id'] ?? 0;
-              lotNumber = lot['lot_number']?.toString();
-              break;
-            }
+    specialNote = noteResult;
+  } else if (_selectedTable != null) {
+    // Use existing note
+    specialNote = _selectedTable!.specialNote;
+  }
+  
+  setState(() {
+    _isSavingInvoice = true;
+  });
+  
+  _showLoadingOverlay('Saving Invoice...');
+  
+  try {
+    final headers = await _getAuthHeaders();
+    
+    String saleType = _selectedTable != null 
+        ? 'DINE IN'  
+        : 'TAKE AWAY'; 
+    
+    List<Map<String, dynamic>> items = [];
+    
+    for (var item in cartItemsToSave) {
+      double price = item.getPriceByOrderType(_selectedOrderType);
+      double disVal = item.getDiscount(_selectedOrderType);
+      double dis = item.discountType == '%' ? item.discountValue : 0.0;
+      double total = item.getTotalPrice(_selectedOrderType);
+      
+      int lotId = 0;
+      String? lotNumber;
+      
+      if (item.product.lotsqty.isNotEmpty) {
+        for (var lot in item.product.lotsqty) {
+          final qty = int.tryParse(lot['qty']?.toString() ?? '0') ?? 0;
+          if (qty > 0) {
+            lotId = lot['id'] ?? lot['lot_id'] ?? 0;
+            lotNumber = lot['lot_number']?.toString();
+            break;
           }
-
-          if (lotId == 0) {
-            final firstLot = item.product.lotsqty.first;
-            lotId = firstLot['id'] ?? firstLot['lot_id'] ?? 1;
-            lotNumber = firstLot['lot_number']?.toString();
-          }
-        } else {
-          if (item.product.lotNumber.isNotEmpty) {
-            try {
-              lotId = int.tryParse(item.product.lotNumber) ?? 1;
-              lotNumber = item.product.lotNumber;
-            } catch (e) {
-              lotId = 1;
-            }
-          } else {
+        }
+        
+        if (lotId == 0) {
+          final firstLot = item.product.lotsqty.first;
+          lotId = firstLot['id'] ?? firstLot['lot_id'] ?? 1;
+          lotNumber = firstLot['lot_number']?.toString();
+        }
+      } else {
+        if (item.product.lotNumber.isNotEmpty) {
+          try {
+            lotId = int.tryParse(item.product.lotNumber) ?? 1;
+            lotNumber = item.product.lotNumber;
+          } catch (e) {
             lotId = 1;
           }
-        }
-
-        if (lotId == 0) {
+        } else {
           lotId = 1;
         }
-
-        items.add({
-          'aQty': item.product.availableQuantity + item.quantity,
-          'bar_code': item.product.barCode,
-          'cost': item.product.cost,
-          'dis': dis,
-          'disVal': disVal,
-          'exp': item.product.expiryDate,
-          'lot_id': lotId,
-          'lot_index': 0,
-          'name': item.product.name,
-          'price': price,
-          'qty': item.quantity,
-          's_name': null,
-          'sid': item.product.tblStockId,
-          'stock': item.product.stockName,
-          'total': total.toStringAsFixed(2),
-          'total_discount': disVal.toStringAsFixed(2),
-          'unit': item.product.unit,
-          'special_note': item.specialNote ?? '',
-          'lot_number': lotNumber ?? item.product.lotNumber,
-        });
       }
-
-      Map<String, dynamic> metadata = {
-        'advance_payment': '',
-        'bill_copy_issued': 0,
-        'billDis': _discountPercentage.toString(),
-        'billDisVal': _globalDiscountValue.toStringAsFixed(2),
-        'customer': _selectedCustomer != null
-            ? {
-                'id': _selectedCustomer!.id,
-                'name': _selectedCustomer!.name,
-                'phone': _selectedCustomer!.phone,
-                'email': _selectedCustomer!.email,
-                'nic': _selectedCustomer!.nic,
-                'address': _selectedCustomer!.address,
-              }
-            : {
-                'id': 0,
-                'name': 'Walk-in Customer',
-                'phone': '',
-                'email': '',
-                'nic': '',
-                'address': '',
-              },
-        'free_issue': 0,
-        'grossAmount': _totalSubtotal.toStringAsFixed(2),
-        'invDate': DateFormat('yyyy-MM-dd').format(DateTime.now()),
-        'items': items,
-        'netAmount': _netAmount.toStringAsFixed(2),
-        'order_now_order_info_id': [],
-        'room_booking': '',
-        'saleType': saleType,
-        'service_charge':
-            _selectedTable != null ? _serviceAmount.toStringAsFixed(2) : '0.00',
-        'services': [],
-        'tbl_room_booking_id': '',
-        'waiter_id': _selectedWaiter?.id ?? 0,
-        'waiter_name': _selectedWaiter?.name ?? '',
-      };
-
-      if (currentTable != null && currentTable.id != null) {
-        metadata['table_name_id'] = {
-          'id': currentTable.id,
-          'name': currentTable.name,
-          'service_charge': currentTable.serviceCharge,
-          'special_note': specialNote,
-        };
+      
+      if (lotId == 0) {
+        lotId = 1;
       }
+      
+      items.add({
+        'aQty': item.product.availableQuantity + item.quantity,
+        'bar_code': item.product.barCode,
+        'cost': item.product.cost,
+        'dis': dis,
+        'disVal': disVal,
+        'exp': item.product.expiryDate,
+        'lot_id': lotId,
+        'lot_index': 0,
+        'name': item.product.name,
+        'price': price,
+        'qty': item.quantity,
+        's_name': null,
+        'sid': item.product.tblStockId,
+        'stock': item.product.stockName,
+        'total': total.toStringAsFixed(2),
+        'total_discount': disVal.toStringAsFixed(2),
+        'unit': item.product.unit,
+        'special_note': item.specialNote ?? '',
+        'lot_number': lotNumber ?? item.product.lotNumber,
+      });
+    }
 
-      final payload = {
-        'metadata': metadata,
-        'type': 2,
+    Map<String, dynamic> metadata = {
+      'advance_payment': '',
+      'bill_copy_issued': 0,
+      'billDis': _discountPercentage.toString(),
+      'billDisVal': _globalDiscountValue.toStringAsFixed(2),
+      'customer': _selectedCustomer != null ? {
+        'id': _selectedCustomer!.id,
+        'name': _selectedCustomer!.name,
+        'phone': _selectedCustomer!.phone,
+        'email': _selectedCustomer!.email,
+        'nic': _selectedCustomer!.nic,
+        'address': _selectedCustomer!.address,
+      } : {
+        'id': 0,
+        'name': 'Walk-in Customer',
+        'phone': '',
+        'email': '',
+        'nic': '',
+        'address': '',
+      },
+      'free_issue': 0,
+      'grossAmount': _totalSubtotal.toStringAsFixed(2),
+      'invDate': DateFormat('yyyy-MM-dd').format(DateTime.now()),
+      'items': items,
+      'netAmount': _netAmount.toStringAsFixed(2),
+      'order_now_order_info_id': [],
+      'room_booking': '',
+      'saleType': saleType,
+      'service_charge': _selectedTable != null ? _serviceAmount.toStringAsFixed(2) : '0.00',
+      'services': [],
+      'tbl_room_booking_id': '',
+      'waiter_id': _selectedWaiter?.id ?? 0,
+      'waiter_name': _selectedWaiter?.name ?? '',
+    };
+
+    if (currentTable != null && currentTable.id != null) {
+      metadata['table_name_id'] = {
+        'id': currentTable.id,
+        'name': currentTable.name,
+        'service_charge': currentTable.serviceCharge,
+        'special_note': specialNote,
       };
+    }
 
-      print('Save Invoice Payload: ${json.encode(payload)}');
+    final payload = {
+      'metadata': metadata,
+      'type': 2,
+    };
 
-      String endpoint = ApiConstants.getFullUrl(ApiConstants.saveInvoice);
+    print('Save Invoice Payload: ${json.encode(payload)}');
 
-      final uri = Uri.parse(endpoint).replace(queryParameters: {
+    String endpoint = ApiConstants.getFullUrl(ApiConstants.saveInvoice);
+    
+    final uri = Uri.parse(endpoint).replace(
+      queryParameters: {
         'bill_copy': '0',
         'due': isDue ? '1' : '0',
-      });
+      }
+    );
 
-      final response = await http
-          .post(
-            uri,
-            headers: headers,
-            body: json.encode(payload),
-          )
-          .timeout(const Duration(seconds: 30));
+    final response = await http.post(
+      uri,
+      headers: headers,
+      body: json.encode(payload),
+    ).timeout(const Duration(seconds: 30));
 
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        final responseData = json.decode(response.body);
-
-        String? invoiceNumber;
-        if (responseData['data'] != null &&
-            responseData['data']['invoice_head'] != null) {
-          invoiceNumber = responseData['data']['invoice_head']['invoice_code'];
-        } else if (responseData['invoice_code'] != null) {
-          invoiceNumber = responseData['invoice_code'];
-        } else if (responseData['invoice_number'] != null) {
-          invoiceNumber = responseData['invoice_number'];
-        }
-
-        String? kotCode =
-            responseData['kot_code'] ?? responseData['data']?['kot_code'];
-        String? botCode =
-            responseData['bot_code'] ?? responseData['data']?['bot_code'];
-
-        if (kotCode != null) {
-          setState(() {
-            _kotCode = kotCode;
-          });
-        }
-
-        if (botCode != null) {
-          setState(() {
-            _botCode = botCode;
-          });
-        }
-
-        final hasKitchenItemsInCart = _hasKitchenItems(cartItemsToSave);
-
-        if (_connectedKitchenDevices.isNotEmpty && hasKitchenItemsInCart) {
-          await _printKOT(onlyNewItems: _isEditingDueTable);
-        }
-
-        if (_connectedBotDevices.isNotEmpty && cartItemsToSave.isNotEmpty) {
-          await _printKOT(onlyNewItems: _isEditingDueTable, printBOT: true);
-        }
-
-        await _updateStockInDatabaseForSave(cartItemsToSave, headers);
-
-        _cartDataForPrinting = {
-          'cartItems': List<CartItem>.from(cartItemsToSave),
-          'selectedOrderType': _selectedOrderType,
-          'selectedCustomer': _selectedCustomer,
-          'selectedTable': currentTable,
-          'totalSubtotal': _totalSubtotal,
-          'totalItemDiscount': _totalItemDiscount,
-          'discountPercentage': _discountPercentage,
-          'globalDiscountValue': _globalDiscountValue,
-          'serviceAmount': _serviceAmount,
-          'netAmount': _netAmount,
-          'orderNumber': _orderNumber,
-          'invoiceNumber':
-              invoiceNumber ?? 'INV-${DateTime.now().millisecondsSinceEpoch}',
-          'kotCode': kotCode,
-          'botCode': botCode,
-        };
-
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      final responseData = json.decode(response.body);
+      
+      String? invoiceNumber;
+      if (responseData['data'] != null && responseData['data']['invoice_head'] != null) {
+        invoiceNumber = responseData['data']['invoice_head']['invoice_code'];
+      } else if (responseData['invoice_code'] != null) {
+        invoiceNumber = responseData['invoice_code'];
+      } else if (responseData['invoice_number'] != null) {
+        invoiceNumber = responseData['invoice_number'];
+      }
+      
+      String? kotCode = responseData['kot_code'] ?? responseData['data']?['kot_code'];
+      String? botCode = responseData['bot_code'] ?? responseData['data']?['bot_code'];
+      
+      if (kotCode != null) {
         setState(() {
-          for (var cartItem in _cartItems) {
-            final product = cartItem.product;
-            final productIndex =
-                _products.indexWhere((p) => p.id == product.id);
-            if (productIndex != -1) {
-              _products[productIndex].availableQuantity -= cartItem.quantity;
-              final filteredIndex =
-                  _filteredProducts.indexWhere((p) => p.id == product.id);
-              if (filteredIndex != -1) {
-                _filteredProducts[filteredIndex].availableQuantity -=
-                    cartItem.quantity;
-              }
+          _kotCode = kotCode;
+        });
+      }
+      
+      if (botCode != null) {
+        setState(() {
+          _botCode = botCode;
+        });
+      }
+      
+      final hasKitchenItemsInCart = _hasKitchenItems(cartItemsToSave);
+
+      if (_connectedKitchenDevices.isNotEmpty && hasKitchenItemsInCart) {
+        await _printKOT(onlyNewItems: _isEditingDueTable);
+      }
+
+      if (_connectedBotDevices.isNotEmpty && cartItemsToSave.isNotEmpty) {
+        await _printKOT(onlyNewItems: _isEditingDueTable, printBOT: true);
+      }
+      
+      await _updateStockInDatabaseForSave(cartItemsToSave, headers);
+      
+      _cartDataForPrinting = {
+        'cartItems': List<CartItem>.from(cartItemsToSave),
+        'selectedOrderType': _selectedOrderType,
+        'selectedCustomer': _selectedCustomer,
+        'selectedTable': currentTable,
+        'totalSubtotal': _totalSubtotal,
+        'totalItemDiscount': _totalItemDiscount,
+        'discountPercentage': _discountPercentage,
+        'globalDiscountValue': _globalDiscountValue,
+        'serviceAmount': _serviceAmount,
+        'netAmount': _netAmount,
+        'orderNumber': _orderNumber,
+        'invoiceNumber': invoiceNumber ?? 'INV-${DateTime.now().millisecondsSinceEpoch}',
+        'kotCode': kotCode,
+        'botCode': botCode,
+      };
+      
+      setState(() {
+        for (var cartItem in _cartItems) {
+          final product = cartItem.product;
+          final productIndex = _products.indexWhere((p) => p.id == product.id);
+          if (productIndex != -1) {
+            _products[productIndex].availableQuantity -= cartItem.quantity;
+            final filteredIndex = _filteredProducts.indexWhere((p) => p.id == product.id);
+            if (filteredIndex != -1) {
+              _filteredProducts[filteredIndex].availableQuantity -= cartItem.quantity;
             }
           }
-
-          _cartItems.clear();
-          _discountController.text = '0';
-          _currentInvoiceId = null;
-          _serviceAmountOverride = 0.0;
-          _isEditingDueTable = false;
-          _existingDueTableItems.clear();
-          _isProcessingDueTablePayment = false;
-          _kotCode = null;
-
-          if (currentTable != null) {
-            _selectedTable = Table(
-              id: currentTable.id,
-              name: currentTable.name,
-              serviceCharge: currentTable.serviceCharge,
-              hasDueOrders: false,
-              specialNote: specialNote,
-            );
-
-            _saveLocalTableNote(currentTable.id, specialNote);
-          }
-        });
-      } else {
-        print('Save Invoice Error: ${response.statusCode} - ${response.body}');
-        final errorData = json.decode(response.body);
-        if (errorData['errors'] != null) {
-          final errors = errorData['errors'];
-          String errorMessage = 'Validation errors:\n';
-          errors.forEach((key, value) {
-            errorMessage += '$key: ${value.join(', ')}\n';
-          });
-          throw Exception(errorMessage);
-        } else {
-          throw Exception(
-              'Failed to save invoice: ${response.statusCode} - ${response.body}');
         }
-      }
-    } catch (e) {
-      print('Save Invoice Exception: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error saving invoice: $e'),
-          behavior: SnackBarBehavior.floating,
-          backgroundColor: Colors.red,
-        ),
-      );
-    } finally {
-      _dismissLoadingOverlay();
-      if (mounted)
-        setState(() {
-          _isSavingInvoice = false;
+        
+        _cartItems.clear();
+        _discountController.text = '0';
+        _currentInvoiceId = null;
+        _serviceAmountOverride = 0.0;
+        _isEditingDueTable = false;
+        _existingDueTableItems.clear();
+        _isProcessingDueTablePayment = false;
+        _kotCode = null;
+        
+        if (currentTable != null) {
+          _selectedTable = Table(
+            id: currentTable.id,
+            name: currentTable.name,
+            serviceCharge: currentTable.serviceCharge,
+            hasDueOrders: false,
+            specialNote: specialNote,
+          );
+          
+          _saveLocalTableNote(currentTable.id, specialNote);
+        }
+      });
+      
+    } else {
+      print('Save Invoice Error: ${response.statusCode} - ${response.body}');
+      final errorData = json.decode(response.body);
+      if (errorData['errors'] != null) {
+        final errors = errorData['errors'];
+        String errorMessage = 'Validation errors:\n';
+        errors.forEach((key, value) {
+          errorMessage += '$key: ${value.join(', ')}\n';
         });
+        throw Exception(errorMessage);
+      } else {
+        throw Exception('Failed to save invoice: ${response.statusCode} - ${response.body}');
+      }
     }
+  } catch (e) {
+    print('Save Invoice Exception: $e');
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Error saving invoice: $e'),
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: Colors.red,
+      ),
+    );
+  } finally {
+    _dismissLoadingOverlay();
+    if (mounted) setState(() {
+      _isSavingInvoice = false;
+    });
   }
+}
 
   void _showLoadingOverlay(String message) {
     showDialog(
@@ -4923,323 +5173,302 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
-  Future<void> _updateDueTableInvoice() async {
-    if (_cartItems.isEmpty) {
-      return;
+ Future<void> _updateDueTableInvoice() async {
+  if (_cartItems.isEmpty) {
+    return;
+  }
+
+  // For due table updates, use existing note without asking for new one
+  final String specialNote = _selectedTable?.specialNote ?? '';
+  
+  final Table? currentTable = _selectedTable;
+  
+  setState(() {
+    _isSavingInvoice = true;
+  });
+  
+  _showLoadingOverlay('Updating Due Table...');
+  
+  try {
+    final headers = await _getAuthHeaders();
+    
+    if (_currentInvoiceId == null) {
+      throw Exception('No invoice ID found for due table update');
     }
-
-    final specialNote = await _showSaveInvoiceNoteDialog();
-    if (specialNote == null) {
-      return;
-    }
-
-    final Table? currentTable = _selectedTable;
-
-    setState(() {
-      _isSavingInvoice = true;
-    });
-
-    _showLoadingOverlay('Updating Due Table...');
-
-    try {
-      final headers = await _getAuthHeaders();
-
-      if (_currentInvoiceId == null) {
-        throw Exception('No invoice ID found for due table update');
-      }
-
-      String saleType = 'DINE IN';
-
-      List<Map<String, dynamic>> items = [];
-
-      for (var cartItem in _cartItems) {
-        double price = cartItem.getPriceByOrderType(_selectedOrderType);
-        double disVal = cartItem.getDiscount(_selectedOrderType);
-        double dis =
-            cartItem.discountType == '%' ? cartItem.discountValue : 0.0;
-        double total = cartItem.getTotalPrice(_selectedOrderType);
-
-        int lotId = 0;
-        String lotNumber = cartItem.product.lotNumber;
-
-        if (cartItem.product.lotsqty.isNotEmpty) {
-          for (var lot in cartItem.product.lotsqty) {
-            final qty = int.tryParse(lot['qty']?.toString() ?? '0') ?? 0;
-            if (qty > 0) {
-              lotId = lot['id'] ?? lot['lot_id'] ?? 0;
-              lotNumber = lot['lot_number']?.toString() ?? '';
-              break;
-            }
+    
+    String saleType = 'DINE IN';
+    
+    List<Map<String, dynamic>> items = [];
+    
+    for (var cartItem in _cartItems) {
+      double price = cartItem.getPriceByOrderType(_selectedOrderType);
+      double disVal = cartItem.getDiscount(_selectedOrderType);
+      double dis = cartItem.discountType == '%' ? cartItem.discountValue : 0.0;
+      double total = cartItem.getTotalPrice(_selectedOrderType);
+      
+      int lotId = 0;
+      String lotNumber = cartItem.product.lotNumber;
+      
+      if (cartItem.product.lotsqty.isNotEmpty) {
+        for (var lot in cartItem.product.lotsqty) {
+          final qty = int.tryParse(lot['qty']?.toString() ?? '0') ?? 0;
+          if (qty > 0) {
+            lotId = lot['id'] ?? lot['lot_id'] ?? 0;
+            lotNumber = lot['lot_number']?.toString() ?? '';
+            break;
           }
-
-          if (lotId == 0 && cartItem.product.lotsqty.isNotEmpty) {
-            final firstLot = cartItem.product.lotsqty.first;
-            lotId = firstLot['id'] ?? firstLot['lot_id'] ?? 1;
-            lotNumber = firstLot['lot_number']?.toString() ?? '';
-          }
-        } else {
-          if (cartItem.product.lotNumber.isNotEmpty) {
-            try {
-              lotId = int.tryParse(cartItem.product.lotNumber) ?? 1;
-            } catch (e) {
-              lotId = 1;
-            }
-          } else {
+        }
+        
+        if (lotId == 0 && cartItem.product.lotsqty.isNotEmpty) {
+          final firstLot = cartItem.product.lotsqty.first;
+          lotId = firstLot['id'] ?? firstLot['lot_id'] ?? 1;
+          lotNumber = firstLot['lot_number']?.toString() ?? '';
+        }
+      } else {
+        if (cartItem.product.lotNumber.isNotEmpty) {
+          try {
+            lotId = int.tryParse(cartItem.product.lotNumber) ?? 1;
+          } catch (e) {
             lotId = 1;
           }
-        }
-
-        if (lotId == 0) {
+        } else {
           lotId = 1;
         }
-
-        Map<String, dynamic> itemData = {
-          'aQty': cartItem.product.availableQuantity + cartItem.quantity,
-          'bar_code': cartItem.product.barCode,
-          'cost': cartItem.product.cost,
-          'dis': dis,
-          'disVal': disVal,
-          'exp': cartItem.product.expiryDate,
-          'lot_id': lotId,
-          'lot_index': 0,
-          'name': cartItem.product.name,
-          'price': price,
-          'qty': cartItem.quantity,
-          's_name': null,
-          'sid': cartItem.product.tblStockId,
-          'stock': cartItem.product.stockName,
-          'total': total.toStringAsFixed(2),
-          'total_discount': disVal.toStringAsFixed(2),
-          'unit': cartItem.product.unit,
-          'special_note': cartItem.specialNote ?? '',
-          'lot_number': lotNumber,
-        };
-
-        if (!cartItem.isNewItem) {
-          final existingItem = _existingDueTableItems.firstWhere(
-            (existing) =>
-                existing['product_id'] == cartItem.product.id ||
-                existing['tbl_product_id'] == cartItem.product.id,
-            orElse: () => {},
-          );
-
-          if (existingItem.isNotEmpty && existingItem['id'] != null) {
-            itemData['id'] = existingItem['id'];
-          }
-        }
-
-        items.add(itemData);
       }
-
-      Map<String, dynamic> metadata = {
-        'id': _currentInvoiceId,
-        'advance_payment': '',
-        'bill_copy_issued': 0,
-        'billDis': _discountPercentage.toString(),
-        'billDisVal': _globalDiscountValue.toStringAsFixed(2),
-        'customer': _selectedCustomer != null
-            ? {
-                'id': _selectedCustomer!.id ?? 0,
-                'name': _selectedCustomer!.name,
-                'phone': _selectedCustomer!.phone ?? '',
-                'email': _selectedCustomer!.email ?? '',
-                'nic': _selectedCustomer!.nic ?? '',
-                'address': _selectedCustomer!.address ?? '',
-              }
-            : {
-                'id': 0,
-                'name': 'Walk-in Customer',
-                'phone': '',
-                'email': '',
-                'nic': '',
-                'address': '',
-              },
-        'free_issue': 0,
-        'grossAmount': _totalSubtotal.toStringAsFixed(2),
-        'invDate': DateFormat('yyyy-MM-dd').format(DateTime.now()),
-        'items': items,
-        'netAmount': _netAmount.toStringAsFixed(2),
-        'order_now_order_info_id': [],
-        'room_booking': '',
-        'saleType': saleType,
-        'service_charge':
-            _selectedTable != null ? _serviceAmount.toStringAsFixed(2) : '0.00',
-        'services': [],
-        'tbl_room_booking_id': '',
-        'waiter_id': _selectedWaiter?.id ?? 0,
-        'waiter_name': _selectedWaiter?.name ?? '',
-      };
-
-      if (currentTable != null) {
-        metadata['table_name_id'] = {
-          'id': currentTable.id ?? 0,
-          'name': currentTable.name,
-          'service_charge': currentTable.serviceCharge,
-          'special_note': specialNote,
-        };
-      } else {
-        metadata['table_name_id'] = {
-          'id': 0,
-          'name': '',
-          'service_charge': 0.0,
-          'special_note': '',
-        };
+      
+      if (lotId == 0) {
+        lotId = 1;
       }
-
-      final payload = {
-        'metadata': metadata,
-        'type': 2,
+      
+      Map<String, dynamic> itemData = {
+        'aQty': cartItem.product.availableQuantity + cartItem.quantity,
+        'bar_code': cartItem.product.barCode,
+        'cost': cartItem.product.cost,
+        'dis': dis,
+        'disVal': disVal,
+        'exp': cartItem.product.expiryDate,
+        'lot_id': lotId,
+        'lot_index': 0,
+        'name': cartItem.product.name,
+        'price': price,
+        'qty': cartItem.quantity,
+        's_name': null,
+        'sid': cartItem.product.tblStockId,
+        'stock': cartItem.product.stockName,
+        'total': total.toStringAsFixed(2),
+        'total_discount': disVal.toStringAsFixed(2),
+        'unit': cartItem.product.unit,
+        'special_note': cartItem.specialNote ?? '',
+        'lot_number': lotNumber,
       };
-
-      print('Update Due Table Payload: ${json.encode(payload)}');
-
-      String endpoint =
-          '${ApiConstants.getFullUrl(ApiConstants.saveInvoice)}?bill_copy=0&due=1';
-
-      final response = await http
-          .post(
-            Uri.parse(endpoint),
-            headers: headers,
-            body: json.encode(payload),
-          )
-          .timeout(const Duration(seconds: 30));
-
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        final responseData = json.decode(response.body);
-
-        String? invoiceNumber;
-        if (responseData['data'] != null &&
-            responseData['data']['invoice_head'] != null) {
-          invoiceNumber = responseData['data']['invoice_head']['invoice_code'];
+      
+      if (!cartItem.isNewItem) {
+        final existingItem = _existingDueTableItems.firstWhere(
+          (existing) => 
+            existing['product_id'] == cartItem.product.id ||
+            existing['tbl_product_id'] == cartItem.product.id,
+          orElse: () => {},
+        );
+        
+        if (existingItem.isNotEmpty && existingItem['id'] != null) {
+          itemData['id'] = existingItem['id'];
         }
+      }
+      
+      items.add(itemData);
+    }
 
-        String? kotCode =
-            responseData['kot_code'] ?? responseData['data']?['kot_code'];
-        String? botCode =
-            responseData['bot_code'] ?? responseData['data']?['bot_code'];
+    Map<String, dynamic> metadata = {
+      'id': _currentInvoiceId,
+      'advance_payment': '',
+      'bill_copy_issued': 0,
+      'billDis': _discountPercentage.toString(),
+      'billDisVal': _globalDiscountValue.toStringAsFixed(2),
+      'customer': _selectedCustomer != null ? {
+        'id': _selectedCustomer!.id ?? 0,
+        'name': _selectedCustomer!.name,
+        'phone': _selectedCustomer!.phone ?? '',
+        'email': _selectedCustomer!.email ?? '',
+        'nic': _selectedCustomer!.nic ?? '',
+        'address': _selectedCustomer!.address ?? '',
+      } : {
+        'id': 0,
+        'name': 'Walk-in Customer',
+        'phone': '',
+        'email': '',
+        'nic': '',
+        'address': '',
+      },
+      'free_issue': 0,
+      'grossAmount': _totalSubtotal.toStringAsFixed(2),
+      'invDate': DateFormat('yyyy-MM-dd').format(DateTime.now()),
+      'items': items,
+      'netAmount': _netAmount.toStringAsFixed(2),
+      'order_now_order_info_id': [],
+      'room_booking': '',
+      'saleType': saleType,
+      'service_charge': _selectedTable != null ? _serviceAmount.toStringAsFixed(2) : '0.00',
+      'services': [],
+      'tbl_room_booking_id': '',
+      'waiter_id': _selectedWaiter?.id ?? 0,
+      'waiter_name': _selectedWaiter?.name ?? '',
+    };
 
-        if (kotCode != null) {
-          setState(() {
-            _kotCode = kotCode;
-          });
-        }
+    if (currentTable != null) {
+      metadata['table_name_id'] = {
+        'id': currentTable.id ?? 0,
+        'name': currentTable.name,
+        'service_charge': currentTable.serviceCharge,
+        'special_note': specialNote, // Use existing note without asking
+      };
+    } else {
+      metadata['table_name_id'] = {
+        'id': 0,
+        'name': '',
+        'service_charge': 0.0,
+        'special_note': '',
+      };
+    }
 
-        if (botCode != null) {
-          setState(() {
-            _botCode = botCode;
-          });
-        }
+    final payload = {
+      'metadata': metadata,
+      'type': 2,
+    };
 
-        final newKitchenItems =
-            _cartItems.where((item) => item.isNewItem).toList();
-        final hasNewKitchenItems = _hasKitchenItems(newKitchenItems);
+    print('Update Due Table Payload: ${json.encode(payload)}');
 
-        if (_connectedKitchenDevices.isNotEmpty && hasNewKitchenItems) {
-          await _printKOT(onlyNewItems: true);
-        }
+    String endpoint = '${ApiConstants.getFullUrl(ApiConstants.saveInvoice)}?bill_copy=0&due=1';
 
-        if (_connectedBotDevices.isNotEmpty && newKitchenItems.isNotEmpty) {
-          await _printKOT(onlyNewItems: true, printBOT: true);
-        }
+    final response = await http.post(
+      Uri.parse(endpoint),
+      headers: headers,
+      body: json.encode(payload),
+    ).timeout(const Duration(seconds: 30));
 
-        await _updateStockInDatabase(newKitchenItems, headers);
-
-        _cartDataForPrinting = {
-          'cartItems': List<CartItem>.from(
-              _cartItems.where((item) => item.isNewItem).toList()),
-          'selectedOrderType': _selectedOrderType,
-          'selectedCustomer': _selectedCustomer,
-          'selectedTable': _selectedTable,
-          'totalSubtotal': _totalSubtotal,
-          'totalItemDiscount': _totalItemDiscount,
-          'discountPercentage': _discountPercentage,
-          'globalDiscountValue': _globalDiscountValue,
-          'serviceAmount': _serviceAmount,
-          'netAmount': _netAmount,
-          'orderNumber': _orderNumber,
-          'invoiceNumber':
-              invoiceNumber ?? 'INV-${DateTime.now().millisecondsSinceEpoch}',
-          'kotCode': kotCode,
-          'botCode': botCode,
-        };
-
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      final responseData = json.decode(response.body);
+      
+      String? invoiceNumber;
+      if (responseData['data'] != null && responseData['data']['invoice_head'] != null) {
+        invoiceNumber = responseData['data']['invoice_head']['invoice_code'];
+      }
+      
+      String? kotCode = responseData['kot_code'] ?? responseData['data']?['kot_code'];
+      String? botCode = responseData['bot_code'] ?? responseData['data']?['bot_code'];
+      
+      if (kotCode != null) {
         setState(() {
-          final newItemsToClear =
-              _cartItems.where((item) => item.isNewItem).toList();
+          _kotCode = kotCode;
+        });
+      }
+      
+      if (botCode != null) {
+        setState(() {
+          _botCode = botCode;
+        });
+      }
+      
+      final newKitchenItems = _cartItems.where((item) => item.isNewItem).toList();
+      final hasNewKitchenItems = _hasKitchenItems(newKitchenItems);
 
-          for (var cartItem in newItemsToClear) {
-            final product = cartItem.product;
-            final productIndex =
-                _products.indexWhere((p) => p.id == product.id);
-            if (productIndex != -1) {
-              _products[productIndex].availableQuantity += cartItem.quantity;
-              final filteredIndex =
-                  _filteredProducts.indexWhere((p) => p.id == product.id);
-              if (filteredIndex != -1) {
-                _filteredProducts[filteredIndex].availableQuantity +=
-                    cartItem.quantity;
-              }
+      if (_connectedKitchenDevices.isNotEmpty && hasNewKitchenItems) {
+        await _printKOT(onlyNewItems: true);
+      }
+
+      if (_connectedBotDevices.isNotEmpty && newKitchenItems.isNotEmpty) {
+        await _printKOT(onlyNewItems: true, printBOT: true);
+      }
+      
+      await _updateStockInDatabase(newKitchenItems, headers);
+      
+      _cartDataForPrinting = {
+        'cartItems': List<CartItem>.from(_cartItems.where((item) => item.isNewItem).toList()),
+        'selectedOrderType': _selectedOrderType,
+        'selectedCustomer': _selectedCustomer,
+        'selectedTable': _selectedTable,
+        'totalSubtotal': _totalSubtotal,
+        'totalItemDiscount': _totalItemDiscount,
+        'discountPercentage': _discountPercentage,
+        'globalDiscountValue': _globalDiscountValue,
+        'serviceAmount': _serviceAmount,
+        'netAmount': _netAmount,
+        'orderNumber': _orderNumber,
+        'invoiceNumber': invoiceNumber ?? 'INV-${DateTime.now().millisecondsSinceEpoch}',
+        'kotCode': kotCode,
+        'botCode': botCode,
+      };
+      
+      setState(() {
+        final newItemsToClear = _cartItems.where((item) => item.isNewItem).toList();
+        
+        for (var cartItem in newItemsToClear) {
+          final product = cartItem.product;
+          final productIndex = _products.indexWhere((p) => p.id == product.id);
+          if (productIndex != -1) {
+            _products[productIndex].availableQuantity += cartItem.quantity;
+            final filteredIndex = _filteredProducts.indexWhere((p) => p.id == product.id);
+            if (filteredIndex != -1) {
+              _filteredProducts[filteredIndex].availableQuantity += cartItem.quantity;
             }
           }
-
-          _cartItems.clear();
-          _discountController.text = '0';
-          _serviceAmountOverride = 0.0;
-          _isProcessingDueTablePayment = false;
-          _kotCode = null;
-          _botCode = null;
-
-          _cartDataForPrinting = null;
-          _isEditingDueTable = false;
-          _existingDueTableItems.clear();
-          _currentInvoiceId = null;
-
-          _updateCartTotals();
-
-          if (currentTable != null) {
-            _selectedTable = Table(
-              id: currentTable.id,
-              name: currentTable.name,
-              serviceCharge: currentTable.serviceCharge,
-              hasDueOrders: false,
-              specialNote: specialNote,
-            );
-
-            _saveLocalTableNote(currentTable.id, specialNote);
-          }
-        });
-      } else {
-        print(
-            'Update Due Table Error: ${response.statusCode} - ${response.body}');
-        final errorBody = json.decode(response.body);
-
-        String errorMessage = 'Failed to update due table';
-        if (errorBody['message'] != null) {
-          errorMessage = errorBody['message'];
-        } else if (errorBody['error'] != null) {
-          errorMessage = errorBody['error'];
         }
-
-        throw Exception('$errorMessage (Status: ${response.statusCode})');
+        
+        _cartItems.clear();
+        _discountController.text = '0';
+        _serviceAmountOverride = 0.0;
+        _isProcessingDueTablePayment = false;
+        _kotCode = null;
+        _botCode = null;
+        
+        _cartDataForPrinting = null;
+        _isEditingDueTable = false;
+        _existingDueTableItems.clear();
+        _currentInvoiceId = null;
+        
+        _updateCartTotals();
+        
+        if (currentTable != null) {
+          _selectedTable = Table(
+            id: currentTable.id,
+            name: currentTable.name,
+            serviceCharge: currentTable.serviceCharge,
+            hasDueOrders: false,
+            specialNote: specialNote, // Keep the existing note
+          );
+          
+          _saveLocalTableNote(currentTable.id, specialNote);
+        }
+      });
+      
+    } else {
+      print('Update Due Table Error: ${response.statusCode} - ${response.body}');
+      final errorBody = json.decode(response.body);
+      
+      String errorMessage = 'Failed to update due table';
+      if (errorBody['message'] != null) {
+        errorMessage = errorBody['message'];
+      } else if (errorBody['error'] != null) {
+        errorMessage = errorBody['error'];
       }
-    } catch (e) {
-      print('Update Due Table Exception: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-              'Error updating due table: ${e.toString().replaceAll('Exception: ', '')}'),
-          behavior: SnackBarBehavior.floating,
-          backgroundColor: Colors.red,
-        ),
-      );
-    } finally {
-      _dismissLoadingOverlay();
-      if (mounted)
-        setState(() {
-          _isSavingInvoice = false;
-        });
+      
+      throw Exception('$errorMessage (Status: ${response.statusCode})');
     }
+  } catch (e) {
+    print('Update Due Table Exception: $e');
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Error updating due table: ${e.toString().replaceAll('Exception: ', '')}'),
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: Colors.red,
+      ),
+    );
+  } finally {
+    _dismissLoadingOverlay();
+    if (mounted) setState(() {
+      _isSavingInvoice = false;
+    });
   }
+}
 
   Future<void> _updateStockInDatabaseForSave(
       List<CartItem> itemsToUpdate, Map<String, String> headers) async {
@@ -5362,198 +5591,367 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
-  Future<void> _printBillCopy() async {
-    if (_cartItems.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('No items in cart to print bill copy'),
-          behavior: SnackBarBehavior.floating,
+ Future<void> _printBillCopy() async {
+  if (!_isEditingDueTable || _cartItems.isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          _isEditingDueTable 
+            ? 'Cart is empty' 
+            : 'Bill copy is only available for due tables',
         ),
-      );
-      return;
-    }
-
-    if (_connectedCashierDevices.isEmpty) {
-      _showMessage('Please connect to a cashier printer first');
-      return;
-    }
-
-    try {
-      await _printReceipt(isBillCopy: true);
-
-      _clearCart();
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Bill copy printed successfully. Cart cleared.'),
-          behavior: SnackBarBehavior.floating,
-          backgroundColor: Colors.blue,
-        ),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error printing bill copy: $e'),
-          behavior: SnackBarBehavior.floating,
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+    return;
   }
 
-  Future<void> _saveAndPrintBillCopy() async {
-    if (_cartItems.isEmpty) {
-      return;
+  if (_connectedCashierDevices.isEmpty) {
+    _showMessage('Please connect to a cashier printer first');
+    return;
+  }
+
+  try {
+    // Create a copy of cart data for bill copy
+    final cartData = {
+      'printerType': PrinterType.cashier,
+      'cartItems': List<CartItem>.from(_cartItems),
+      'selectedOrderType': _selectedOrderType,
+      'selectedCustomer': _selectedCustomer,
+      'selectedTable': _selectedTable,
+      'totalSubtotal': _totalSubtotal,
+      'totalItemDiscount': _totalItemDiscount,
+      'discountPercentage': _discountPercentage,
+      'globalDiscountValue': _globalDiscountValue,
+      'serviceAmount': _serviceAmount,
+      'netAmount': _netAmount,
+      'orderNumber': _orderNumber,
+      'isBillCopy': true,
+      'invoiceNumber': 'COPY-${DateTime.now().millisecondsSinceEpoch}',
+      'kotCode': _kotCode,
+    };
+
+    final List<int> cashierBytes = await _generateReceipt(cartData);
+
+    for (int i = 0; i < _connectedCashierDevices.length; i++) {
+      try {
+        _connections[i].output.add(Uint8List.fromList(cashierBytes));
+        await _connections[i].output.allSent;
+      } catch (e) {
+        _showMessage('Error printing bill copy: $e');
+      }
     }
 
-    if (_connectedCashierDevices.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text(
-              'Cannot save bill copy: Cashier printer not connected. Please connect to a cashier printer first.'),
-          backgroundColor: Colors.red,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-      return;
-    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text('Bill copy printed successfully.'),
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: Colors.blue,
+      ),
+    );
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Error printing bill copy: $e'),
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: Colors.red,
+      ),
+    );
+  }
+}
 
-    try {
-      final headers = await _getAuthHeaders();
+Future<void> _saveAndPrintBillCopy() async {
+  // Only allow for due tables
+  if (!_isEditingDueTable) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text('Bill copy is only available for due tables'),
+        backgroundColor: Colors.red,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+    return;
+  }
 
-      String saleType = _selectedTable != null ? 'DINE IN' : 'TAKE AWAY';
+  if (_cartItems.isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text('No items in cart to print bill copy'),
+        backgroundColor: Colors.red,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+    return;
+  }
 
-      List<Map<String, dynamic>> items = [];
-      for (var item in _cartItems) {
-        double price = item.getPriceByOrderType(_selectedOrderType);
-        double disVal = item.getDiscount(_selectedOrderType);
-        double dis = item.discountType == '%' ? item.discountValue : 0.0;
-        double total = item.getTotalPrice(_selectedOrderType);
+  if (_connectedCashierDevices.isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text(
+            'Cannot save bill copy: Cashier printer not connected. Please connect to a cashier printer first.'),
+        backgroundColor: Colors.red,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+    return;
+  }
 
-        int lotId = 0;
-        if (item.product.lotsqty.isNotEmpty) {
-          for (var lot in item.product.lotsqty) {
-            if ((lot['qty'] ?? 0) > 0) {
-              lotId = lot['id'] ?? 0;
-              break;
-            }
+  // For due tables, use existing note without asking for new one
+  final String specialNote = _selectedTable?.specialNote ?? '';
+  final Table? currentTable = _selectedTable;
+
+  setState(() {
+    _isSavingInvoice = true;
+  });
+
+  _showLoadingOverlay('Saving Bill Copy...');
+
+  try {
+    final headers = await _getAuthHeaders();
+
+    String saleType = 'DINE IN';
+
+    List<Map<String, dynamic>> items = [];
+
+    for (var item in _cartItems) {
+      double price = item.getPriceByOrderType(_selectedOrderType);
+      double disVal = item.getDiscount(_selectedOrderType);
+      double dis = item.discountType == '%' ? item.discountValue : 0.0;
+      double total = item.getTotalPrice(_selectedOrderType);
+
+      int lotId = 0;
+      String lotNumber = item.product.lotNumber;
+
+      if (item.product.lotsqty.isNotEmpty) {
+        for (var lot in item.product.lotsqty) {
+          final qty = int.tryParse(lot['qty']?.toString() ?? '0') ?? 0;
+          if (qty > 0) {
+            lotId = lot['id'] ?? lot['lot_id'] ?? 0;
+            lotNumber = lot['lot_number']?.toString() ?? '';
+            break;
           }
         }
 
-        items.add({
-          'aQty': item.product.availableQuantity + item.quantity,
-          'bar_code': item.product.barCode,
-          'cost': item.product.cost,
-          'dis': dis,
-          'disVal': disVal,
-          'exp': item.product.expiryDate,
-          'lot_id': lotId,
-          'lot_index': 0,
-          'name': item.product.name,
-          'price': price,
-          'qty': item.quantity,
-          's_name': null,
-          'sid': item.product.tblStockId,
-          'stock': item.product.stockName,
-          'total': total.toStringAsFixed(2),
-          'total_discount': disVal.toStringAsFixed(2),
-          'unit': item.product.unit,
-          'special_note': item.specialNote ?? '',
+        if (lotId == 0 && item.product.lotsqty.isNotEmpty) {
+          final firstLot = item.product.lotsqty.first;
+          lotId = firstLot['id'] ?? firstLot['lot_id'] ?? 1;
+          lotNumber = firstLot['lot_number']?.toString() ?? '';
+        }
+      } else {
+        if (item.product.lotNumber.isNotEmpty) {
+          try {
+            lotId = int.tryParse(item.product.lotNumber) ?? 1;
+          } catch (e) {
+            lotId = 1;
+          }
+        } else {
+          lotId = 1;
+        }
+      }
+
+      if (lotId == 0) {
+        lotId = 1;
+      }
+
+      Map<String, dynamic> itemData = {
+        'aQty': item.product.availableQuantity + item.quantity,
+        'bar_code': item.product.barCode,
+        'cost': item.product.cost,
+        'dis': dis,
+        'disVal': disVal,
+        'exp': item.product.expiryDate,
+        'lot_id': lotId,
+        'lot_index': 0,
+        'name': item.product.name,
+        'price': price,
+        'qty': item.quantity,
+        's_name': null,
+        'sid': item.product.tblStockId,
+        'stock': item.product.stockName,
+        'total': total.toStringAsFixed(2),
+        'total_discount': disVal.toStringAsFixed(2),
+        'unit': item.product.unit,
+        'special_note': item.specialNote ?? '',
+        'lot_number': lotNumber,
+      };
+
+      // Add existing item ID for due table items
+      if (!item.isNewItem) {
+        final existingItem = _existingDueTableItems.firstWhere(
+          (existing) => 
+            existing['product_id'] == item.product.id ||
+            existing['tbl_product_id'] == item.product.id,
+          orElse: () => {},
+        );
+        
+        if (existingItem.isNotEmpty && existingItem['id'] != null) {
+          itemData['id'] = existingItem['id'];
+        }
+      }
+
+      items.add(itemData);
+    }
+
+    Map<String, dynamic> metadata = {
+      'id': _currentInvoiceId,
+      'advance_payment': '',
+      'bill_copy_issued': 1, // Important: This marks it as a bill copy
+      'billDis': _discountPercentage.toString(),
+      'billDisVal': _globalDiscountValue.toStringAsFixed(2),
+      'customer': _selectedCustomer != null ? {
+        'id': _selectedCustomer!.id ?? 0,
+        'name': _selectedCustomer!.name,
+        'phone': _selectedCustomer!.phone ?? '',
+        'email': _selectedCustomer!.email ?? '',
+        'nic': _selectedCustomer!.nic ?? '',
+        'address': _selectedCustomer!.address ?? '',
+      } : {
+        'id': 0,
+        'name': 'Walk-in Customer',
+        'phone': '',
+        'email': '',
+        'nic': '',
+        'address': '',
+      },
+      'free_issue': 0,
+      'grossAmount': _totalSubtotal.toStringAsFixed(2),
+      'invDate': DateFormat('yyyy-MM-dd').format(DateTime.now()),
+      'items': items,
+      'netAmount': _netAmount.toStringAsFixed(2),
+      'order_now_order_info_id': [],
+      'room_booking': '',
+      'saleType': saleType,
+      'service_charge': _selectedTable != null ? _serviceAmount.toStringAsFixed(2) : '0.00',
+      'services': [],
+      'tbl_room_booking_id': '',
+      'waiter_id': _selectedWaiter?.id ?? 0,
+      'waiter_name': _selectedWaiter?.name ?? '',
+    };
+
+    if (currentTable != null) {
+      metadata['table_name_id'] = {
+        'id': currentTable.id ?? 0,
+        'name': currentTable.name,
+        'service_charge': currentTable.serviceCharge,
+        'special_note': specialNote,
+      };
+    } else {
+      metadata['table_name_id'] = {
+        'id': 0,
+        'name': '',
+        'service_charge': 0.0,
+        'special_note': '',
+      };
+    }
+
+    final payload = {
+      'metadata': metadata,
+      'type': 2,
+    };
+
+    print('Save Bill Copy Payload: ${json.encode(payload)}');
+
+    String endpoint = '${ApiConstants.getFullUrl(ApiConstants.saveInvoice)}?bill_copy=1&due=1';
+
+    final response = await http.post(
+      Uri.parse(endpoint),
+      headers: headers,
+      body: json.encode(payload),
+    ).timeout(const Duration(seconds: 30));
+
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      final responseData = json.decode(response.body);
+      
+      String? invoiceNumber;
+      if (responseData['data'] != null && responseData['data']['invoice_head'] != null) {
+        invoiceNumber = responseData['data']['invoice_head']['invoice_code'];
+      }
+      
+      String? kotCode = responseData['kot_code'] ?? responseData['data']?['kot_code'];
+      String? botCode = responseData['bot_code'] ?? responseData['data']?['bot_code'];
+      
+      if (kotCode != null) {
+        setState(() {
+          _kotCode = kotCode;
         });
       }
-
-      Map<String, dynamic> metadata = {
-        'advance_payment': '',
-        'bill_copy_issued': 1,
-        'billDis': _discountPercentage.toString(),
-        'billDisVal': _globalDiscountValue.toStringAsFixed(2),
-        'customer': _selectedCustomer != null
-            ? {
-                'id': _selectedCustomer!.id,
-                'name': _selectedCustomer!.name,
-                'phone': _selectedCustomer!.phone,
-                'email': _selectedCustomer!.email,
-                'nic': _selectedCustomer!.nic,
-                'address': _selectedCustomer!.address,
-              }
-            : {
-                'id': 0,
-                'name': 'Walk-in Customer',
-                'phone': '',
-                'email': '',
-                'nic': '',
-                'address': '',
-              },
-        'free_issue': 0,
-        'grossAmount': _totalSubtotal.toStringAsFixed(2),
-        'invDate': DateFormat('yyyy-MM-dd').format(DateTime.now()),
-        'items': items,
-        'netAmount': _netAmount.toStringAsFixed(2),
-        'order_now_order_info_id': [],
-        'room_booking': '',
-        'saleType': saleType,
-        'service_charge':
-            _selectedTable != null ? _serviceAmount.toStringAsFixed(2) : '0.00',
-        'services': [],
-        'tbl_room_booking_id': '',
-        'waiter_id': _selectedWaiter?.id ?? 0,
-        'waiter_name': _selectedWaiter?.name ?? '',
+      
+      if (botCode != null) {
+        setState(() {
+          _botCode = botCode;
+        });
+      }
+      
+      // Print bill copy receipt
+      final cartData = {
+        'printerType': PrinterType.cashier,
+        'cartItems': List<CartItem>.from(_cartItems),
+        'selectedOrderType': _selectedOrderType,
+        'selectedCustomer': _selectedCustomer,
+        'selectedTable': _selectedTable,
+        'totalSubtotal': _totalSubtotal,
+        'totalItemDiscount': _totalItemDiscount,
+        'discountPercentage': _discountPercentage,
+        'globalDiscountValue': _globalDiscountValue,
+        'serviceAmount': _serviceAmount,
+        'netAmount': _netAmount,
+        'orderNumber': _orderNumber,
+        'isBillCopy': true,
+        'invoiceNumber': invoiceNumber ?? 'COPY-${DateTime.now().millisecondsSinceEpoch}',
+        'kotCode': kotCode,
+        'botCode': botCode,
       };
 
-      if (_selectedTable != null && _selectedTable!.id != null) {
-        metadata['table_name_id'] = {
-          'id': _selectedTable!.id,
-          'name': _selectedTable!.name,
-          'service_charge': _selectedTable!.serviceCharge,
-          'special_note': _selectedTable!.specialNote,
-        };
+      final List<int> cashierBytes = await _generateReceipt(cartData);
+
+      for (int i = 0; i < _connectedCashierDevices.length; i++) {
+        try {
+          _connections[i].output.add(Uint8List.fromList(cashierBytes));
+          await _connections[i].output.allSent;
+        } catch (e) {
+          _showMessage('Error printing bill copy: $e');
+        }
       }
 
-      final payload = {
-        'metadata': metadata,
-        'type': 2,
-      };
-
-      print('Save Bill Copy Payload: ${json.encode(payload)}');
-
-      final response = await http
-          .post(
-            Uri.parse(
-                '${ApiConstants.getFullUrl(ApiConstants.saveInvoice)}?bill_copy=1'),
-            headers: headers,
-            body: json.encode(payload),
-          )
-          .timeout(const Duration(seconds: 30));
-
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        final responseData = json.decode(response.body);
-
-        await _printBillCopyFromInvoice(responseData);
-
-        _clearCart();
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Bill copy saved, printed, and cart cleared'),
-            behavior: SnackBarBehavior.floating,
-            backgroundColor: Colors.green,
-          ),
-        );
-      } else {
-        throw Exception(
-            'Failed to save bill copy: ${response.statusCode} - ${response.body}');
-      }
-    } catch (e) {
-      print('Save Bill Copy Exception: $e');
+      // Do NOT clear the cart - keep due table items for payment
+      
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error saving bill copy: $e'),
+          content: Text('Bill copy saved and printed for ${currentTable?.name ?? "table"}'),
           behavior: SnackBarBehavior.floating,
-          backgroundColor: Colors.red,
+          backgroundColor: Colors.green,
         ),
       );
+      
+    } else {
+      print('Save Bill Copy Error: ${response.statusCode} - ${response.body}');
+      final errorBody = json.decode(response.body);
+      
+      String errorMessage = 'Failed to save bill copy';
+      if (errorBody['message'] != null) {
+        errorMessage = errorBody['message'];
+      } else if (errorBody['error'] != null) {
+        errorMessage = errorBody['error'];
+      }
+      
+      throw Exception('$errorMessage (Status: ${response.statusCode})');
     }
+  } catch (e) {
+    print('Save Bill Copy Exception: $e');
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Error saving bill copy: ${e.toString().replaceAll('Exception: ', '')}'),
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: Colors.red,
+      ),
+    );
+  } finally {
+    _dismissLoadingOverlay();
+    if (mounted) setState(() {
+      _isSavingInvoice = false;
+    });
   }
+}
 
   void _showAddProductDialog(Product product) {
     final existingIndex =
@@ -5683,7 +6081,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     _invalidateCache();
     _updateCartTotals();
-    Navigator.pop(context);
   }
 
   void _removeFromCart(int index) {
@@ -7592,127 +7989,366 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildCategoriesPanel() {
-    return Container(
-      width: 140,
-      color: Colors.white,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              border: Border(
-                bottom: BorderSide(color: Colors.grey[300]!, width: 1),
-              ),
-            ),
-            child: Text(
-              'Categories',
-              style: GoogleFonts.poppins(
-                fontSize: 10,
-                fontWeight: FontWeight.bold,
-                color: Colors.black87,
-              ),
-              textAlign: TextAlign.center,
+ Widget _buildCategoriesPanel() {
+  return Container(
+    width: 160, // Slightly wider for better readability
+    color: Colors.white,
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Header with gradient and icon
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+          decoration: BoxDecoration(
+            color: Colors.blue[800],
+            borderRadius: const BorderRadius.only(
+              topLeft: Radius.circular(8),
+              topRight: Radius.circular(8),
             ),
           ),
-          Expanded(
-            child: _categories.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.category_outlined,
-                            size: 32, color: Colors.grey),
-                        const SizedBox(height: 8),
-                        Text(
-                          'No categories',
-                          style: GoogleFonts.poppins(
-                            fontSize: 12,
-                            color: Colors.grey[600],
-                          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.category, size: 18, color: Colors.white),
+              const SizedBox(width: 8),
+              Text(
+                'CATEGORIES',
+                style: GoogleFonts.poppins(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ],
+          ),
+        ),
+        
+        // Search field for categories
+        // Container(
+        //   padding: const EdgeInsets.all(12),
+        //   color: Colors.grey[50],
+        //   child: TextField(
+        //     decoration: InputDecoration(
+        //       hintText: 'Search category...',
+        //       hintStyle: GoogleFonts.poppins(fontSize: 11),
+        //       prefixIcon: Icon(Icons.search, size: 16, color: Colors.grey[600]),
+        //       isDense: true,
+        //       contentPadding: const EdgeInsets.symmetric(
+        //         horizontal: 12,
+        //         vertical: 8,
+        //       ),
+        //       border: OutlineInputBorder(
+        //         borderRadius: BorderRadius.circular(8),
+        //         borderSide: BorderSide(color: Colors.grey[300]!, width: 1),
+        //       ),
+        //       enabledBorder: OutlineInputBorder(
+        //         borderRadius: BorderRadius.circular(8),
+        //         borderSide: BorderSide(color: Colors.grey[300]!, width: 1),
+        //       ),
+        //       focusedBorder: OutlineInputBorder(
+        //         borderRadius: BorderRadius.circular(8),
+        //         borderSide: BorderSide(color: Colors.blue, width: 1.5),
+        //       ),
+        //       filled: true,
+        //       fillColor: Colors.white,
+        //     ),
+        //     style: GoogleFonts.poppins(fontSize: 11),
+        //     onChanged: (value) {
+        //       // Add category search functionality here
+        //       if (value.isEmpty) {
+        //         setState(() {
+        //           _selectedCategory = _categories.first;
+        //         });
+        //       } else {
+        //         final filtered = _categories.where((category) => 
+        //           category.categoryName.toLowerCase().contains(value.toLowerCase())
+        //         ).toList();
+        //         if (filtered.isNotEmpty) {
+        //           setState(() {
+        //             _selectedCategory = filtered.first;
+        //           });
+        //         }
+        //       }
+        //     },
+        //   ),
+        // ),
+        
+        // Categories list with count badge
+        Expanded(
+          child: _categories.isEmpty
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.category_outlined,
+                          size: 48, color: Colors.grey[400]),
+                      const SizedBox(height: 12),
+                      Text(
+                        'No categories',
+                        style: GoogleFonts.poppins(
+                          fontSize: 14,
+                          color: Colors.grey[600],
                         ),
-                      ],
-                    ),
-                  )
-                : ListView.builder(
-                    padding: const EdgeInsets.all(4),
-                    itemCount: _categories.length,
-                    itemBuilder: (context, index) {
-                      final category = _categories[index];
-                      final isSelected = _selectedCategory?.id == category.id;
-
-                      return Container(
-                        margin: const EdgeInsets.only(bottom: 4),
-                        child: Material(
-                          color: Colors.transparent,
-                          child: InkWell(
-                            onTap: () => _filterProductsByCategory(category),
-                            borderRadius: BorderRadius.circular(8),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 8, vertical: 10),
-                              decoration: BoxDecoration(
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Add categories in admin panel',
+                        style: GoogleFonts.poppins(
+                          fontSize: 11,
+                          color: Colors.grey[500],
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                )
+              : ListView.builder(
+                  padding: const EdgeInsets.all(4),
+                  itemCount: _categories.length,
+                  itemBuilder: (context, index) {
+                    final category = _categories[index];
+                    final isSelected = _selectedCategory?.id == category.id;
+                    
+                    // Count products in this category
+                    final productCount = _products.where(
+                      (p) => p.tblCategoryId == category.id
+                    ).length;
+                    
+                    return Container(
+                      margin: const EdgeInsets.symmetric(vertical: 3, horizontal: 6),
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: () => _filterProductsByCategory(category),
+                          borderRadius: BorderRadius.circular(10),
+                          splashColor: Colors.blue.withOpacity(0.1),
+                          highlightColor: Colors.blue.withOpacity(0.05),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 10,
+                            ),
+                            decoration: BoxDecoration(
+                              color: isSelected
+                                  ? Colors.blue.withOpacity(0.1)
+                                  : Colors.white,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
                                 color: isSelected
-                                    ? Colors.blue.withOpacity(0.1)
-                                    : Colors.white,
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(
-                                  color: isSelected
-                                      ? Colors.blue
-                                      : Colors.grey[300]!,
-                                  width: isSelected ? 1.5 : 1,
-                                ),
+                                    ? Colors.blue
+                                    : Colors.grey[200]!,
+                                width: isSelected ? 1.5 : 1,
                               ),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.start,
-                                children: [
-                                  Icon(
-                                    Icons.category,
-                                    size: 14,
-                                    color: isSelected
-                                        ? Colors.blue
-                                        : Colors.grey[600],
-                                  ),
-                                  const SizedBox(width: 6),
-                                  Expanded(
-                                    child: Text(
-                                      category.categoryName.length > 12
-                                          ? '${category.categoryName.substring(0, 12)}...'
-                                          : category.categoryName,
-                                      style: GoogleFonts.poppins(
-                                        fontSize: 10,
-                                        fontWeight: isSelected
-                                            ? FontWeight.bold
-                                            : FontWeight.normal,
-                                        color: isSelected
-                                            ? Colors.blue
-                                            : Colors.black87,
+                              boxShadow: isSelected
+                                  ? [
+                                      BoxShadow(
+                                        color: Colors.blue.withOpacity(0.1),
+                                        blurRadius: 8,
+                                        offset: const Offset(0, 2),
                                       ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
+                                    ]
+                                  : [
+                                      BoxShadow(
+                                        color: Colors.grey.withOpacity(0.05),
+                                        blurRadius: 3,
+                                        offset: const Offset(0, 1),
+                                      ),
+                                    ],
+                            ),
+                            child: Row(
+                              children: [
+                                // Category icon with gradient
+                                Container(
+                                  width: 30,
+                                  height: 30,
+                                  decoration: BoxDecoration(
+                                    gradient: isSelected
+                                        ? LinearGradient(
+                                            colors: [
+                                              Colors.blue[400]!,
+                                              Colors.blue[600]!,
+                                            ],
+                                            begin: Alignment.topLeft,
+                                            end: Alignment.bottomRight,
+                                          )
+                                        : LinearGradient(
+                                            colors: [
+                                              Colors.grey[300]!,
+                                              Colors.grey[400]!,
+                                            ],
+                                            begin: Alignment.topLeft,
+                                            end: Alignment.bottomRight,
+                                          ),
+                                    borderRadius: BorderRadius.circular(8),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: (isSelected
+                                                ? Colors.blue
+                                                : Colors.grey)
+                                            .withOpacity(0.2),
+                                        blurRadius: 4,
+                                        offset: const Offset(0, 2),
+                                      ),
+                                    ],
                                   ),
-                                  if (isSelected)
-                                    Icon(
+                                  child: Icon(
+                                    category.id == 0
+                                        ? Icons.all_inclusive
+                                        : _getCategoryIcon(category.categoryName),
+                                    size: 16,
+                                    color: isSelected
+                                        ? Colors.white
+                                        : Colors.grey[700],
+                                  ),
+                                ),
+                                
+                                const SizedBox(width: 10),
+                                
+                                // Category name and product count
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        category.categoryName,
+                                        style: GoogleFonts.poppins(
+                                          fontSize: 11,
+                                          fontWeight: isSelected
+                                              ? FontWeight.w600
+                                              : FontWeight.w500,
+                                          color: isSelected
+                                              ? Colors.blue[800]
+                                              : Colors.grey[800],
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        '$productCount items',
+                                        style: GoogleFonts.poppins(
+                                          fontSize: 9,
+                                          color: isSelected
+                                              ? Colors.blue[600]
+                                              : Colors.grey[500],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                
+                                // Selection indicator
+                                if (isSelected)
+                                  Container(
+                                    padding: const EdgeInsets.all(4),
+                                    decoration: BoxDecoration(
+                                      color: Colors.blue,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Icon(
                                       Icons.check,
                                       size: 12,
-                                      color: Colors.blue,
+                                      color: Colors.white,
                                     ),
-                                ],
-                              ),
+                                  ),
+                              ],
                             ),
                           ),
                         ),
-                      );
-                    },
-                  ),
+                      ),
+                    );
+                  },
+                ),
+        ),
+        
+        // Footer with total count
+        Container(
+          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+          decoration: BoxDecoration(
+            color: Colors.grey[50],
+            border: Border(
+              top: BorderSide(color: Colors.grey[200]!, width: 1),
+            ),
           ),
-        ],
-      ),
-    );
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Total:',
+                style: GoogleFonts.poppins(
+                  fontSize: 10,
+                  color: Colors.grey[600],
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.blue[50],
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.inventory, size: 10, color: Colors.blue[700]),
+                    const SizedBox(width: 4),
+                    Text(
+                      '${_products.length} products',
+                      style: GoogleFonts.poppins(
+                        fontSize: 10,
+                        color: Colors.blue[700],
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+// Helper function to get appropriate icon for category
+IconData _getCategoryIcon(String categoryName) {
+  final name = categoryName.toLowerCase();
+  
+  if (name.contains('food') || name.contains('meal') || name.contains('dish')) {
+    return Icons.restaurant;
+  } else if (name.contains('drink') || name.contains('beverage') || name.contains('coffee')) {
+    return Icons.local_cafe;
+  } else if (name.contains('dessert') || name.contains('sweet')) {
+    return Icons.cake;
+  } else if (name.contains('appetizer') || name.contains('starter')) {
+    return Icons.restaurant_menu;
+  } else if (name.contains('snack')) {
+    return Icons.fastfood;
+  } else if (name.contains('alcohol') || name.contains('beer') || name.contains('wine')) {
+    return Icons.local_bar;
+  } else if (name.contains('juice') || name.contains('smoothie')) {
+    return Icons.local_drink;
+  } else if (name.contains('salad')) {
+    return Icons.eco;
+  } else if (name.contains('main') || name.contains('course')) {
+    return Icons.dinner_dining;
+  } else if (name.contains('side')) {
+    return Icons.restaurant_outlined;
+  } else if (name.contains('breakfast')) {
+    return Icons.breakfast_dining;
+  } else if (name.contains('lunch')) {
+    return Icons.lunch_dining;
+  } else if (name.contains('dinner')) {
+    return Icons.dinner_dining;
+  } else if (name.contains('vegetarian') || name.contains('vegan')) {
+    return Icons.eco_outlined;
+  } else if (name.contains('non-veg') || name.contains('meat')) {
+    return Icons.emoji_food_beverage_outlined;
   }
+  
+  return Icons.category; // Default icon
+}
 
   void _showCartBottomSheet() {
     showModalBottomSheet(
@@ -8870,7 +9506,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                 ),
                 Text(
-                  'v1.0005',
+                  'v1.0006',
                   style: GoogleFonts.poppins(
                     color: Colors.white70,
                     fontSize: 10,
@@ -9228,6 +9864,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     Color iconColor;
     Color badgeColor;
     String tooltipText = 'Printers';
+    bool _shouldShowBillCopy() {
+  return _isEditingDueTable && _cartItems.isNotEmpty;
+}
 
     if (!hasCashierPrinter) {
       iconColor = Colors.red;
