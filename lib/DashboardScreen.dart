@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
@@ -12,7 +11,9 @@ import 'package:esc_pos_utils/esc_pos_utils.dart';
 import 'package:flutter_bluetooth_serial/flutter_bluetooth_serial.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:intl/intl.dart';
-import 'package:resturant/ApiConstants.dart';
+import 'package:resturant/ApiConstants.dart'; 
+
+
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -39,8 +40,7 @@ class MyApp extends StatelessWidget {
         ),
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
             backgroundColor: Colors.blue,
             foregroundColor: Colors.white,
@@ -48,12 +48,14 @@ class MyApp extends StatelessWidget {
             shadowColor: Colors.blue.withOpacity(0.3),
           ),
         ),
+<<<<<<< HEAD
         
+=======
+>>>>>>> 425adf5dcaf48d4e27c4b766e59fed37dd315626
         cardTheme: CardTheme(
           elevation: 2,
           shadowColor: Colors.black.withOpacity(0.1),
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         ),
       ),
       home: const AuthCheckScreen(),
@@ -80,6 +82,7 @@ class _AuthCheckScreenState extends State<AuthCheckScreen> {
 
   Future<void> _checkAuthStatus() async {
     final token = await AuthService.getToken();
+<<<<<<< HEAD
 
     if (token == null) {
       // No token found, go to login
@@ -102,8 +105,18 @@ class _AuthCheckScreenState extends State<AuthCheckScreen> {
           ),
         );
       }
+=======
+  
+    if (mounted) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => token != null ? const DashboardScreen() : const LoginScreen(),
+        ),
+      );
+>>>>>>> 425adf5dcaf48d4e27c4b766e59fed37dd315626
     }
-
+  
     setState(() => _isLoading = false);
   }
 
@@ -157,37 +170,34 @@ class _LoginScreenState extends State<LoginScreen> {
         SnackBar(
           content: const Text('Please enter username and password'),
           behavior: SnackBarBehavior.floating,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
       );
       return;
     }
 
-    setState(() => _isLoading = true);
+    setState(() => _isLoading = true); 
 
     try {
-      final response = await http
-          .post(
-            Uri.parse(ApiConstants.getFullUrl(ApiConstants.authLogin)),
-            headers: {
-              'Content-Type': 'application/json',
-              'Accept': 'application/json',
-              'referer': ApiConstants.refererHeader,
-            },
-            body: json.encode({
-              'name': _usernameController.text.trim(),
-              'password': _passwordController.text.trim(),
-            }),
-          )
-          .timeout(const Duration(seconds: 30));
+      final response = await http.post(
+        Uri.parse(ApiConstants.getFullUrl(ApiConstants.authLogin)),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'referer': ApiConstants.refererHeader,
+        },
+        body: json.encode({
+          'name': _usernameController.text.trim(),
+          'password': _passwordController.text.trim(),
+        }),
+      ).timeout(const Duration(seconds: 30));
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        String? token =
-            data['data']?['token'] ?? data['token'] ?? data['access_token'];
-
+        String? token = data['data']?['token'] ?? data['token'] ?? data['access_token'];
+      
         if (token != null && token.isNotEmpty) {
+<<<<<<< HEAD
           // Save token with error handling
           try {
             await AuthService.saveToken(token);
@@ -196,6 +206,10 @@ class _LoginScreenState extends State<LoginScreen> {
             throw Exception('Failed to save authentication token: $e');
           }
 
+=======
+          await AuthService.saveToken(token);
+          
+>>>>>>> 425adf5dcaf48d4e27c4b766e59fed37dd315626
           final userResponse = await http.get(
             Uri.parse(ApiConstants.getFullUrl(ApiConstants.getUser)),
             headers: {
@@ -212,8 +226,7 @@ class _LoginScreenState extends State<LoginScreen> {
             await prefs.setString('user_data', json.encode(userData));
             print('User data saved successfully');
           } else {
-            throw Exception(
-                'Failed to fetch user data: ${userResponse.statusCode}');
+            throw Exception('Failed to fetch user data: ${userResponse.statusCode}');
           }
 
           if (mounted) {
@@ -227,19 +240,16 @@ class _LoginScreenState extends State<LoginScreen> {
         }
       } else {
         final errorData = json.decode(response.body);
-        throw Exception(errorData['message'] ??
-            'Login failed with status ${response.statusCode}');
+        throw Exception(errorData['message'] ?? 'Login failed with status ${response.statusCode}');
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-                'Login failed: ${e.toString().replaceAll('Exception: ', '')}'),
+            content: Text('Login failed: ${e.toString().replaceAll('Exception: ', '')}'),
             backgroundColor: Colors.red,
             behavior: SnackBarBehavior.floating,
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
         );
       }
@@ -248,6 +258,7 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+<<<<<<< HEAD
 @override
 Widget build(BuildContext context) {
   return Scaffold(
@@ -383,6 +394,115 @@ Widget build(BuildContext context) {
                                 borderRadius: BorderRadius.circular(6), // Smaller radius
                                 borderSide: BorderSide(
                                   color: const Color(0xFFD4AF37).withOpacity(0.5),
+=======
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.grey[50],
+      body: Center(
+        child: SingleChildScrollView(
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: 400),
+            margin: const EdgeInsets.all(20),
+            child: Card(
+              elevation: 8,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.withOpacity(0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.point_of_sale, size: 64, color: Colors.blue),
+                    ).animate().fadeIn(duration: 600.ms),
+                  
+                    const SizedBox(height: 20),
+                  
+                    Text(
+                      'Cloud Chef POS',
+                      style: GoogleFonts.poppins(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.blue,
+                      ),
+                    ),
+                  
+                    const SizedBox(height: 8),
+                  
+                    Text(
+                      'Welcome back! Please sign in',
+                      style: GoogleFonts.poppins(
+                        color: Colors.grey[600],
+                        fontSize: 14,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  
+                    const SizedBox(height: 24),
+                  
+                    TextField(
+                      controller: _usernameController,
+                      decoration: InputDecoration(
+                        labelText: 'Username',
+                        prefixIcon: const Icon(Icons.person_outline),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        filled: true,
+                        fillColor: Colors.grey[50],
+                      ),
+                      onSubmitted: (_) => _login(),
+                    ),
+                  
+                    const SizedBox(height: 16),
+                  
+                    TextField(
+                      controller: _passwordController,
+                      obscureText: _obscurePassword,
+                      decoration: InputDecoration(
+                        labelText: 'Password',
+                        prefixIcon: const Icon(Icons.lock_outline),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                            color: Colors.grey,
+                          ),
+                          onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                        ),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        filled: true,
+                        fillColor: Colors.grey[50],
+                      ),
+                      onSubmitted: (_) => _login(),
+                    ),
+                  
+                    const SizedBox(height: 24),
+               
+                    SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: ElevatedButton(
+                        onPressed: _isLoading ? null : _login,
+                        style: ElevatedButton.styleFrom(
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          backgroundColor: Colors.blue,
+                          foregroundColor: Colors.white,
+                        ),
+                        child: _isLoading
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                              )
+                            : Text(
+                                'SIGN IN',
+                                style: GoogleFonts.poppins(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+>>>>>>> 425adf5dcaf48d4e27c4b766e59fed37dd315626
                                 ),
                               ),
                               enabledBorder: OutlineInputBorder(
@@ -563,7 +683,7 @@ Widget build(BuildContext context) {
 
 class AuthService {
   static const String _tokenKey = 'auth_token';
-
+ 
   static Future<void> saveToken(String token) async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -604,12 +724,16 @@ class AuthService {
 
   static Future<bool> validateToken() async {
     final token = await getToken();
+<<<<<<< HEAD
     if (token == null || token.isEmpty) return false;
 
+=======
+    if (token == null) return false;
+  
+>>>>>>> 425adf5dcaf48d4e27c4b766e59fed37dd315626
     try {
       final response = await http.get(
-        Uri.parse(ApiConstants.getFullUrl(
-            '${ApiConstants.getCustomers}?page=1&limit=1')),
+        Uri.parse(ApiConstants.getFullUrl('${ApiConstants.getCustomers}?page=1&limit=1')),
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
@@ -617,7 +741,7 @@ class AuthService {
           'referer': ApiConstants.refererHeader,
         },
       ).timeout(const Duration(seconds: 10));
-
+    
       return response.statusCode >= 200 && response.statusCode < 300;
     } catch (e) {
       print('Token validation error: $e');
@@ -696,9 +820,9 @@ class Waiter {
   }
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'name': name,
-      };
+    'id': id,
+    'name': name,
+  };
 }
 
 class Product {
@@ -710,13 +834,13 @@ class Product {
   final int tblCategoryId;
   final String? productImage;
   final String stockName;
-  int availableQuantity;
+  int availableQuantity; 
   final double price;
   final double cost;
   final double wsPrice;
   final String lotNumber;
   final String? expiryDate;
-  List<dynamic> lotsqty;
+  List<dynamic> lotsqty; 
 
   Product({
     required this.id,
@@ -739,7 +863,7 @@ class Product {
   factory Product.fromJson(Map<String, dynamic> json) {
     List<dynamic> lotsqty = json['lotsqty'] ?? [];
     Map<String, dynamic>? selectedLot;
-
+  
     if (lotsqty.isNotEmpty) {
       for (var lot in lotsqty) {
         final qty = int.tryParse(lot['qty']?.toString() ?? '0') ?? 0;
@@ -760,11 +884,9 @@ class Product {
     String? expiryDate;
 
     if (selectedLot != null) {
-      price = double.tryParse(selectedLot['retail_price']?.toString() ?? '0') ??
-          0.0;
+      price = double.tryParse(selectedLot['retail_price']?.toString() ?? '0') ?? 0.0;
       cost = double.tryParse(selectedLot['cost']?.toString() ?? '0') ?? 0.0;
-      wsPrice =
-          double.tryParse(selectedLot['ws_price']?.toString() ?? '0') ?? 0.0;
+      wsPrice = double.tryParse(selectedLot['ws_price']?.toString() ?? '0') ?? 0.0;
       lotNumber = selectedLot['lot_number']?.toString() ?? '';
       expiryDate = selectedLot['ex_date']?.toString();
     }
@@ -777,9 +899,7 @@ class Product {
       tblStockId: json['tbl_stock_id'] ?? 0,
       tblCategoryId: json['tbl_category_id'] ?? 0,
       productImage: json['product_image'],
-      stockName: json['stock'] != null
-          ? json['stock']['stock_name'] ?? 'Main'
-          : 'Main',
+      stockName: json['stock'] != null ? json['stock']['stock_name'] ?? 'Main' : 'Main',
       availableQuantity: _calculateAvailableQuantity(lotsqty),
       price: price,
       cost: cost,
@@ -792,27 +912,26 @@ class Product {
 
   static int _calculateAvailableQuantity(List<dynamic> lotsqty) {
     if (lotsqty.isEmpty) return 0;
-    return lotsqty.fold(0,
-        (sum, lot) => sum + (int.tryParse(lot['qty']?.toString() ?? '0') ?? 0));
+    return lotsqty.fold(0, (sum, lot) => sum + (int.tryParse(lot['qty']?.toString() ?? '0') ?? 0));
   }
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'name': name,
-        'unit': unit,
-        'bar_code': barCode,
-        'tbl_stock_id': tblStockId,
-        'tbl_category_id': tblCategoryId,
-        'product_image': productImage,
-        'stock_name': stockName,
-        'available_quantity': availableQuantity,
-        'price': price,
-        'cost': cost,
-        'ws_price': wsPrice,
-        'lot_number': lotNumber,
-        'expiry_date': expiryDate,
-        'lotsqty': lotsqty,
-      };
+    'id': id,
+    'name': name,
+    'unit': unit,
+    'bar_code': barCode,
+    'tbl_stock_id': tblStockId,
+    'tbl_category_id': tblCategoryId,
+    'product_image': productImage,
+    'stock_name': stockName,
+    'available_quantity': availableQuantity,
+    'price': price,
+    'cost': cost,
+    'ws_price': wsPrice,
+    'lot_number': lotNumber,
+    'expiry_date': expiryDate,
+    'lotsqty': lotsqty,
+  };
 
   void updateStock(int quantity) {
     availableQuantity = quantity;
@@ -852,15 +971,13 @@ class CartItem {
     }
   }
 
-  double getSubtotal(OrderType orderType) =>
-      getPriceByOrderType(orderType) * quantity;
+  double getSubtotal(OrderType orderType) => getPriceByOrderType(orderType) * quantity;
 
   double getDiscount(OrderType orderType) => discountType == '%'
       ? getSubtotal(orderType) * (discountValue / 100)
       : (discountType == 'value' ? discountValue : 0.0);
 
-  double getTotalPrice(OrderType orderType) =>
-      getSubtotal(orderType) - getDiscount(orderType);
+  double getTotalPrice(OrderType orderType) => getSubtotal(orderType) - getDiscount(orderType);
 
   CartItem copyWith({
     Product? product,
@@ -898,9 +1015,9 @@ class Category {
   }
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'category_name': categoryName,
-      };
+    'id': id,
+    'category_name': categoryName,
+  };
 }
 
 class Table {
@@ -922,20 +1039,19 @@ class Table {
     return Table(
       id: json['id'] ?? 0,
       name: json['name'] ?? '',
-      serviceCharge:
-          double.tryParse(json['service_charge']?.toString() ?? '0') ?? 0.0,
+      serviceCharge: double.tryParse(json['service_charge']?.toString() ?? '0') ?? 0.0,
       hasDueOrders: json['has_due_orders'] ?? false,
       specialNote: json['special_note'] ?? '',
     );
   }
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'name': name,
-        'service_charge': serviceCharge,
-        'has_due_orders': hasDueOrders,
-        'special_note': specialNote,
-      };
+    'id': id,
+    'name': name,
+    'service_charge': serviceCharge,
+    'has_due_orders': hasDueOrders,
+    'special_note': specialNote,
+  };
 }
 
 class Order {
@@ -963,11 +1079,9 @@ class Order {
     return Order(
       id: json['id'] ?? 0,
       orderNumber: json['order_number'] ?? '',
-      totalAmount:
-          double.tryParse(json['total_amount']?.toString() ?? '0') ?? 0.0,
+      totalAmount: double.tryParse(json['total_amount']?.toString() ?? '0') ?? 0.0,
       status: json['status'] ?? '',
-      orderDate:
-          DateTime.parse(json['order_date'] ?? DateTime.now().toString()),
+      orderDate: DateTime.parse(json['order_date'] ?? DateTime.now().toString()),
       customerName: json['customer_name'],
       tableName: json['table_name'],
       invoiceNumber: json['invoice_code'] ?? json['invoice_number'] ?? '',
@@ -975,15 +1089,15 @@ class Order {
   }
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'order_number': orderNumber,
-        'total_amount': totalAmount,
-        'status': status,
-        'order_date': orderDate.toIso8601String(),
-        'customer_name': customerName,
-        'table_name': tableName,
-        'invoice_number': invoiceNumber,
-      };
+    'id': id,
+    'order_number': orderNumber,
+    'total_amount': totalAmount,
+    'status': status,
+    'order_date': orderDate.toIso8601String(),
+    'customer_name': customerName,
+    'table_name': tableName,
+    'invoice_number': invoiceNumber,
+  };
 }
 
 class PrinterType {
@@ -1011,26 +1125,24 @@ class NumPad extends StatelessWidget {
   void _addText(String text) {
     if (text == '.' && !allowDecimal) return;
     if (text == '.' && controller.text.contains('.')) return;
-
+  
     controller.text += text;
     onValueChanged?.call();
   }
 
   void _backspace() {
     if (controller.text.isNotEmpty) {
-      controller.text =
-          controller.text.substring(0, controller.text.length - 1);
+      controller.text = controller.text.substring(0, controller.text.length - 1);
     }
     onValueChanged?.call();
   }
 
   void _clear() {
-    controller.text = '';
+    controller.text = ''; 
     onValueChanged?.call();
   }
 
-  Widget _buildKeypadButton(String text,
-      {Color color = Colors.blue, double fontSize = 20}) {
+  Widget _buildKeypadButton(String text, {Color color = Colors.blue, double fontSize = 20}) {
     return ElevatedButton(
       onPressed: () {
         if (text == '<') {
@@ -1066,84 +1178,84 @@ class NumPad extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: Colors.grey[50],
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Column(
-          children: [
-            Expanded(
-              child: Row(
-                children: [
-                  Expanded(child: _buildKeypadButton('7')),
-                  const SizedBox(width: 8),
-                  Expanded(child: _buildKeypadButton('8')),
-                  const SizedBox(width: 8),
-                  Expanded(child: _buildKeypadButton('9')),
-                  const SizedBox(width: 8),
-                  Expanded(child: _buildKeypadButton('C', color: Colors.red)),
-                ],
-              ),
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: Colors.grey[50],
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        children: [
+          Expanded(
+            child: Row(
+              children: [
+                Expanded(child: _buildKeypadButton('7')),
+                const SizedBox(width: 8),
+                Expanded(child: _buildKeypadButton('8')),
+                const SizedBox(width: 8),
+                Expanded(child: _buildKeypadButton('9')),
+                const SizedBox(width: 8),
+                Expanded(child: _buildKeypadButton('C', color: Colors.red)),
+              ],
             ),
-            const SizedBox(height: 8),
-            Expanded(
-              child: Row(
-                children: [
-                  Expanded(child: _buildKeypadButton('4')),
-                  const SizedBox(width: 8),
-                  Expanded(child: _buildKeypadButton('5')),
-                  const SizedBox(width: 8),
-                  Expanded(child: _buildKeypadButton('6')),
-                  const SizedBox(width: 8),
-                  Expanded(
-                      child: _buildKeypadButton('<', color: Colors.orange)),
-                ],
-              ),
+          ),
+          const SizedBox(height: 8),
+          Expanded(
+            child: Row(
+              children: [
+                Expanded(child: _buildKeypadButton('4')),
+                const SizedBox(width: 8),
+                Expanded(child: _buildKeypadButton('5')),
+                const SizedBox(width: 8),
+                Expanded(child: _buildKeypadButton('6')),
+                const SizedBox(width: 8),
+                Expanded(child: _buildKeypadButton('<', color: Colors.orange)),
+              ],
             ),
-            const SizedBox(height: 8),
-            Expanded(
-              child: Row(
-                children: [
-                  Expanded(child: _buildKeypadButton('1')),
-                  const SizedBox(width: 8),
-                  Expanded(child: _buildKeypadButton('2')),
-                  const SizedBox(width: 8),
-                  Expanded(child: _buildKeypadButton('3')),
-                  const SizedBox(width: 8),
-                  Expanded(child: _buildKeypadButton('00')),
-                ],
-              ),
+          ),
+          const SizedBox(height: 8),
+          Expanded(
+            child: Row(
+              children: [
+                Expanded(child: _buildKeypadButton('1')),
+                const SizedBox(width: 8),
+                Expanded(child: _buildKeypadButton('2')),
+                const SizedBox(width: 8),
+                Expanded(child: _buildKeypadButton('3')),
+                const SizedBox(width: 8),
+                Expanded(child: _buildKeypadButton('00')),
+              ],
             ),
-            const SizedBox(height: 8),
-            Expanded(
-              child: Row(
-                children: [
-                  Expanded(child: _buildKeypadButton('0')),
-                  const SizedBox(width: 8),
-                  if (allowDecimal) Expanded(child: _buildKeypadButton('.')),
-                  if (!allowDecimal) const Expanded(child: SizedBox()),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: _buildKeypadButton(
-                      'Cancel',
-                      color: Colors.grey,
-                      fontSize: 16,
-                    ),
+          ),
+          const SizedBox(height: 8),
+          Expanded(
+            child: Row(
+              children: [
+                Expanded(child: _buildKeypadButton('0')),
+                const SizedBox(width: 8),
+                if (allowDecimal) Expanded(child: _buildKeypadButton('.')),
+                if (!allowDecimal) const Expanded(child: SizedBox()),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _buildKeypadButton(
+                    'Cancel',
+                    color: Colors.grey,
+                    fontSize: 16,
                   ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: _buildKeypadButton(
-                      'OK',
-                      color: Colors.green,
-                      fontSize: 16,
-                    ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _buildKeypadButton(
+                    'OK',
+                    color: Colors.green,
+                    fontSize: 16,
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-          ],
-        ));
+          ),
+        ],
+      )
+    );
   }
 }
 
@@ -1155,6 +1267,7 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
+  
   List<Customer> _customers = [];
   List<Customer> _filteredCustomers = [];
   List<Waiter> _waiters = [];
@@ -1167,19 +1280,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
   List<Table> _filteredTables = [];
   List<Order> _orders = [];
   Category? _selectedCategory;
-
+  
   bool _dataLoaded = false;
   bool _isInitialLoading = true;
   bool _isLoading = false;
   bool _isLoadingProducts = false;
 
   bool _isSavingInvoice = false;
-
+  
   final TextEditingController _searchController = TextEditingController();
-  final TextEditingController _productSearchController =
-      TextEditingController();
-  final TextEditingController _discountController =
-      TextEditingController(text: '0');
+  final TextEditingController _productSearchController = TextEditingController();
+  final TextEditingController _discountController = TextEditingController(text: '0');
   final TextEditingController _tableSearchController = TextEditingController();
   final TextEditingController _waiterSearchController = TextEditingController();
   Customer? _selectedCustomer;
@@ -1202,30 +1313,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
   double _serviceAmountOverride = 0.0;
   Map<String, dynamic>? _cartDataForPrinting;
   bool _showListView = true;
-
+  
   bool _isEditingDueTable = false;
   List<Map<String, dynamic>> _existingDueTableItems = [];
   bool _isProcessingDueTablePayment = false;
-
+  
   Map<int, String> _tableSpecialNotes = {};
-
+  
   Map<String, double>? _paymentDataForPrinting;
   String? _kotCode;
   String? _botCode;
-
-  // Cache for computed values to avoid recalculation
-  double _cachedTotalSubtotal = 0.0;
-  double _cachedTotalItemDiscount = 0.0;
-  double _cachedTotalBeforeGlobal = 0.0;
-  double _cachedGlobalDiscountValue = 0.0;
-  double _cachedServiceAmount = 0.0;
-  double _cachedNetAmount = 0.0;
-  bool _cachedValuesInvalid = true;
-
-  // Debounce timers for search
-  Timer? _productSearchDebounce;
-  Timer? _tableSearchDebounce;
-  Timer? _waiterSearchDebounce;
+  
 
   @override
   void initState() {
@@ -1235,32 +1333,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
     _checkBluetoothStatus();
     _requestPermissions();
     _loadLocalTableNotes();
-
-    // Add debounced search listeners
-    _productSearchController.addListener(_onProductSearchChanged);
-    _tableSearchController.addListener(_onTableSearchChanged);
-    _waiterSearchController.addListener(_onWaiterSearchChanged);
   }
 
   @override
   void dispose() {
-    // Dispose Bluetooth connections
     for (var connection in _connections) {
       connection.finish();
     }
-
-    // Dispose all text controllers
-    _searchController.dispose();
-    _productSearchController.dispose();
-    _discountController.dispose();
-    _tableSearchController.dispose();
-    _waiterSearchController.dispose();
-
-    // Cancel debounce timers
-    _productSearchDebounce?.cancel();
-    _tableSearchDebounce?.cancel();
-    _waiterSearchDebounce?.cancel();
-
     super.dispose();
   }
 
@@ -1269,12 +1348,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
       _isInitialLoading = true;
       _dataLoaded = false;
     });
-
+    
     final token = await AuthService.getToken();
     if (token == null) {
       await _handleUnauthorized();
       return;
     }
+<<<<<<< HEAD
 
     // Validate token before loading data
     final isValid = await AuthService.validateToken();
@@ -1283,6 +1363,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
       return;
     }
 
+=======
+    
+>>>>>>> 425adf5dcaf48d4e27c4b766e59fed37dd315626
     await Future.wait([
       _loadCategories(),
       _loadProducts(),
@@ -1290,7 +1373,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       _loadWaiters(),
       _loadOrders(),
     ]);
-
+    
     setState(() {
       _isInitialLoading = false;
       _dataLoaded = true;
@@ -1298,49 +1381,46 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   int _getTotalConnectedPrinters() {
-    return _connectedCashierDevices.length +
-        _connectedKitchenDevices.length +
-        _connectedBotDevices.length;
+    return _connectedCashierDevices.length + 
+         _connectedKitchenDevices.length + 
+         _connectedBotDevices.length;
   }
 
-  Future<bool> _verifyAdmin() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final userDataString = prefs.getString('user_data');
-
-      if (userDataString == null) return false;
-
-      final userData = json.decode(userDataString);
-
-      // Check user type (0 = admin, 1 = user)
-      final userType = userData['type'] ?? 0;
-      final userName = userData['name']?.toString().toLowerCase() ?? '';
-
-      // Type 0 is admin, also check for admin in username as backup
-      return userType == 0 || userName.contains('admin');
-    } catch (e) {
-      print('Admin verification error: $e');
-      return false;
-    }
+Future<bool> _verifyAdmin() async {
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    final userDataString = prefs.getString('user_data');
+    
+    if (userDataString == null) return false;
+    
+    final userData = json.decode(userDataString);
+    
+    // Check user type (0 = admin, 1 = user)
+    final userType = userData['type'] ?? 0;
+    final userName = userData['name']?.toString().toLowerCase() ?? '';
+    
+    // Type 0 is admin, also check for admin in username as backup
+    return userType == 0 || userName.contains('admin');
+  } catch (e) {
+    print('Admin verification error: $e');
+    return false;
   }
-
+}
   Future<void> _loadOrders() async {
     if (!_dataLoaded) return;
-
+    
     setState(() => _isLoading = true);
     try {
       final headers = await _getAuthHeaders();
-      final response = await http
-          .get(
-            Uri.parse(ApiConstants.getFullUrl(ApiConstants.getOrders)),
-            headers: headers,
-          )
-          .timeout(const Duration(seconds: 30));
+      final response = await http.get(
+        Uri.parse(ApiConstants.getFullUrl(ApiConstants.getOrders)),
+        headers: headers,
+      ).timeout(const Duration(seconds: 30));
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         List<dynamic> ordersData = data is List ? data : (data['data'] ?? []);
-
+      
         _orders = ordersData.map((e) => Order.fromJson(e)).toList();
       } else if (response.statusCode == 401) {
         await _handleUnauthorized();
@@ -1366,23 +1446,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final stockName = item.product.stockName.toLowerCase();
       final productUnit = item.product.unit.toLowerCase();
       final productName = item.product.name.toLowerCase();
-
-      final isBarItem = stockName.contains('bar') ||
-          stockName.contains('beverage') ||
-          productUnit.contains('drink') ||
-          productUnit.contains('beverage') ||
-          productUnit.contains('coffee') ||
-          productUnit.contains('tea') ||
-          productUnit.contains('juice') ||
-          productName.contains('coffee') ||
-          productName.contains('tea') ||
-          productName.contains('juice') ||
-          productName.contains('soda') ||
-          productName.contains('water') ||
-          productName.contains('cappuccino') ||
-          productName.contains('latte') ||
-          productName.contains('espresso');
-
+      
+      final isBarItem = stockName.contains('bar') || 
+                       stockName.contains('beverage') ||
+                       productUnit.contains('drink') ||
+                       productUnit.contains('beverage') ||
+                       productUnit.contains('coffee') ||
+                       productUnit.contains('tea') ||
+                       productUnit.contains('juice') ||
+                       productName.contains('coffee') ||
+                       productName.contains('tea') ||
+                       productName.contains('juice') ||
+                       productName.contains('soda') ||
+                       productName.contains('water') ||
+                       productName.contains('cappuccino') ||
+                       productName.contains('latte') ||
+                       productName.contains('espresso');
+      
       return !isBarItem;
     });
   }
@@ -1399,28 +1479,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
 
     setState(() => _isLoading = true);
-
+  
     try {
       final headers = await _getAuthHeaders();
-
+    
       final endpoints = [
-        '${ApiConstants.baseUrl}/api/invoice-create/table-bill-find',
-        '${ApiConstants.baseUrl}/api/table-bill-find',
-        '${ApiConstants.baseUrl}/api/invoices/table/$tableName',
+        'https://api-kafenio.sltcloud.lk/api/invoice-create/table-bill-find',
+        'https://api-kafenio.sltcloud.lk/api/table-bill-find',
+        'https://api-kafenio.sltcloud.lk/api/invoices/table/$tableName',
       ];
 
       http.Response? response;
       for (var endpoint in endpoints) {
         try {
-          response = await http
-              .post(
-                Uri.parse(endpoint),
-                headers: headers,
-                body: json.encode(
-                    {'table_name': tableName, 'tableFindInput': tableName}),
-              )
-              .timeout(const Duration(seconds: 10));
-
+          response = await http.post(
+            Uri.parse(endpoint),
+            headers: headers,
+            body: json.encode({'table_name': tableName, 'tableFindInput': tableName}),
+          ).timeout(const Duration(seconds: 10));
+        
           if (response.statusCode == 200) break;
         } catch (e) {
           continue;
@@ -1438,11 +1515,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
           _isEditingDueTable = false;
           _existingDueTableItems.clear();
         });
-
+      
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-                'No active bill found for table "$tableName". Starting fresh order.'),
+            content: Text('No active bill found for table "$tableName". Starting fresh order.'),
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -1451,7 +1527,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
       final jsonData = json.decode(response.body);
       final data = jsonData['data'] ?? jsonData;
-
+    
       setState(() {
         _cartItems.clear();
         _currentInvoiceId = null;
@@ -1462,7 +1538,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
       final inv = data['inv'] ?? data['invoice'] ?? {};
       _currentInvoiceId = inv['id'] ?? inv['invoice_id'];
-
+    
       final waiterId = inv['waiter_id'] ?? 0;
       final waiterName = inv['waiter_name'] ?? '';
       if (waiterId > 0) {
@@ -1494,26 +1570,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
         orElse: () => OrderType.retail,
       );
 
-      final billDis =
-          double.tryParse(inv['bill_dis']?.toString() ?? '0') ?? 0.0;
+      final billDis = double.tryParse(inv['bill_dis']?.toString() ?? '0') ?? 0.0;
       _discountController.text = billDis.toString();
 
-      final serviceAmount =
-          double.tryParse(inv['service_charge']?.toString() ?? '0') ?? 0.0;
+      final serviceAmount = double.tryParse(inv['service_charge']?.toString() ?? '0') ?? 0.0;
       _serviceAmountOverride = serviceAmount;
 
-      List<dynamic> itemsData =
-          data['invB'] ?? data['items'] ?? data['order_items'] ?? [];
-
+      List<dynamic> itemsData = data['invB'] ?? data['items'] ?? data['order_items'] ?? [];
+    
       _existingDueTableItems = List<Map<String, dynamic>>.from(itemsData);
-
+    
       int loadedItems = 0;
       for (var itemData in itemsData) {
         try {
           var productId = itemData['product_id'] ?? itemData['tbl_product_id'];
           final barCode = itemData['bar_code'];
           final productName = itemData['name'] ?? 'Unknown Product';
-
+        
           Product product = _products.firstWhere(
             (p) => p.id == productId || p.barCode == barCode,
             orElse: () => Product(
@@ -1524,38 +1597,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
               tblStockId: itemData['tbl_stock_id'] ?? 0,
               tblCategoryId: itemData['tbl_category_id'] ?? 0,
               productImage: null,
-              stockName: itemData['stock']?['stock_name'] ??
-                  itemData['stock_name'] ??
-                  'Main',
-              availableQuantity:
-                  int.tryParse(itemData['qty']?.toString() ?? '0') ?? 0,
-              price:
-                  double.tryParse(itemData['price']?.toString() ?? '0') ?? 0.0,
+              stockName: itemData['stock']?['stock_name'] ?? itemData['stock_name'] ?? 'Main',
+              availableQuantity: int.tryParse(itemData['qty']?.toString() ?? '0') ?? 0,
+              price: double.tryParse(itemData['price']?.toString() ?? '0') ?? 0.0,
               cost: double.tryParse(itemData['cost']?.toString() ?? '0') ?? 0.0,
-              wsPrice: double.tryParse(itemData['ws_price']?.toString() ??
-                      itemData['price']?.toString() ??
-                      '0') ??
-                  0.0,
-              lotNumber: itemData['lot_id']?.toString() ??
-                  itemData['lot_number'] ??
-                  '',
+              wsPrice: double.tryParse(itemData['ws_price']?.toString() ?? itemData['price']?.toString() ?? '0') ?? 0.0,
+              lotNumber: itemData['lot_id']?.toString() ?? itemData['lot_number'] ?? '',
               expiryDate: itemData['ex_date'] ?? itemData['expiry_date'],
               lotsqty: [],
             ),
           );
 
-          final quantity =
-              int.tryParse(itemData['qty']?.toString() ?? '1') ?? 1;
+          final quantity = int.tryParse(itemData['qty']?.toString() ?? '1') ?? 1;
           String discountType = itemData['discount_type'] ?? 'none';
-          double discountValue =
-              double.tryParse(itemData['discount_value']?.toString() ?? '0') ??
-                  0.0;
+          double discountValue = double.tryParse(itemData['discount_value']?.toString() ?? '0') ?? 0.0;
 
           if (discountType == 'none') {
-            final dis =
-                double.tryParse(itemData['dis']?.toString() ?? '0') ?? 0.0;
-            final disVal =
-                double.tryParse(itemData['disVal']?.toString() ?? '0') ?? 0.0;
+            final dis = double.tryParse(itemData['dis']?.toString() ?? '0') ?? 0.0;
+            final disVal = double.tryParse(itemData['disVal']?.toString() ?? '0') ?? 0.0;
             if (dis > 0) {
               discountType = '%';
               discountValue = dis;
@@ -1571,7 +1630,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             discountType: discountType,
             discountValue: discountValue,
             isNewItem: false,
-            specialNote: itemData['special_note'] ?? itemData['note'] ?? '',
+            specialNote: itemData['special_note'] ?? itemData['note'] ?? '', 
           ));
           loadedItems++;
         } catch (e) {
@@ -1580,6 +1639,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
       }
 
       _updateCartTotals();
+    
+    
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1610,13 +1671,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     try {
       final headers = await _getAuthHeaders();
-      final response = await http
-          .post(
-            Uri.parse(ApiConstants.getFullUrl(ApiConstants.tableBillFind)),
-            headers: headers,
-            body: json.encode({'table_name': _selectedTable!.name}),
-          )
-          .timeout(const Duration(seconds: 10));
+      final response = await http.post(
+        Uri.parse(ApiConstants.getFullUrl(ApiConstants.tableBillFind)),
+        headers: headers,
+        body: json.encode({'table_name': _selectedTable!.name}),
+      ).timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
         await _findTableBill(_selectedTable!.name);
@@ -1632,7 +1691,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       _serviceAmountOverride = 0.0;
       _isEditingDueTable = false;
       _existingDueTableItems.clear();
-
+      
       if (_selectedTable != null) {
         final localNote = _tableSpecialNotes[_selectedTable!.id];
         _selectedTable = Table(
@@ -1648,26 +1707,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Future<String?> _showSaveInvoiceNoteDialog() async {
     final noteController = TextEditingController();
-
+    
     if (_selectedTable != null && _selectedTable!.specialNote.isNotEmpty) {
       noteController.text = _selectedTable!.specialNote;
     }
-
+    
     return showDialog<String>(
       context: context,
       barrierDismissible: false,
       builder: (context) {
-        final isLandscape =
-            MediaQuery.of(context).orientation == Orientation.landscape;
-
+        final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
+        
         return Dialog(
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           insetPadding: EdgeInsets.all(isLandscape ? 40 : 20),
           child: Container(
             padding: const EdgeInsets.all(16),
             constraints: BoxConstraints(
-              maxWidth: isLandscape
+              maxWidth: isLandscape 
                   ? MediaQuery.of(context).size.width * 0.5
                   : MediaQuery.of(context).size.width * 0.8,
               maxHeight: MediaQuery.of(context).size.height * 0.5,
@@ -1685,6 +1742,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 12),
+                
                 Container(
                   decoration: BoxDecoration(
                     border: Border.all(color: Colors.grey[300]!),
@@ -1698,14 +1756,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     textAlignVertical: TextAlignVertical.top,
                     decoration: InputDecoration(
                       hintText: 'Enter special note...',
-                      contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 8),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                       border: InputBorder.none,
                       isDense: true,
                     ),
                     style: GoogleFonts.poppins(fontSize: 12),
                   ),
                 ),
+                
                 if (isLandscape)
                   Row(
                     children: _buildDialogButtons(noteController),
@@ -1768,226 +1826,214 @@ class _DashboardScreenState extends State<DashboardScreen> {
       ),
     ];
   }
-
-  Future<bool> _showAdminPasswordDialog() async {
-    final passwordController = TextEditingController();
-    final usernameController = TextEditingController();
-
-    bool? result = await showDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) {
-        return Dialog(
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          child: Container(
-            padding: const EdgeInsets.all(20),
-            constraints: BoxConstraints(
-              maxWidth: MediaQuery.of(context).size.width * 0.3,
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'Admin Verification',
-                  style: GoogleFonts.poppins(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.red,
-                  ),
+Future<bool> _showAdminPasswordDialog() async {
+  final passwordController = TextEditingController();
+  final usernameController = TextEditingController();
+  
+  bool? result = await showDialog<bool>(
+    context: context,
+    barrierDismissible: false,
+    builder: (BuildContext context) {
+      return Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          constraints: BoxConstraints(
+            maxWidth: MediaQuery.of(context).size.width * 0.3,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Admin Verification',
+                style: GoogleFonts.poppins(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.red,
                 ),
-                const SizedBox(height: 16),
-                Text(
-                  'Due table items can only be removed with admin authorization.',
-                  style: GoogleFonts.poppins(
-                    fontSize: 12,
-                    color: Colors.grey[700],
-                  ),
-                  textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Due table items can only be removed with admin authorization.',
+                style: GoogleFonts.poppins(
+                  fontSize: 12,
+                  color: Colors.grey[700],
                 ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: usernameController,
-                  decoration: InputDecoration(
-                    labelText: 'Admin Username',
-                    border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8)),
-                    prefixIcon: const Icon(Icons.person),
-                  ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              
+              TextField(
+                controller: usernameController,
+                decoration: InputDecoration(
+                  labelText: 'Admin Username',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                  prefixIcon: const Icon(Icons.person),
                 ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: passwordController,
-                  obscureText: true,
-                  decoration: InputDecoration(
-                    labelText: 'Password',
-                    border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8)),
-                    prefixIcon: const Icon(Icons.lock),
-                  ),
+              ),
+              
+              const SizedBox(height: 12),
+              
+              TextField(
+                controller: passwordController,
+                obscureText: true,
+                decoration: InputDecoration(
+                  labelText: 'Password',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                  prefixIcon: const Icon(Icons.lock),
                 ),
-                const SizedBox(height: 20),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextButton(
-                        onPressed: () {
-                          Navigator.of(context).pop(false);
-                        },
-                        style: TextButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
+              ),
+              
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextButton(
+                      onPressed: () {
+                        Navigator.of(context).pop(false);
+                      },
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
                         ),
-                        child: Text(
-                          'Cancel',
-                          style: GoogleFonts.poppins(
-                            fontWeight: FontWeight.w500,
-                          ),
+                      ),
+                      child: Text(
+                        'Cancel',
+                        style: GoogleFonts.poppins(
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: () async {
-                          final username = usernameController.text.trim();
-                          final password = passwordController.text.trim();
-
-                          if (username.isEmpty || password.isEmpty) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: const Text(
-                                    'Please enter username and password'),
-                                backgroundColor: Colors.red,
-                                behavior: SnackBarBehavior.floating,
-                              ),
-                            );
-                            return;
-                          }
-
-                          showDialog(
-                            context: context,
-                            barrierDismissible: false,
-                            builder: (context) => const Center(
-                              child: CircularProgressIndicator(),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        final username = usernameController.text.trim();
+                        final password = passwordController.text.trim();
+                        
+                        if (username.isEmpty || password.isEmpty) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: const Text('Please enter username and password'),
+                              backgroundColor: Colors.red,
+                              behavior: SnackBarBehavior.floating,
                             ),
                           );
-
-                          try {
-                            final response = await http
-                                .post(
-                                  Uri.parse(ApiConstants.getFullUrl(
-                                      ApiConstants.authLogin)),
-                                  headers: {
-                                    'Content-Type': 'application/json',
-                                    'Accept': 'application/json',
-                                    'referer': ApiConstants.refererHeader,
-                                  },
-                                  body: json.encode({
-                                    'name': username,
-                                    'password': password,
-                                  }),
-                                )
-                                .timeout(const Duration(seconds: 30));
-
-                            if (mounted) Navigator.pop(context);
-
-                            if (response.statusCode == 200) {
-                              final data = json.decode(response.body);
-                              String? token = data['data']?['token'] ??
-                                  data['token'] ??
-                                  data['access_token'];
-
-                              if (token != null && token.isNotEmpty) {
-                                final userResponse = await http.get(
-                                  Uri.parse(ApiConstants.getFullUrl(
-                                      ApiConstants.getUser)),
-                                  headers: {
-                                    'Content-Type': 'application/json',
-                                    'Accept': 'application/json',
-                                    'Authorization': 'Bearer $token',
-                                    'referer': ApiConstants.refererHeader,
-                                  },
-                                ).timeout(const Duration(seconds: 10));
-
-                                if (userResponse.statusCode == 200) {
-                                  final userData =
-                                      json.decode(userResponse.body);
-                                  final userType = userData['type'] ?? 0;
-
-                                  // Check if user is admin (type 0)
-                                  final isAdmin = userType == 0;
-
-                                  if (isAdmin) {
-                                    Navigator.of(context).pop(true);
-                                  } else {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: const Text(
-                                            'User is not authorized as admin'),
-                                        backgroundColor: Colors.red,
-                                        behavior: SnackBarBehavior.floating,
-                                      ),
-                                    );
-                                    usernameController.clear();
-                                    passwordController.clear();
-                                  }
+                          return;
+                        }
+                        
+                        showDialog(
+                          context: context,
+                          barrierDismissible: false,
+                          builder: (context) => const Center(
+                            child: CircularProgressIndicator(),
+                          ),
+                        );
+                        
+                        try {
+                          final response = await http.post(
+                            Uri.parse(ApiConstants.getFullUrl(ApiConstants.authLogin)),
+                            headers: {
+                              'Content-Type': 'application/json',
+                              'Accept': 'application/json',
+                              'referer': ApiConstants.refererHeader,
+                            },
+                            body: json.encode({
+                              'name': username,
+                              'password': password,
+                            }),
+                          ).timeout(const Duration(seconds: 30));
+                          
+                          if (mounted) Navigator.pop(context);
+                          
+                          if (response.statusCode == 200) {
+                            final data = json.decode(response.body);
+                            String? token = data['data']?['token'] ?? data['token'] ?? data['access_token'];
+                            
+                            if (token != null && token.isNotEmpty) {
+                              final userResponse = await http.get(
+                                Uri.parse(ApiConstants.getFullUrl(ApiConstants.getUser)),
+                                headers: {
+                                  'Content-Type': 'application/json',
+                                  'Accept': 'application/json',
+                                  'Authorization': 'Bearer $token',
+                                  'referer': ApiConstants.refererHeader,
+                                },
+                              ).timeout(const Duration(seconds: 10));
+                              
+                              if (userResponse.statusCode == 200) {
+                                final userData = json.decode(userResponse.body);
+                                final userType = userData['type'] ?? 0;
+                                
+                                // Check if user is admin (type 0)
+                                final isAdmin = userType == 0;
+                                
+                                if (isAdmin) {
+                                  Navigator.of(context).pop(true);
                                 } else {
-                                  throw Exception('Failed to fetch user data');
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: const Text('User is not authorized as admin'),
+                                      backgroundColor: Colors.red,
+                                      behavior: SnackBarBehavior.floating,
+                                    ),
+                                  );
+                                  usernameController.clear();
+                                  passwordController.clear();
                                 }
                               } else {
-                                throw Exception('No token received');
+                                throw Exception('Failed to fetch user data');
                               }
                             } else {
-                              throw Exception('Authentication failed');
+                              throw Exception('No token received');
                             }
-                          } catch (e) {
-                            if (mounted &&
-                                Navigator.of(context, rootNavigator: true)
-                                    .canPop()) {
-                              Navigator.of(context, rootNavigator: true).pop();
-                            }
-
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                    'Authentication failed: ${e.toString().replaceAll('Exception: ', '')}'),
-                                backgroundColor: Colors.red,
-                                behavior: SnackBarBehavior.floating,
-                              ),
-                            );
-                            passwordController.clear();
+                          } else {
+                            throw Exception('Authentication failed');
                           }
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blue,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
+                        } catch (e) {
+                          if (mounted && Navigator.of(context, rootNavigator: true).canPop()) {
+                            Navigator.of(context, rootNavigator: true).pop();
+                          }
+                          
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Authentication failed: ${e.toString().replaceAll('Exception: ', '')}'),
+                              backgroundColor: Colors.red,
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
+                          passwordController.clear();
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
                         ),
-                        child: Text(
-                          'Verify',
-                          style: GoogleFonts.poppins(
-                            fontWeight: FontWeight.w500,
-                          ),
+                      ),
+                      child: Text(
+                        'Verify',
+                        style: GoogleFonts.poppins(
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
                     ),
-                  ],
-                ),
-              ],
-            ),
+                  ),
+                ],
+              ),
+            ],
           ),
-        );
-      },
-    );
-
-    return result ?? false;
-  }
+        ),
+      );
+    },
+  );
+  
+  return result ?? false;
+}
 
   Future<void> _requestPermissions() async {
     try {
@@ -1997,7 +2043,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         Permission.bluetoothConnect,
         Permission.locationWhenInUse,
       ].request();
-
+    
       if (statuses.values.any((status) => !status.isGranted)) {
         _showMessage('Please grant all Bluetooth permissions');
       }
@@ -2012,7 +2058,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       setState(() {
         _isBluetoothEnabled = isEnabled ?? false;
       });
-
+    
       if (_isBluetoothEnabled) {
         _autoConnectToDefaultPrinters();
       }
@@ -2024,11 +2070,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Future<void> _autoConnectToDefaultPrinters() async {
     try {
       List<BluetoothDevice> bondedDevices = await _bluetooth.getBondedDevices();
-
+    
       BluetoothDevice? cashierPrinter;
       BluetoothDevice? kitchenPrinter;
       BluetoothDevice? botPrinter;
-
+    
       for (var device in bondedDevices) {
         if (device.name == defaultCashierPrinterName) {
           cashierPrinter = device;
@@ -2038,20 +2084,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
           botPrinter = device;
         }
       }
-
+    
       if (cashierPrinter != null) {
-        await _connectToDevice(cashierPrinter, PrinterType.cashier,
-            isAutoConnect: true);
+        await _connectToDevice(cashierPrinter, PrinterType.cashier, isAutoConnect: true);
       }
-
+    
       if (kitchenPrinter != null) {
-        await _connectToDevice(kitchenPrinter, PrinterType.kitchen,
-            isAutoConnect: true);
+        await _connectToDevice(kitchenPrinter, PrinterType.kitchen, isAutoConnect: true);
       }
-
+      
       if (botPrinter != null) {
-        await _connectToDevice(botPrinter, PrinterType.bot,
-            isAutoConnect: true);
+        await _connectToDevice(botPrinter, PrinterType.bot, isAutoConnect: true);
       }
     } catch (e) {
       print('Auto-connect error: $e');
@@ -2071,12 +2114,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     try {
       _devices = await _bluetooth.getBondedDevices();
-
+    
       final stream = _bluetooth.startDiscovery();
       stream.listen((BluetoothDiscoveryResult result) {
         final device = result.device;
-        if (device.name != null &&
-            !_devices.any((d) => d.address == device.address)) {
+        if (device.name != null && !_devices.any((d) => d.address == device.address)) {
           setState(() {
             _devices.add(device);
           });
@@ -2094,38 +2136,32 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
-  Future<void> _connectToDevice(BluetoothDevice device, String printerType,
-      {bool isAutoConnect = false}) async {
+  Future<void> _connectToDevice(BluetoothDevice device, String printerType, {bool isAutoConnect = false}) async {
     bool isAlreadyConnected = false;
     if (printerType == PrinterType.cashier) {
-      isAlreadyConnected =
-          _connectedCashierDevices.any((d) => d.address == device.address);
+      isAlreadyConnected = _connectedCashierDevices.any((d) => d.address == device.address);
     } else if (printerType == PrinterType.kitchen) {
-      isAlreadyConnected =
-          _connectedKitchenDevices.any((d) => d.address == device.address);
+      isAlreadyConnected = _connectedKitchenDevices.any((d) => d.address == device.address);
     } else if (printerType == PrinterType.bot) {
-      isAlreadyConnected =
-          _connectedBotDevices.any((d) => d.address == device.address);
+      isAlreadyConnected = _connectedBotDevices.any((d) => d.address == device.address);
     }
-
+  
     if (isAlreadyConnected) {
       if (!isAutoConnect) {
-        _showMessage(
-            'Already connected to ${device.name} as $printerType printer');
+        _showMessage('Already connected to ${device.name} as $printerType printer');
       }
       return;
     }
 
     try {
       final connection = await BluetoothConnection.toAddress(device.address);
-      connection.input!.listen((data) {}).onDone(() {
+      connection.input!.listen((data) {
+       
+      }).onDone(() {
         setState(() {
-          _connections.removeWhere((conn) =>
-              _getDeviceForConnection(conn)?.address == device.address);
-          _connectedCashierDevices
-              .removeWhere((d) => d.address == device.address);
-          _connectedKitchenDevices
-              .removeWhere((d) => d.address == device.address);
+          _connections.removeWhere((conn) => _getDeviceForConnection(conn)?.address == device.address);
+          _connectedCashierDevices.removeWhere((d) => d.address == device.address);
+          _connectedKitchenDevices.removeWhere((d) => d.address == device.address);
           _connectedBotDevices.removeWhere((d) => d.address == device.address);
         });
         if (!isAutoConnect) {
@@ -2143,7 +2179,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           _connectedBotDevices.add(device);
         }
       });
-
+    
       if (!isAutoConnect) {
         _showMessage('Connected to ${device.name} as $printerType printer');
       }
@@ -2160,20 +2196,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
       if (cashierIndex >= 0 && cashierIndex < _connectedCashierDevices.length) {
         return _connectedCashierDevices[cashierIndex];
       }
-
-      int kitchenIndex =
-          _connections.indexOf(connection) - _connectedCashierDevices.length;
+    
+      int kitchenIndex = _connections.indexOf(connection) - _connectedCashierDevices.length;
       if (kitchenIndex >= 0 && kitchenIndex < _connectedKitchenDevices.length) {
         return _connectedKitchenDevices[kitchenIndex];
       }
-
-      int botIndex = _connections.indexOf(connection) -
-          _connectedCashierDevices.length -
-          _connectedKitchenDevices.length;
+      
+      int botIndex = _connections.indexOf(connection) - _connectedCashierDevices.length - _connectedKitchenDevices.length;
       if (botIndex >= 0 && botIndex < _connectedBotDevices.length) {
         return _connectedBotDevices[botIndex];
       }
-
+    
       return null;
     } catch (e) {
       return null;
@@ -2183,8 +2216,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   String _getPrinterTypeForDevice(BluetoothDevice device) {
     if (_connectedCashierDevices.any((d) => d.address == device.address)) {
       return PrinterType.cashier;
-    } else if (_connectedKitchenDevices
-        .any((d) => d.address == device.address)) {
+    } else if (_connectedKitchenDevices.any((d) => d.address == device.address)) {
       return PrinterType.kitchen;
     } else if (_connectedBotDevices.any((d) => d.address == device.address)) {
       return PrinterType.bot;
@@ -2196,7 +2228,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     try {
       final String printerType = _getPrinterTypeForDevice(device);
       List<BluetoothDevice> targetList;
-
+      
       if (printerType == PrinterType.cashier) {
         targetList = _connectedCashierDevices;
       } else if (printerType == PrinterType.kitchen) {
@@ -2204,7 +2236,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       } else {
         targetList = _connectedBotDevices;
       }
-
+        
       final index = targetList.indexWhere((d) => d.address == device.address);
       if (index >= 0) {
         int connectionIndex;
@@ -2213,11 +2245,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
         } else if (printerType == PrinterType.kitchen) {
           connectionIndex = _connectedCashierDevices.length + index;
         } else {
-          connectionIndex = _connectedCashierDevices.length +
-              _connectedKitchenDevices.length +
-              index;
+          connectionIndex = _connectedCashierDevices.length + _connectedKitchenDevices.length + index;
         }
-
+          
         if (connectionIndex < _connections.length) {
           await _connections[connectionIndex].finish();
           setState(() {
@@ -2268,6 +2298,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     String? kotCode = cartData['kotCode'];
     String? botCode = cartData['botCode'];
 
+    
     Map<String, double>? paymentBreakdown = cartData['paymentBreakdown'];
     double cashPaid = paymentBreakdown?['cash'] ?? 0.0;
     double bankPaid = paymentBreakdown?['bank'] ?? 0.0;
@@ -2275,9 +2306,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     double creditPaid = paymentBreakdown?['credit'] ?? 0.0;
     double totalPaid = cashPaid + bankPaid + cardPaid + creditPaid;
     double remainingBalance = netAmount - totalPaid;
-    double cashChange = cashPaid > 0
-        ? cashPaid - (netAmount - bankPaid - cardPaid - creditPaid)
-        : 0.0;
+    double cashChange = cashPaid > 0 ? cashPaid - (netAmount - bankPaid - cardPaid - creditPaid) : 0.0;
     if (cashChange < 0) cashChange = 0.0;
 
     if (printerType == PrinterType.cashier) {
@@ -2325,14 +2354,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
           bold: true,
         ),
       );
-
+      
       bytes += generator.text(
         'Cashier: POS User',
         styles: const PosStyles(
           align: PosAlign.left,
         ),
       );
-
+      
       bytes += generator.text(
         'Date: ${DateFormat('yyyy-MM-dd').format(DateTime.now())}',
         styles: const PosStyles(
@@ -2425,11 +2454,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
         final itemDiscount = 0.00;
 
         String itemName = item.product.name.toUpperCase();
-
+        
         if (item.specialNote != null && item.specialNote!.isNotEmpty) {
           itemName = '$itemName (${item.specialNote})';
         }
-
+        
         bytes += generator.text(
           itemName,
           styles: const PosStyles(
@@ -2475,7 +2504,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
         PosColumn(
           text: 'Gross Amount',
           width: 7,
-          styles: const PosStyles(),
+          styles: const PosStyles(
+          ),
         ),
         PosColumn(
           text: totalSubtotal.toStringAsFixed(2),
@@ -2491,7 +2521,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
           PosColumn(
             text: 'Discount (${discountPercentage.toStringAsFixed(0)}%)',
             width: 7,
-            styles: const PosStyles(),
+            styles: const PosStyles(
+            ),
           ),
           PosColumn(
             text: '-${globalDiscountValue.toStringAsFixed(2)}',
@@ -2508,7 +2539,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
           PosColumn(
             text: 'Service Charge',
             width: 7,
-            styles: const PosStyles(),
+            styles: const PosStyles(
+            ),
           ),
           PosColumn(
             text: serviceAmount.toStringAsFixed(2),
@@ -2541,8 +2573,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
       ]);
 
       if (paymentBreakdown != null) {
+       
+      
         bytes += generator.hr(ch: '-');
-
+        
         if (cashPaid > 0) {
           bytes += generator.row([
             PosColumn(
@@ -2558,8 +2592,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
             ),
           ]);
+          
+        
         }
-
+        
         if (bankPaid > 0) {
           bytes += generator.row([
             PosColumn(
@@ -2576,7 +2612,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
           ]);
         }
-
+        
         if (cardPaid > 0) {
           bytes += generator.row([
             PosColumn(
@@ -2593,7 +2629,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
           ]);
         }
-
+        
         if (creditPaid > 0) {
           bytes += generator.row([
             PosColumn(
@@ -2610,9 +2646,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
           ]);
         }
-
+        
         bytes += generator.hr();
-
+        
         bytes += generator.row([
           PosColumn(
             text: 'TOTAL PAID',
@@ -2630,7 +2666,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
           ),
         ]);
-
+        
         if (remainingBalance != 0) {
           bytes += generator.row([
             PosColumn(
@@ -2646,6 +2682,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               styles: const PosStyles(
                 bold: true,
                 align: PosAlign.right,
+              
               ),
             ),
           ]);
@@ -2705,7 +2742,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
         );
       }
-
+  
       if (isBillCopy) {
         bytes += generator.text(
           '*** BILL COPY ***',
@@ -2717,7 +2754,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
         );
       }
-
+  
       bytes += generator.text(
         'Date: ${DateFormat('dd-MM-yyyy').format(DateTime.now())}',
         styles: const PosStyles(
@@ -2733,7 +2770,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           height: PosTextSize.size2,
         ),
       );
-
+  
       if (selectedTable != null) {
         bytes += generator.text(
           'Table: ${selectedTable.name}',
@@ -2754,32 +2791,32 @@ class _DashboardScreenState extends State<DashboardScreen> {
       }
 
       bytes += generator.hr();
-
-      final itemsToPrint = cartData['onlyNewItems'] == true
+  
+      final itemsToPrint = cartData['onlyNewItems'] == true 
           ? cartItems.where((item) => item.isNewItem).toList()
           : cartItems;
-
+  
       final kitchenItems = itemsToPrint.where((item) {
         final stockName = item.product.stockName.toLowerCase();
         final productUnit = item.product.unit.toLowerCase();
         final productName = item.product.name.toLowerCase();
-
-        final isBarItem = stockName.contains('bar') ||
-            stockName.contains('beverage') ||
-            productUnit.contains('drink') ||
-            productUnit.contains('beverage') ||
-            productUnit.contains('coffee') ||
-            productUnit.contains('tea') ||
-            productUnit.contains('juice') ||
-            productName.contains('coffee') ||
-            productName.contains('tea') ||
-            productName.contains('juice') ||
-            productName.contains('soda') ||
-            productName.contains('water') ||
-            productName.contains('cappuccino') ||
-            productName.contains('latte') ||
-            productName.contains('espresso');
-
+        
+        final isBarItem = stockName.contains('bar') || 
+                         stockName.contains('beverage') ||
+                         productUnit.contains('drink') ||
+                         productUnit.contains('beverage') ||
+                         productUnit.contains('coffee') ||
+                         productUnit.contains('tea') ||
+                         productUnit.contains('juice') ||
+                         productName.contains('coffee') ||
+                         productName.contains('tea') ||
+                         productName.contains('juice') ||
+                         productName.contains('soda') ||
+                         productName.contains('water') ||
+                         productName.contains('cappuccino') ||
+                         productName.contains('latte') ||
+                         productName.contains('espresso');
+        
         return !isBarItem;
       }).toList();
 
@@ -2800,7 +2837,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             height: PosTextSize.size2,
           ),
         );
-
+        
         bytes += generator.text(
           'Item'.padRight(45) + 'Qty',
           styles: const PosStyles(
@@ -2809,13 +2846,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
             height: PosTextSize.size2,
           ),
         );
-
+        
         bytes += generator.hr(ch: '-');
-
+        
         for (var item in kitchenItems) {
           String itemName = item.product.name;
           String quantity = 'x${item.quantity.toString()}';
-
+          
           bytes += generator.text(
             itemName.padRight(45) + quantity,
             styles: const PosStyles(
@@ -2823,7 +2860,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               height: PosTextSize.size2,
             ),
           );
-
+          
           if (item.specialNote != null && item.specialNote!.isNotEmpty) {
             bytes += generator.text(
               'Note: ${item.specialNote}',
@@ -2833,7 +2870,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
             );
           }
-
+          
           if (item.product.unit.toLowerCase().contains('main') ||
               item.product.name.toLowerCase().contains('main')) {
             bytes += generator.text(
@@ -2852,7 +2889,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       bytes += generator.text(
         '--- END OF KOT ---',
         styles: const PosStyles(
-          align: PosAlign.center,
+          align: PosAlign.center,                           
           height: PosTextSize.size2,
         ),
       );
@@ -2868,7 +2905,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
         );
       }
-
+  
       if (isBillCopy) {
         bytes += generator.text(
           '*** BILL COPY ***',
@@ -2880,7 +2917,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
         );
       }
-
+  
       bytes += generator.text(
         'Date: ${DateFormat('dd-MM-yyyy').format(DateTime.now())}',
         styles: const PosStyles(
@@ -2896,7 +2933,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           height: PosTextSize.size2,
         ),
       );
-
+  
       if (selectedTable != null) {
         bytes += generator.text(
           'Table: ${selectedTable.name}',
@@ -2917,11 +2954,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
       }
 
       bytes += generator.hr();
-
-      final itemsToPrint = cartData['onlyNewItems'] == true
+  
+      final itemsToPrint = cartData['onlyNewItems'] == true 
           ? cartItems.where((item) => item.isNewItem).toList()
           : cartItems;
-
+  
       final allItems = itemsToPrint;
 
       if (allItems.isEmpty) {
@@ -2941,7 +2978,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             height: PosTextSize.size2,
           ),
         );
-
+        
         bytes += generator.text(
           'Item'.padRight(45) + 'Qty',
           styles: const PosStyles(
@@ -2950,53 +2987,53 @@ class _DashboardScreenState extends State<DashboardScreen> {
             height: PosTextSize.size2,
           ),
         );
-
+        
         bytes += generator.hr(ch: '-');
-
+        
         final barItems = allItems.where((item) {
           final stockName = item.product.stockName.toLowerCase();
           final productUnit = item.product.unit.toLowerCase();
           final productName = item.product.name.toLowerCase();
-
-          return stockName.contains('bar') ||
-              stockName.contains('beverage') ||
-              productUnit.contains('drink') ||
-              productUnit.contains('beverage') ||
-              productUnit.contains('coffee') ||
-              productUnit.contains('tea') ||
-              productUnit.contains('juice') ||
-              productName.contains('coffee') ||
-              productName.contains('tea') ||
-              productName.contains('juice') ||
-              productName.contains('soda') ||
-              productName.contains('water') ||
-              productName.contains('cappuccino') ||
-              productName.contains('latte') ||
-              productName.contains('espresso');
+          
+          return stockName.contains('bar') || 
+                 stockName.contains('beverage') ||
+                 productUnit.contains('drink') ||
+                 productUnit.contains('beverage') ||
+                 productUnit.contains('coffee') ||
+                 productUnit.contains('tea') ||
+                 productUnit.contains('juice') ||
+                 productName.contains('coffee') ||
+                 productName.contains('tea') ||
+                 productName.contains('juice') ||
+                 productName.contains('soda') ||
+                 productName.contains('water') ||
+                 productName.contains('cappuccino') ||
+                 productName.contains('latte') ||
+                 productName.contains('espresso');
         }).toList();
-
+        
         final kitchenItems = allItems.where((item) {
           final stockName = item.product.stockName.toLowerCase();
           final productUnit = item.product.unit.toLowerCase();
           final productName = item.product.name.toLowerCase();
-
-          return !(stockName.contains('bar') ||
-              stockName.contains('beverage') ||
-              productUnit.contains('drink') ||
-              productUnit.contains('beverage') ||
-              productUnit.contains('coffee') ||
-              productUnit.contains('tea') ||
-              productUnit.contains('juice') ||
-              productName.contains('coffee') ||
-              productName.contains('tea') ||
-              productName.contains('juice') ||
-              productName.contains('soda') ||
-              productName.contains('water') ||
-              productName.contains('cappuccino') ||
-              productName.contains('latte') ||
-              productName.contains('espresso'));
+          
+          return !(stockName.contains('bar') || 
+                  stockName.contains('beverage') ||
+                  productUnit.contains('drink') ||
+                  productUnit.contains('beverage') ||
+                  productUnit.contains('coffee') ||
+                  productUnit.contains('tea') ||
+                  productUnit.contains('juice') ||
+                  productName.contains('coffee') ||
+                  productName.contains('tea') ||
+                  productName.contains('juice') ||
+                  productName.contains('soda') ||
+                  productName.contains('water') ||
+                  productName.contains('cappuccino') ||
+                  productName.contains('latte') ||
+                  productName.contains('espresso'));
         }).toList();
-
+        
         if (barItems.isNotEmpty) {
           bytes += generator.text(
             'BAR/BEVERAGE ITEMS:',
@@ -3006,11 +3043,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
               height: PosTextSize.size2,
             ),
           );
-
+          
           for (var item in barItems) {
             String itemName = item.product.name;
             String quantity = 'x${item.quantity.toString()}';
-
+            
             bytes += generator.text(
               itemName.padRight(45) + quantity,
               styles: const PosStyles(
@@ -3018,7 +3055,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 height: PosTextSize.size2,
               ),
             );
-
+            
             if (item.specialNote != null && item.specialNote!.isNotEmpty) {
               bytes += generator.text(
                 'Note: ${item.specialNote}',
@@ -3029,12 +3066,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
               );
             }
           }
-
+          
           if (kitchenItems.isNotEmpty) {
             bytes += generator.hr(ch: '-');
           }
         }
-
+        
         if (kitchenItems.isNotEmpty) {
           if (barItems.isEmpty) {
             bytes += generator.text(
@@ -3055,11 +3092,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
             );
           }
-
+          
           for (var item in kitchenItems) {
             String itemName = item.product.name;
             String quantity = 'x${item.quantity.toString()}';
-
+            
             bytes += generator.text(
               itemName.padRight(45) + quantity,
               styles: const PosStyles(
@@ -3067,7 +3104,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 height: PosTextSize.size2,
               ),
             );
-
+            
             if (item.specialNote != null && item.specialNote!.isNotEmpty) {
               bytes += generator.text(
                 'Note: ${item.specialNote}',
@@ -3077,7 +3114,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
               );
             }
-
+            
             if (item.product.unit.toLowerCase().contains('main') ||
                 item.product.name.toLowerCase().contains('main')) {
               bytes += generator.text(
@@ -3102,16 +3139,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
       );
     }
-
+  
     bytes += generator.feed(2);
     bytes += generator.cut();
     return bytes;
   }
 
-  Future<void> _printReceipt(
-      {bool isBillCopy = false,
-      bool skipKOT = false,
-      bool skipBOT = false}) async {
+  Future<void> _printReceipt({bool isBillCopy = false, bool skipKOT = false, bool skipBOT = false}) async {
     if (_connectedCashierDevices.isEmpty) {
       _showMessage('Please connect to a cashier printer first');
       return;
@@ -3124,7 +3158,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     try {
       Map<String, dynamic> cartData;
-
+      
       if (_cartDataForPrinting != null) {
         cartData = Map<String, dynamic>.from(_cartDataForPrinting!);
         cartData['isBillCopy'] = isBillCopy;
@@ -3146,92 +3180,77 @@ class _DashboardScreenState extends State<DashboardScreen> {
           'kotCode': _kotCode,
         };
       }
-
+      
       if (_paymentDataForPrinting != null) {
         cartData['paymentBreakdown'] = _paymentDataForPrinting;
       }
 
-      final List<int> cashierBytes = await _generateReceipt(
-          {...cartData, 'printerType': PrinterType.cashier});
-      final List<int> kitchenBytes = await _generateReceipt({
-        ...cartData,
-        'printerType': PrinterType.kitchen,
-        'kotCode': _kotCode
-      });
-      final List<int> botBytes = await _generateReceipt(
-          {...cartData, 'printerType': PrinterType.bot, 'kotCode': _kotCode});
-
+      final List<int> cashierBytes = await _generateReceipt({...cartData, 'printerType': PrinterType.cashier});
+      final List<int> kitchenBytes = await _generateReceipt({...cartData, 'printerType': PrinterType.kitchen, 'kotCode': _kotCode});
+      final List<int> botBytes = await _generateReceipt({...cartData, 'printerType': PrinterType.bot, 'kotCode': _kotCode});
+    
       for (int i = 0; i < _connectedCashierDevices.length; i++) {
         try {
           _connections[i].output.add(Uint8List.fromList(cashierBytes));
           await _connections[i].output.allSent;
           print('Receipt sent to ${_connectedCashierDevices[i].name}');
-        } catch (e) {}
+        } catch (e) {
+          
+        }
       }
-
+    
       final hasKitchenItems = _hasKitchenItems(_cartItems);
 
-      if (!isBillCopy &&
-          !skipKOT &&
-          _connectedKitchenDevices.isNotEmpty &&
-          hasKitchenItems) {
+      if (!isBillCopy && !skipKOT && _connectedKitchenDevices.isNotEmpty && hasKitchenItems) {
         for (int i = 0; i < _connectedKitchenDevices.length; i++) {
           try {
             int connectionIndex = _connectedCashierDevices.length + i;
-            _connections[connectionIndex]
-                .output
-                .add(Uint8List.fromList(kitchenBytes));
+            _connections[connectionIndex].output.add(Uint8List.fromList(kitchenBytes));
             await _connections[connectionIndex].output.allSent;
             print('KOT sent to ${_connectedKitchenDevices[i].name}');
           } catch (e) {
-            _showMessage(
-                'Error printing to ${_connectedKitchenDevices[i].name}: $e');
+            _showMessage('Error printing to ${_connectedKitchenDevices[i].name}: $e');
           }
         }
       }
-
+      
       if (!isBillCopy && !skipBOT && _connectedBotDevices.isNotEmpty) {
         for (int i = 0; i < _connectedBotDevices.length; i++) {
           try {
-            int connectionIndex = _connectedCashierDevices.length +
-                _connectedKitchenDevices.length +
-                i;
-            _connections[connectionIndex]
-                .output
-                .add(Uint8List.fromList(botBytes));
+            int connectionIndex = _connectedCashierDevices.length + _connectedKitchenDevices.length + i;
+            _connections[connectionIndex].output.add(Uint8List.fromList(botBytes));
             await _connections[connectionIndex].output.allSent;
             print('BOT sent to ${_connectedBotDevices[i].name}');
           } catch (e) {
-            _showMessage(
-                'Error printing to ${_connectedBotDevices[i].name}: $e');
+            _showMessage('Error printing to ${_connectedBotDevices[i].name}: $e');
           }
         }
       }
-
+    
       if (cartData.isNotEmpty && !isBillCopy) {
         setState(() {
           _orderNumber++;
         });
       }
+    
     } catch (e) {
       _showMessage('Error generating receipt: $e');
     }
   }
 
-  Future<void> _printKOT(
-      {bool onlyNewItems = false, bool printBOT = false}) async {
-    final itemsToCheck = onlyNewItems
+  Future<void> _printKOT({bool onlyNewItems = false, bool printBOT = false}) async {
+    final itemsToCheck = onlyNewItems 
         ? _cartItems.where((item) => item.isNewItem).toList()
         : List<CartItem>.from(_cartItems);
-
+  
     if (!printBOT) {
       if (_connectedKitchenDevices.isEmpty) {
         _showMessage('No kitchen printer connected. Cannot print KOT.');
         return;
       }
-
+      
       final hasKitchenItems = _hasKitchenItems(itemsToCheck);
-
+      
       if (!hasKitchenItems) {
         print('No kitchen items to print KOT');
         return;
@@ -3241,7 +3260,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         _showMessage('No BOT printer connected. Cannot print BOT.');
         return;
       }
-
+      
       if (itemsToCheck.isEmpty) {
         print('No items to print BOT');
         return;
@@ -3271,114 +3290,99 @@ class _DashboardScreenState extends State<DashboardScreen> {
         'isBotPrint': printBOT,
         'kotCode': _kotCode,
       };
-
+    
       final List<int> printerBytes = await _generateReceipt(cartData);
-
+  
       if (printBOT) {
         for (int i = 0; i < _connectedBotDevices.length; i++) {
           try {
-            int connectionIndex = _connectedCashierDevices.length +
-                _connectedKitchenDevices.length +
-                i;
-            _connections[connectionIndex]
-                .output
-                .add(Uint8List.fromList(printerBytes));
+            int connectionIndex = _connectedCashierDevices.length + _connectedKitchenDevices.length + i;
+            _connections[connectionIndex].output.add(Uint8List.fromList(printerBytes));
             await _connections[connectionIndex].output.allSent;
           } catch (e) {
-            _showMessage(
-                'Error printing to ${_connectedBotDevices[i].name}: $e');
+            _showMessage('Error printing to ${_connectedBotDevices[i].name}: $e');
           }
         }
-
+        
         await _updateStockAfterKOT(onlyNewItems, printBOT: true);
       } else {
         for (int i = 0; i < _connectedKitchenDevices.length; i++) {
           try {
             int connectionIndex = _connectedCashierDevices.length + i;
-            _connections[connectionIndex]
-                .output
-                .add(Uint8List.fromList(printerBytes));
+            _connections[connectionIndex].output.add(Uint8List.fromList(printerBytes));
             await _connections[connectionIndex].output.allSent;
           } catch (e) {
-            _showMessage(
-                'Error printing to ${_connectedKitchenDevices[i].name}: $e');
+            _showMessage('Error printing to ${_connectedKitchenDevices[i].name}: $e');
           }
         }
-
+        
         await _updateStockAfterKOT(onlyNewItems, printBOT: false);
       }
+  
     } catch (e) {
       _showMessage('Error generating ${printBOT ? 'BOT' : 'KOT'}: $e');
     }
   }
 
-  Future<void> _updateStockAfterKOT(bool onlyNewItems,
-      {bool printBOT = false}) async {
+  Future<void> _updateStockAfterKOT(bool onlyNewItems, {bool printBOT = false}) async {
     if (_cartItems.isEmpty) return;
-
+  
     try {
       final headers = await _getAuthHeaders();
-
+      
       final itemsToUpdate = onlyNewItems
           ? _cartItems.where((item) => item.isNewItem).toList()
           : _cartItems;
-
+      
       final filteredItems = itemsToUpdate.where((item) {
         if (printBOT) {
           return item.product.unit.toLowerCase().contains('beverage') ||
-              item.product.unit.toLowerCase().contains('drink') ||
-              item.product.unit.toLowerCase().contains('bar');
+                 item.product.unit.toLowerCase().contains('drink') ||
+                 item.product.unit.toLowerCase().contains('bar');
         } else {
           return !item.product.unit.toLowerCase().contains('beverage') &&
-              !item.product.unit.toLowerCase().contains('drink');
+                 !item.product.unit.toLowerCase().contains('drink');
         }
       }).toList();
-
+      
       for (var cartItem in filteredItems) {
         final product = cartItem.product;
-
+        
         if (product.lotsqty.isNotEmpty) {
           product.lotsqty.sort((a, b) {
             int qtyA = int.tryParse(a['qty']?.toString() ?? '0') ?? 0;
             int qtyB = int.tryParse(b['qty']?.toString() ?? '0') ?? 0;
             return qtyB.compareTo(qtyA);
           });
-
+          
           final selectedLot = product.lotsqty.first;
           final lotId = selectedLot['id'];
-          final currentQty =
-              int.tryParse(selectedLot['qty']?.toString() ?? '0') ?? 0;
-
+          final currentQty = int.tryParse(selectedLot['qty']?.toString() ?? '0') ?? 0;
+          
           if (currentQty >= cartItem.quantity) {
             final newQty = currentQty - cartItem.quantity;
-
-            final response = await http
-                .post(
-                  Uri.parse(
-                      ApiConstants.getFullUrl(ApiConstants.updateLotQuantity)),
-                  headers: headers,
-                  body: json.encode({
-                    'lot_id': lotId,
-                    'qty': newQty,
-                  }),
-                )
-                .timeout(const Duration(seconds: 10));
-
+            
+            final response = await http.post(
+              Uri.parse(ApiConstants.getFullUrl(ApiConstants.updateLotQuantity)),
+              headers: headers,
+              body: json.encode({
+                'lot_id': lotId,
+                'qty': newQty,
+              }),
+            ).timeout(const Duration(seconds: 10));
+            
             if (response.statusCode == 200) {
-              final productIndex =
-                  _products.indexWhere((p) => p.id == product.id);
+              final productIndex = _products.indexWhere((p) => p.id == product.id);
               if (productIndex != -1) {
                 _products[productIndex].availableQuantity = newQty;
-
-                final filteredIndex =
-                    _filteredProducts.indexWhere((p) => p.id == product.id);
+                
+                final filteredIndex = _filteredProducts.indexWhere((p) => p.id == product.id);
                 if (filteredIndex != -1) {
                   _filteredProducts[filteredIndex].availableQuantity = newQty;
                 }
               }
-
-              final cartIndex = _cartItems
-                  .indexWhere((item) => item.product.id == product.id);
+              
+              final cartIndex = _cartItems.indexWhere((item) => item.product.id == product.id);
               if (cartIndex != -1) {
                 _cartItems[cartIndex].product.availableQuantity = newQty;
               }
@@ -3386,9 +3390,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
           }
         }
       }
-
+      
       setState(() {});
-    } catch (e) {}
+    } catch (e) {
+      
+    }
   }
 
   Future<void> _printDueTableBillCopy(Table table) async {
@@ -3398,15 +3404,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
 
     setState(() => _isLoading = true);
-
+    
     try {
       await _findTableBill(table.name);
-
+      
       if (_cartItems.isEmpty) {
         _showMessage('No items found for table ${table.name}');
         return;
       }
-
+      
       final cartData = {
         'printerType': PrinterType.cashier,
         'cartItems': List<CartItem>.from(_cartItems),
@@ -3424,9 +3430,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
         'invoiceNumber': 'COPY-${DateTime.now().millisecondsSinceEpoch}',
         'kotCode': _kotCode,
       };
-
+      
       final List<int> cashierBytes = await _generateReceipt(cartData);
-
+      
       for (int i = 0; i < _connectedCashierDevices.length; i++) {
         try {
           _connections[i].output.add(Uint8List.fromList(cashierBytes));
@@ -3435,8 +3441,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
           _showMessage('Error printing bill copy: $e');
         }
       }
-
+      
       _clearCart();
+      
     } catch (e) {
       _showMessage('Error generating bill copy: $e');
     } finally {
@@ -3444,31 +3451,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
-  Future<void> _printBillCopyFromInvoice(
-      Map<String, dynamic> invoiceData) async {
+  Future<void> _printBillCopyFromInvoice(Map<String, dynamic> invoiceData) async {
     if (_connectedCashierDevices.isEmpty) {
       _showMessage('Please connect to a cashier printer first');
       return;
     }
 
     try {
-      final invoiceHead =
-          invoiceData['data']?['invoice_head'] ?? invoiceData['invoice_head'];
+      final invoiceHead = invoiceData['data']?['invoice_head'] ?? invoiceData['invoice_head'];
       final items = invoiceData['data']?['items'] ?? invoiceData['items'] ?? [];
-      final customer =
-          invoiceData['data']?['customer'] ?? invoiceData['customer'];
+      final customer = invoiceData['data']?['customer'] ?? invoiceData['customer'];
       final table = invoiceData['data']?['table'] ?? invoiceData['table'];
-      final kotCode =
-          invoiceData['kot_code'] ?? invoiceData['data']?['kot_code'];
-
+      final kotCode = invoiceData['kot_code'] ?? invoiceData['data']?['kot_code'];
+      
       if (items.isEmpty) {
         _showMessage('No invoice data to print');
         return;
       }
-
+      
       List<CartItem> cartItems = [];
       double totalSubtotal = 0.0;
-
+      
       for (var item in items) {
         final product = Product(
           id: item['id'] ?? 0,
@@ -3487,15 +3490,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
           expiryDate: item['ex_date'] ?? item['expiry_date'],
           lotsqty: [],
         );
-
+        
         final quantity = int.tryParse(item['qty']?.toString() ?? '1') ?? 1;
         final dis = double.tryParse(item['dis']?.toString() ?? '0') ?? 0.0;
-        final disVal =
-            double.tryParse(item['disVal']?.toString() ?? '0') ?? 0.0;
-
+        final disVal = double.tryParse(item['disVal']?.toString() ?? '0') ?? 0.0;
+        
         String discountType = 'none';
         double discountValue = 0.0;
-
+        
         if (dis > 0) {
           discountType = '%';
           discountValue = dis;
@@ -3503,7 +3505,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           discountType = 'value';
           discountValue = disVal;
         }
-
+        
         final cartItem = CartItem(
           product: product,
           quantity: quantity,
@@ -3511,11 +3513,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
           discountValue: discountValue,
           specialNote: item['special_note'] ?? item['note'] ?? '',
         );
-
+        
         cartItems.add(cartItem);
         totalSubtotal += cartItem.getSubtotal(_selectedOrderType);
       }
-
+      
       Customer? selectedCustomer;
       if (customer != null) {
         selectedCustomer = Customer(
@@ -3527,20 +3529,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
           address: customer['address'] ?? '',
         );
       }
-
+      
       Table? selectedTable;
       if (table != null) {
         selectedTable = Table(
           id: table['id'] ?? 0,
           name: table['name'] ?? '',
-          serviceCharge:
-              double.tryParse(table['service_charge']?.toString() ?? '0') ??
-                  0.0,
+          serviceCharge: double.tryParse(table['service_charge']?.toString() ?? '0') ?? 0.0,
           hasDueOrders: false,
           specialNote: table['special_note'] ?? '',
         );
       }
-
+      
       final cartData = {
         'printerType': PrinterType.cashier,
         'cartItems': cartItems,
@@ -3549,25 +3549,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
         'selectedTable': selectedTable,
         'totalSubtotal': totalSubtotal,
         'totalItemDiscount': 0.0,
-        'discountPercentage':
-            double.tryParse(invoiceHead['bill_dis']?.toString() ?? '0') ?? 0.0,
-        'globalDiscountValue':
-            double.tryParse(invoiceHead['bill_dis_val']?.toString() ?? '0') ??
-                0.0,
-        'serviceAmount':
-            double.tryParse(invoiceHead['service_charge']?.toString() ?? '0') ??
-                0.0,
-        'netAmount':
-            double.tryParse(invoiceHead['net_amount']?.toString() ?? '0') ??
-                0.0,
+        'discountPercentage': double.tryParse(invoiceHead['bill_dis']?.toString() ?? '0') ?? 0.0,
+        'globalDiscountValue': double.tryParse(invoiceHead['bill_dis_val']?.toString() ?? '0') ?? 0.0,
+        'serviceAmount': double.tryParse(invoiceHead['service_charge']?.toString() ?? '0') ?? 0.0,
+        'netAmount': double.tryParse(invoiceHead['net_amount']?.toString() ?? '0') ?? 0.0,
         'orderNumber': invoiceHead['invoice_code'] ?? _orderNumber,
         'invoiceNumber': invoiceHead['invoice_code'] ?? 'COPY',
         'isBillCopy': true,
         'kotCode': kotCode,
       };
-
+      
       final List<int> cashierBytes = await _generateReceipt(cartData);
-
+      
       for (int i = 0; i < _connectedCashierDevices.length; i++) {
         try {
           _connections[i].output.add(Uint8List.fromList(cashierBytes));
@@ -3576,10 +3569,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
           _showMessage('Error printing bill copy: $e');
         }
       }
-
+      
       if (_selectedTable != null && _cartItems.isNotEmpty) {
         _clearCart();
       }
+      
     } catch (e) {
       _showMessage('Error generating bill copy: $e');
     }
@@ -3591,8 +3585,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     if (_connectedCashierDevices.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text(
-              'Cannot process payment: Cashier printer not connected. Please connect to a cashier printer first.'),
+          content: const Text('Cannot process payment: Cashier printer not connected. Please connect to a cashier printer first.'),
           backgroundColor: Colors.red,
           behavior: SnackBarBehavior.floating,
         ),
@@ -3603,19 +3596,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
     if (!_isEditingDueTable && _connectedKitchenDevices.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text(
-              'Warning: Kitchen printer not connected. KOT will not be printed.'),
+          content: const Text('Warning: Kitchen printer not connected. KOT will not be printed.'),
           backgroundColor: Colors.orange,
           behavior: SnackBarBehavior.floating,
         ),
       );
     }
-
+    
     if (!_isEditingDueTable && _connectedBotDevices.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text(
-              'Warning: BOT printer not connected. BOT will not be printed.'),
+          content: const Text('Warning: BOT printer not connected. BOT will not be printed.'),
           backgroundColor: Colors.orange,
           behavior: SnackBarBehavior.floating,
         ),
@@ -3639,9 +3630,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     try {
       final headers = await _getAuthHeaders();
-
-      String saleType = _selectedTable != null ? 'DINE IN' : 'TAKE AWAY';
-
+  
+      String saleType = _selectedTable != null 
+          ? 'DINE IN'
+          : 'TAKE AWAY'; 
+  
       List<Map<String, dynamic>> items = [];
       for (var item in _cartItems) {
         double price = item.getPriceByOrderType(_selectedOrderType);
@@ -3649,7 +3642,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         double dis = item.discountType == '%' ? item.discountValue : 0.0;
         double total = item.getTotalPrice(_selectedOrderType);
         int lotId = int.tryParse(item.product.lotNumber) ?? 0;
-
+    
         items.add({
           'aQty': item.product.availableQuantity,
           'bar_code': item.product.barCode,
@@ -3677,23 +3670,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
         'bill_copy_issued': 0,
         'billDis': _discountPercentage.toString(),
         'billDisVal': _globalDiscountValue.toStringAsFixed(2),
-        'customer': _selectedCustomer != null
-            ? {
-                'id': _selectedCustomer!.id,
-                'name': _selectedCustomer!.name,
-                'phone': _selectedCustomer!.phone,
-                'email': _selectedCustomer!.email,
-                'nic': _selectedCustomer!.nic,
-                'address': _selectedCustomer!.address,
-              }
-            : {
-                'id': 0,
-                'name': 'Walk-in Customer',
-                'phone': '',
-                'email': '',
-                'nic': '',
-                'address': '',
-              },
+        'customer': _selectedCustomer != null ? {
+          'id': _selectedCustomer!.id,
+          'name': _selectedCustomer!.name,
+          'phone': _selectedCustomer!.phone,
+          'email': _selectedCustomer!.email,
+          'nic': _selectedCustomer!.nic,
+          'address': _selectedCustomer!.address,
+        } : {
+          'id': 0, 
+          'name': 'Walk-in Customer',
+          'phone': '',
+          'email': '',
+          'nic': '',
+          'address': '',
+        },
         'free_issue': 0,
         'grossAmount': _totalSubtotal.toStringAsFixed(2),
         'invDate': DateFormat('yyyy-MM-dd').format(DateTime.now()),
@@ -3702,7 +3693,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           double disVal = item.getDiscount(_selectedOrderType);
           double dis = item.discountType == '%' ? item.discountValue : 0.0;
           double total = item.getTotalPrice(_selectedOrderType);
-
+          
           int lotId = 0;
           if (item.product.lotsqty.isNotEmpty) {
             for (var lot in item.product.lotsqty) {
@@ -3712,7 +3703,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               }
             }
           }
-
+          
           return {
             'aQty': item.product.availableQuantity + item.quantity,
             'bar_code': item.product.barCode,
@@ -3738,8 +3729,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         'order_now_order_info_id': [],
         'room_booking': '',
         'saleType': saleType,
-        'service_charge':
-            _selectedTable != null ? _serviceAmount.toStringAsFixed(2) : '0.00',
+        'service_charge': _selectedTable != null ? _serviceAmount.toStringAsFixed(2) : '0.00',
         'services': [],
         'tbl_room_booking_id': '',
         'waiter_id': _selectedWaiter?.id ?? 0,
@@ -3782,53 +3772,46 @@ class _DashboardScreenState extends State<DashboardScreen> {
       };
 
       print('PayNow Payload: ${json.encode(payload)}');
-      final response = await http
-          .post(
-            Uri.parse(ApiConstants.getFullUrl(ApiConstants.processPayment)),
-            headers: headers,
-            body: json.encode(payload),
-          )
-          .timeout(const Duration(seconds: 30));
-
+      final response = await http.post(
+        Uri.parse(ApiConstants.getFullUrl(ApiConstants.processPayment)),
+        headers: headers,
+        body: json.encode(payload),
+      ).timeout(const Duration(seconds: 30));
+      
       if (response.statusCode == 200 || response.statusCode == 201) {
         final responseData = json.decode(response.body);
-
+        
         String? invoiceNumber;
-        if (responseData['data'] != null &&
-            responseData['data']['invoice_head'] != null) {
+        if (responseData['data'] != null && responseData['data']['invoice_head'] != null) {
           invoiceNumber = responseData['data']['invoice_head']['invoice_code'];
         }
-
-        String? kotCode =
-            responseData['kot_code'] ?? responseData['data']?['kot_code'];
-        String? botCode =
-            responseData['bot_code'] ?? responseData['data']?['bot_code'];
-
+        
+        String? kotCode = responseData['kot_code'] ?? responseData['data']?['kot_code'];
+        String? botCode = responseData['bot_code'] ?? responseData['data']?['bot_code'];
+        
         if (_cartDataForPrinting != null) {
           _cartDataForPrinting!['invoiceNumber'] = invoiceNumber;
           _cartDataForPrinting!['kotCode'] = kotCode;
           _cartDataForPrinting!['botCode'] = botCode;
         }
-
-        await _printReceipt(
-            skipKOT: _isEditingDueTable, skipBOT: _isEditingDueTable);
-
+        
+        await _printReceipt(skipKOT: _isEditingDueTable, skipBOT: _isEditingDueTable);
+        
         _clearCart();
         _cartDataForPrinting = null;
-
+        
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Payment processed successfully'),
             behavior: SnackBarBehavior.floating,
           ),
         );
-
+        
         setState(() {
           _orderNumber++;
         });
       } else {
-        throw Exception(
-            'Failed to process payment: ${response.statusCode} - ${response.body}');
+        throw Exception('Failed to process payment: ${response.statusCode} - ${response.body}');
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -3837,11 +3820,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
           behavior: SnackBarBehavior.floating,
         ),
       );
-
+  
       _cartDataForPrinting = null;
     }
   }
-
+  
   void _showPrinterDialog() {
     showDialog(
       context: context,
@@ -3856,60 +3839,50 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     if (_connectedCashierDevices.isNotEmpty) ...[
-                      const Text('Cashier Printers:',
-                          style: TextStyle(fontWeight: FontWeight.bold)),
-                      ..._connectedCashierDevices
-                          .map((device) => ListTile(
-                                title: Text(device.name ?? 'Unknown Device'),
-                                subtitle: Text(device.address),
-                                trailing: IconButton(
-                                  icon: const Icon(Icons.close,
-                                      color: Colors.red),
-                                  onPressed: () => _disconnectDevice(device),
-                                ),
-                              ))
-                          .toList(),
+                      const Text('Cashier Printers:', style: TextStyle(fontWeight: FontWeight.bold)),
+                      ..._connectedCashierDevices.map((device) => ListTile(
+                        title: Text(device.name ?? 'Unknown Device'),
+                        subtitle: Text(device.address),
+                        trailing: IconButton(
+                          icon: const Icon(Icons.close, color: Colors.red),
+                          onPressed: () => _disconnectDevice(device),
+                        ),
+                      )).toList(),
                     ],
+                  
                     if (_connectedKitchenDevices.isNotEmpty) ...[
-                      const Text('Kitchen Printers:',
-                          style: TextStyle(fontWeight: FontWeight.bold)),
-                      ..._connectedKitchenDevices
-                          .map((device) => ListTile(
-                                title: Text(device.name ?? 'Unknown Device'),
-                                subtitle: Text(device.address),
-                                trailing: IconButton(
-                                  icon: const Icon(Icons.close,
-                                      color: Colors.red),
-                                  onPressed: () => _disconnectDevice(device),
-                                ),
-                              ))
-                          .toList(),
+                      const Text('Kitchen Printers:', style: TextStyle(fontWeight: FontWeight.bold)),
+                      ..._connectedKitchenDevices.map((device) => ListTile(
+                        title: Text(device.name ?? 'Unknown Device'),
+                        subtitle: Text(device.address),
+                        trailing: IconButton(
+                          icon: const Icon(Icons.close, color: Colors.red),
+                          onPressed: () => _disconnectDevice(device),
+                        ),
+                      )).toList(),
                       const Divider(),
                     ],
+                    
                     if (_connectedBotDevices.isNotEmpty) ...[
-                      const Text('BOT Printers:',
-                          style: TextStyle(fontWeight: FontWeight.bold)),
-                      ..._connectedBotDevices
-                          .map((device) => ListTile(
-                                title: Text(device.name ?? 'Unknown Device'),
-                                subtitle: Text(device.address),
-                                trailing: IconButton(
-                                  icon: const Icon(Icons.close,
-                                      color: Colors.red),
-                                  onPressed: () => _disconnectDevice(device),
-                                ),
-                              ))
-                          .toList(),
+                      const Text('BOT Printers:', style: TextStyle(fontWeight: FontWeight.bold)),
+                      ..._connectedBotDevices.map((device) => ListTile(
+                        title: Text(device.name ?? 'Unknown Device'),
+                        subtitle: Text(device.address),
+                        trailing: IconButton(
+                          icon: const Icon(Icons.close, color: Colors.red),
+                          onPressed: () => _disconnectDevice(device),
+                        ),
+                      )).toList(),
                       const Divider(),
                     ],
+                  
                     if (_isScanning)
                       const Padding(
                         padding: EdgeInsets.all(8.0),
                         child: CircularProgressIndicator(),
                       )
                     else if (_devices.isEmpty)
-                      const Text(
-                          'No devices found. Tap scan to search for printers.')
+                      const Text('No devices found. Tap scan to search for printers.')
                     else
                       SizedBox(
                         height: 200,
@@ -3917,44 +3890,36 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           itemCount: _devices.length,
                           itemBuilder: (context, index) {
                             final device = _devices[index];
-                            final isCashierConnected = _connectedCashierDevices
-                                .any((d) => d.address == device.address);
-                            final isKitchenConnected = _connectedKitchenDevices
-                                .any((d) => d.address == device.address);
-                            final isBotConnected = _connectedBotDevices
-                                .any((d) => d.address == device.address);
-                            final isConnected = isCashierConnected ||
-                                isKitchenConnected ||
-                                isBotConnected;
-
+                            final isCashierConnected = _connectedCashierDevices.any((d) => d.address == device.address);
+                            final isKitchenConnected = _connectedKitchenDevices.any((d) => d.address == device.address);
+                            final isBotConnected = _connectedBotDevices.any((d) => d.address == device.address);
+                            final isConnected = isCashierConnected || isKitchenConnected || isBotConnected;
+                          
                             return ListTile(
                               title: Text(device.name ?? 'Unknown Device'),
                               subtitle: Text(device.address),
                               trailing: isConnected
-                                  ? const Icon(Icons.check_circle,
-                                      color: Colors.green)
-                                  : PopupMenuButton<String>(
-                                      icon: const Icon(Icons.more_vert),
-                                      onSelected: (String value) {
-                                        _connectToDevice(device, value);
-                                      },
-                                      itemBuilder: (BuildContext context) => [
-                                        const PopupMenuItem<String>(
-                                          value: PrinterType.cashier,
-                                          child: Text(
-                                              'Connect as Cashier Printer'),
-                                        ),
-                                        const PopupMenuItem<String>(
-                                          value: PrinterType.kitchen,
-                                          child: Text(
-                                              'Connect as Kitchen Printer'),
-                                        ),
-                                        const PopupMenuItem<String>(
-                                          value: PrinterType.bot,
-                                          child: Text('Connect as BOT Printer'),
-                                        ),
-                                      ],
-                                    ),
+                                ? const Icon(Icons.check_circle, color: Colors.green)
+                                : PopupMenuButton<String>(
+                                    icon: const Icon(Icons.more_vert),
+                                    onSelected: (String value) {
+                                      _connectToDevice(device, value);
+                                    },
+                                    itemBuilder: (BuildContext context) => [
+                                      const PopupMenuItem<String>(
+                                        value: PrinterType.cashier,
+                                        child: Text('Connect as Cashier Printer'),
+                                      ),
+                                      const PopupMenuItem<String>(
+                                        value: PrinterType.kitchen,
+                                        child: Text('Connect as Kitchen Printer'),
+                                      ),
+                                      const PopupMenuItem<String>(
+                                        value: PrinterType.bot,
+                                        child: Text('Connect as BOT Printer'),
+                                      ),
+                                    ],
+                                  ),
                             );
                           },
                         ),
@@ -3967,13 +3932,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           onPressed: _scanDevices,
                           child: const Text('Scan'),
                         ),
-                        if (_connectedCashierDevices.isNotEmpty ||
-                            _connectedKitchenDevices.isNotEmpty ||
-                            _connectedBotDevices.isNotEmpty)
+                        if (_connectedCashierDevices.isNotEmpty || _connectedKitchenDevices.isNotEmpty || _connectedBotDevices.isNotEmpty)
                           ElevatedButton(
                             onPressed: _disconnectAllDevices,
-                            style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.red),
+                            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
                             child: const Text('Disconnect All'),
                           ),
                         ElevatedButton(
@@ -3991,70 +3953,62 @@ class _DashboardScreenState extends State<DashboardScreen> {
       },
     );
   }
-
+  
   Future<void> _showPaymentScreen() async {
     if (_cartItems.isEmpty) {
       _showMessage('Cart is empty. Add items before payment.');
       return;
     }
-
+    
     if (_selectedTable != null && _selectedTable!.id == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text(
-              'Selected table has no valid ID. Please select a different table.'),
+          content: const Text('Selected table has no valid ID. Please select a different table.'),
           behavior: SnackBarBehavior.floating,
         ),
       );
       return;
     }
-
+    
     if (_connectedCashierDevices.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text(
-              'Cannot proceed to payment: Cashier printer not connected. Please connect to a cashier printer first.'),
+          content: const Text('Cannot proceed to payment: Cashier printer not connected. Please connect to a cashier printer first.'),
           backgroundColor: Colors.red,
           behavior: SnackBarBehavior.floating,
         ),
       );
       return;
     }
-
+    
     final hasKitchenItems = _hasKitchenItems(_cartItems);
 
-    if (!_isEditingDueTable &&
-        hasKitchenItems &&
-        _connectedKitchenDevices.isEmpty) {
+    if (!_isEditingDueTable && hasKitchenItems && _connectedKitchenDevices.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text(
-              'Warning: Kitchen printer not connected. KOT will not be printed.'),
+          content: const Text('Warning: Kitchen printer not connected. KOT will not be printed.'),
           backgroundColor: Colors.orange,
           behavior: SnackBarBehavior.floating,
         ),
       );
     }
 
-    if (!_isEditingDueTable &&
-        _cartItems.isNotEmpty &&
-        _connectedBotDevices.isEmpty) {
+    if (!_isEditingDueTable && _cartItems.isNotEmpty && _connectedBotDevices.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text(
-              'Warning: BOT printer not connected. BOT will not be printed.'),
+          content: const Text('Warning: BOT printer not connected. BOT will not be printed.'),
           backgroundColor: Colors.orange,
           behavior: SnackBarBehavior.floating,
         ),
       );
     }
-
+    
     setState(() {
       _isProcessingDueTablePayment = _isEditingDueTable;
     });
-
+    
     _cartDataForPrinting = {
-      'cartItems': List<CartItem>.from(_cartItems),
+      'cartItems': List<CartItem>.from(_cartItems), 
       'selectedOrderType': _selectedOrderType,
       'selectedCustomer': _selectedCustomer,
       'selectedTable': _selectedTable,
@@ -4068,12 +4022,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
       'isDueTable': _isEditingDueTable,
       'kotCode': _kotCode,
     };
-
+  
     final result = await Navigator.push<Map<String, dynamic>>(
       context,
       MaterialPageRoute(
         builder: (context) => PaymentScreen(
-          cartItems: List<CartItem>.from(_cartItems),
+          cartItems: List<CartItem>.from(_cartItems), 
           selectedCustomer: _selectedCustomer,
           currentInvoiceId: _currentInvoiceId,
           selectedTable: _selectedTable,
@@ -4088,30 +4042,29 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
       ),
     );
-
+    
     if (result != null && result['success'] == true) {
       try {
         String? invoiceNumber = result['invoiceNumber'];
-
+        
         if (_cartDataForPrinting != null && invoiceNumber != null) {
           _cartDataForPrinting!['invoiceNumber'] = invoiceNumber;
         }
-
+        
         if (result['paymentData'] != null) {
-          _paymentDataForPrinting =
-              Map<String, double>.from(result['paymentData']);
+          _paymentDataForPrinting = Map<String, double>.from(result['paymentData']);
         }
-
-        await _printReceipt(
-            skipKOT: _isEditingDueTable, skipBOT: _isEditingDueTable);
-
+        
+        await _printReceipt(skipKOT: _isEditingDueTable, skipBOT: _isEditingDueTable);
+        
         _clearCart();
         await _refreshDueTables();
         _cartDataForPrinting = null;
         _paymentDataForPrinting = null;
+        
       } catch (e) {
         _showMessage('Payment successful but printing failed: $e');
-
+        
         _clearCart();
         _cartDataForPrinting = null;
         _paymentDataForPrinting = null;
@@ -4137,18 +4090,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 id: table.id!,
                 name: table.name,
                 serviceCharge: table.serviceCharge,
-                hasDueOrders: false,
+                hasDueOrders: false, 
                 specialNote: '',
               );
             }
             return table;
           }).toList();
-
+          
           _filteredTables = _tables;
         });
-
+        
         _selectedTable = null;
       }
+      
     } catch (e) {
       print('Error refreshing due tables: $e');
     }
@@ -4170,21 +4124,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Future<void> _loadCategories() async {
     try {
       final headers = await _getAuthHeaders();
-      final response = await http
-          .get(
-            Uri.parse(ApiConstants.getFullUrl(ApiConstants.getCategories)),
-            headers: headers,
-          )
-          .timeout(const Duration(seconds: 30));
+      final response = await http.get(
+        Uri.parse(ApiConstants.getFullUrl(ApiConstants.getCategories)),
+        headers: headers,
+      ).timeout(const Duration(seconds: 30));
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        List<dynamic> categoriesData =
-            data is List ? data : (data['data'] ?? []);
-
-        List<Category> categories =
-            categoriesData.map((e) => Category.fromJson(e)).toList();
-
+        List<dynamic> categoriesData = data is List ? data : (data['data'] ?? []);
+      
+        List<Category> categories = categoriesData.map((e) => Category.fromJson(e)).toList();
+      
         setState(() {
           _categories = [Category(id: 0, categoryName: 'All')] + categories;
           _selectedCategory = _categories.first;
@@ -4208,23 +4158,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
     setState(() => _isLoadingProducts = true);
     try {
       final headers = await _getAuthHeaders();
-      final response = await http
-          .get(
-            Uri.parse(
-                '${ApiConstants.getFullUrl(ApiConstants.getProducts)}?type=All'),
-            headers: headers,
-          )
-          .timeout(const Duration(seconds: 30));
+      final response = await http.get(
+        Uri.parse('${ApiConstants.getFullUrl(ApiConstants.getProducts)}?type=All'),
+        headers: headers,
+      ).timeout(const Duration(seconds: 30));
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         List<dynamic> productsData = data is List
             ? data
-            : (data['data'] ??
-                data['products'] ??
-                data['items'] ??
-                data.values.firstWhere((v) => v is List, orElse: () => []));
-
+            : (data['data'] ?? data['products'] ?? data['items'] ?? data.values.firstWhere((v) => v is List, orElse: () => []));
+      
         _products = productsData.map((e) => Product.fromJson(e)).toList();
         _filteredProducts = _products;
         await _loadCustomers();
@@ -4251,12 +4195,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
     setState(() => _isLoading = true);
     try {
       final headers = await _getAuthHeaders();
-      final response = await http
-          .get(
-            Uri.parse(ApiConstants.getFullUrl(ApiConstants.getTables)),
-            headers: headers,
-          )
-          .timeout(const Duration(seconds: 30));
+      final response = await http.get(
+        Uri.parse(ApiConstants.getFullUrl(ApiConstants.getTables)),
+        headers: headers,
+      ).timeout(const Duration(seconds: 30));
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -4272,17 +4214,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
         } else {
           tablesData = [];
         }
-
+    
         _tables = tablesData.map((e) {
           final table = Table.fromJson(e);
-
+          
           if (table.id == null) {
             print('Warning: Table ${table.name} has null ID');
           }
           return table;
         }).toList();
         _filteredTables = _tables;
-
+        
         print('Loaded ${_tables.length} tables');
         for (var table in _tables) {
           print('Table: ${table.name}, ID: ${table.id}');
@@ -4305,26 +4247,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
       if (mounted) setState(() => _isLoading = false);
     }
   }
-
+  
   Future<List<Table>> _loadDueTablesFromAPI() async {
     try {
       final headers = await _getAuthHeaders();
-      final response = await http
-          .get(
-            Uri.parse(ApiConstants.getFullUrl(ApiConstants.getDueTables)),
-            headers: headers,
-          )
-          .timeout(const Duration(seconds: 30));
+      final response = await http.get(
+        Uri.parse(ApiConstants.getFullUrl(ApiConstants.getDueTables)),
+        headers: headers,
+      ).timeout(const Duration(seconds: 30));
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data['status'] == 'Success' && data['data'] != null) {
           List<dynamic> tablesData = data['data'];
           List<Table> dueTables = [];
-
+          
           for (var tableData in tablesData) {
             Table table = Table.fromJson(tableData);
-
+            
             if (_tableSpecialNotes.containsKey(table.id)) {
               table = Table(
                 id: table.id,
@@ -4334,10 +4274,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 specialNote: _tableSpecialNotes[table.id]!,
               );
             }
-
+            
             dueTables.add(table);
           }
-
+          
           return dueTables;
         }
       } else if (response.statusCode == 401) {
@@ -4352,32 +4292,28 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Future<void> _loadDueTableItems(Table table) async {
     setState(() => _isLoading = true);
-
+  
     try {
       _clearCart();
-
+      
       final headers = await _getAuthHeaders();
-      final response = await http
-          .get(
-            Uri.parse(
-                '${ApiConstants.getFullUrl(ApiConstants.getDueTableItems)}/${table.id}'),
-            headers: headers,
-          )
-          .timeout(const Duration(seconds: 10));
+      final response = await http.get(
+        Uri.parse('${ApiConstants.getFullUrl(ApiConstants.getDueTableItems)}/${table.id}'),
+        headers: headers,
+      ).timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data['status'] == 'Success' && data['data'] != null) {
           final itemsData = data['data'];
-
+          
           List<CartItem> tempCartItems = [];
           int loadedItems = 0;
-
+          
           for (var itemData in itemsData) {
             try {
-              var productId =
-                  itemData['product_id'] ?? itemData['tbl_product_id'];
-
+              var productId = itemData['product_id'] ?? itemData['tbl_product_id'];
+              
               Product? product = _products.firstWhere(
                 (p) => p.id == productId,
                 orElse: () {
@@ -4389,42 +4325,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     tblStockId: itemData['tbl_stock_id'] ?? 0,
                     tblCategoryId: itemData['tbl_category_id'] ?? 0,
                     productImage: null,
-                    stockName: itemData['stock']?['stock_name'] ??
-                        itemData['stock_name'] ??
-                        'Main',
+                    stockName: itemData['stock']?['stock_name'] ?? itemData['stock_name'] ?? 'Main',
                     availableQuantity: 9999,
-                    price:
-                        double.tryParse(itemData['price']?.toString() ?? '0') ??
-                            0.0,
-                    cost:
-                        double.tryParse(itemData['cost']?.toString() ?? '0') ??
-                            0.0,
-                    wsPrice: double.tryParse(itemData['ws_price']?.toString() ??
-                            itemData['price']?.toString() ??
-                            '0') ??
-                        0.0,
-                    lotNumber: itemData['lot_id']?.toString() ??
-                        itemData['lot_number'] ??
-                        '',
+                    price: double.tryParse(itemData['price']?.toString() ?? '0') ?? 0.0,
+                    cost: double.tryParse(itemData['cost']?.toString() ?? '0') ?? 0.0,
+                    wsPrice: double.tryParse(itemData['ws_price']?.toString() ?? itemData['price']?.toString() ?? '0') ?? 0.0,
+                    lotNumber: itemData['lot_id']?.toString() ?? itemData['lot_number'] ?? '',
                     expiryDate: itemData['ex_date'] ?? itemData['expiry_date'],
                     lotsqty: [],
                   );
                 },
               );
 
-              final quantity =
-                  int.tryParse(itemData['qty']?.toString() ?? '1') ?? 1;
+              final quantity = int.tryParse(itemData['qty']?.toString() ?? '1') ?? 1;
               String discountType = itemData['discount_type'] ?? 'none';
-              double discountValue = double.tryParse(
-                      itemData['discount_value']?.toString() ?? '0') ??
-                  0.0;
+              double discountValue = double.tryParse(itemData['discount_value']?.toString() ?? '0') ?? 0.0;
 
               if (discountType == 'none') {
-                final dis =
-                    double.tryParse(itemData['dis']?.toString() ?? '0') ?? 0.0;
-                final disVal =
-                    double.tryParse(itemData['disVal']?.toString() ?? '0') ??
-                        0.0;
+                final dis = double.tryParse(itemData['dis']?.toString() ?? '0') ?? 0.0;
+                final disVal = double.tryParse(itemData['disVal']?.toString() ?? '0') ?? 0.0;
                 if (dis > 0) {
                   discountType = '%';
                   discountValue = dis;
@@ -4447,26 +4366,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
               print('Error loading due table item: $e');
             }
           }
-
+          
           try {
-            final billResponse = await http
-                .post(
-                  Uri.parse(
-                      ApiConstants.getFullUrl(ApiConstants.tableBillFind)),
-                  headers: headers,
-                  body: json.encode({'table_name': table.name}),
-                )
-                .timeout(const Duration(seconds: 5));
-
+            final billResponse = await http.post(
+              Uri.parse(ApiConstants.getFullUrl(ApiConstants.tableBillFind)),
+              headers: headers,
+              body: json.encode({'table_name': table.name}),
+            ).timeout(const Duration(seconds: 5));
+            
             if (billResponse.statusCode == 200) {
               final billData = json.decode(billResponse.body);
               final invB = billData['invB'] ?? billData['items'] ?? [];
-
+              
               for (var item in invB) {
                 var productId = item['product_id'] ?? item['tbl_product_id'];
-
-                if (!tempCartItems
-                    .any((cartItem) => cartItem.product.id == productId)) {
+                
+                if (!tempCartItems.any((cartItem) => cartItem.product.id == productId)) {
                   try {
                     Product? product = _products.firstWhere(
                       (p) => p.id == productId,
@@ -4480,35 +4395,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         productImage: null,
                         stockName: item['stock']?['stock_name'] ?? 'Main',
                         availableQuantity: 9999,
-                        price:
-                            double.tryParse(item['price']?.toString() ?? '0') ??
-                                0.0,
-                        cost:
-                            double.tryParse(item['cost']?.toString() ?? '0') ??
-                                0.0,
-                        wsPrice: double.tryParse(
-                                item['ws_price']?.toString() ?? '0') ??
-                            0.0,
+                        price: double.tryParse(item['price']?.toString() ?? '0') ?? 0.0,
+                        cost: double.tryParse(item['cost']?.toString() ?? '0') ?? 0.0,
+                        wsPrice: double.tryParse(item['ws_price']?.toString() ?? '0') ?? 0.0,
                         lotNumber: item['lot_id']?.toString() ?? '',
                         expiryDate: item['ex_date'],
                         lotsqty: [],
                       ),
                     );
 
-                    final quantity =
-                        int.tryParse(item['qty']?.toString() ?? '1') ?? 1;
+                    final quantity = int.tryParse(item['qty']?.toString() ?? '1') ?? 1;
                     String discountType = item['discount_type'] ?? 'none';
-                    double discountValue = double.tryParse(
-                            item['discount_value']?.toString() ?? '0') ??
-                        0.0;
+                    double discountValue = double.tryParse(item['discount_value']?.toString() ?? '0') ?? 0.0;
 
                     if (discountType == 'none') {
-                      final dis =
-                          double.tryParse(item['dis']?.toString() ?? '0') ??
-                              0.0;
-                      final disVal =
-                          double.tryParse(item['disVal']?.toString() ?? '0') ??
-                              0.0;
+                      final dis = double.tryParse(item['dis']?.toString() ?? '0') ?? 0.0;
+                      final disVal = double.tryParse(item['disVal']?.toString() ?? '0') ?? 0.0;
                       if (dis > 0) {
                         discountType = '%';
                         discountValue = dis;
@@ -4535,20 +4437,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
           } catch (e) {
             print('Error loading via table-bill-find: $e');
           }
-
+          
           setState(() {
             _cartItems = tempCartItems;
             _isEditingDueTable = true;
             _selectedTable = table;
             _existingDueTableItems = List<Map<String, dynamic>>.from(itemsData);
           });
-
+          
           _updateCartTotals();
           return;
         }
       }
-
+      
       await _findTableBill(table.name);
+      
     } catch (e) {
       _showMessage('Error loading due table items: $e');
       await _findTableBill(table.name);
@@ -4566,8 +4469,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            CircularProgressIndicator.adaptive(
-                valueColor: AlwaysStoppedAnimation<Color>(Colors.white)),
+            CircularProgressIndicator.adaptive(valueColor: AlwaysStoppedAnimation<Color>(Colors.white)),
             SizedBox(height: 16),
             Text(
               'Loading table...',
@@ -4577,7 +4479,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
       ),
     );
-
+    
     try {
       setState(() {
         _selectedTable = Table(
@@ -4588,14 +4490,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
           specialNote: table.specialNote,
         );
       });
-
+      
       if (table.hasDueOrders) {
         await _loadDueTableItems(table);
       } else {
         await _loadTableItems();
       }
-
+      
       Navigator.pop(context);
+      
     } catch (e) {
       Navigator.pop(context);
       _showMessage('Error loading table: $e');
@@ -4606,17 +4509,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
     setState(() => _isLoading = true);
     try {
       final headers = await _getAuthHeaders();
-      final response = await http
-          .get(
-            Uri.parse(ApiConstants.getFullUrl(ApiConstants.getWaiters)),
-            headers: headers,
-          )
-          .timeout(const Duration(seconds: 30));
+      final response = await http.get(
+        Uri.parse(ApiConstants.getFullUrl(ApiConstants.getWaiters)),
+        headers: headers,
+      ).timeout(const Duration(seconds: 30));
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         List<dynamic> waitersData = data is List ? data : (data['data'] ?? []);
-
+      
         _waiters = waitersData.map((e) => Waiter.fromJson(e)).toList();
         _filteredWaiters = _waiters;
       } else if (response.statusCode == 401) {
@@ -4661,59 +4562,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
       if (category.id == 0) {
         _filteredProducts = _products;
       } else {
-        _filteredProducts =
-            _products.where((p) => p.tblCategoryId == category.id).toList();
+        _filteredProducts = _products.where((p) => p.tblCategoryId == category.id).toList();
       }
-    });
-  }
-
-  // Add debounced search methods to avoid excessive filtering
-  void _onProductSearchChanged() {
-    _productSearchDebounce?.cancel();
-    _productSearchDebounce = Timer(const Duration(milliseconds: 300), () {
-      _searchProducts(_productSearchController.text);
-    });
-  }
-
-  void _onTableSearchChanged() {
-    _tableSearchDebounce?.cancel();
-    _tableSearchDebounce = Timer(const Duration(milliseconds: 300), () {
-      _filterTables(_tableSearchController.text);
-    });
-  }
-
-  void _onWaiterSearchChanged() {
-    _waiterSearchDebounce?.cancel();
-    _waiterSearchDebounce = Timer(const Duration(milliseconds: 300), () {
-      _filterWaiters(_waiterSearchController.text);
-    });
-  }
-
-  void _filterTables(String query) {
-    if (query.isEmpty) {
-      setState(() {
-        _filteredTables = _tables;
-      });
-      return;
-    }
-    setState(() {
-      _filteredTables = _tables
-          .where((t) => t.name.toLowerCase().contains(query.toLowerCase()))
-          .toList();
-    });
-  }
-
-  void _filterWaiters(String query) {
-    if (query.isEmpty) {
-      setState(() {
-        _filteredWaiters = _waiters;
-      });
-      return;
-    }
-    setState(() {
-      _filteredWaiters = _waiters
-          .where((w) => w.name.toLowerCase().contains(query.toLowerCase()))
-          .toList();
     });
   }
 
@@ -4723,18 +4573,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
         if (_selectedCategory?.id == 0) {
           _filteredProducts = _products;
         } else {
-          _filteredProducts = _products
-              .where((p) => p.tblCategoryId == _selectedCategory?.id)
-              .toList();
+          _filteredProducts = _products.where((p) => p.tblCategoryId == _selectedCategory?.id).toList();
         }
       } else {
-        _filteredProducts = _products
-            .where((product) =>
-                (product.name.toLowerCase().contains(query.toLowerCase()) ||
-                    product.barCode.contains(query)) &&
-                (_selectedCategory?.id == 0 ||
-                    product.tblCategoryId == _selectedCategory?.id))
-            .toList();
+        _filteredProducts = _products.where((product) =>
+          (product.name.toLowerCase().contains(query.toLowerCase()) ||
+          product.barCode.contains(query)) &&
+          (_selectedCategory?.id == 0 || product.tblCategoryId == _selectedCategory?.id)
+        ).toList();
       }
     });
   }
@@ -4743,27 +4589,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
     setState(() => _isLoading = true);
     try {
       final headers = await _getAuthHeaders();
-      final response = await http
-          .get(
-            Uri.parse(ApiConstants.getFullUrl(ApiConstants.getCustomers)),
-            headers: headers,
-          )
-          .timeout(const Duration(seconds: 30));
+      final response = await http.get(
+        Uri.parse(ApiConstants.getFullUrl(ApiConstants.getCustomers)),
+        headers: headers,
+      ).timeout(const Duration(seconds: 30));
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         List<dynamic> customersData = data is List
             ? data
-            : (data['data'] ??
-                data['customers'] ??
-                data.values.firstWhere((v) => v is List, orElse: () => []));
-
+            : (data['data'] ?? data['customers'] ?? data.values.firstWhere((v) => v is List, orElse: () => []));
+      
         _customers = customersData.map((e) => Customer.fromJson(e)).toList();
         _filteredCustomers = _customers;
       } else if (response.statusCode == 401) {
         await _handleUnauthorized();
       }
     } catch (e) {
+      
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -4772,13 +4615,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Future<void> _addCustomer(Customer customer) async {
     try {
       final headers = await _getAuthHeaders();
-      final response = await http
-          .post(
-            Uri.parse(ApiConstants.getFullUrl(ApiConstants.getCustomers)),
-            headers: headers,
-            body: json.encode(customer.toJson()),
-          )
-          .timeout(const Duration(seconds: 30));
+      final response = await http.post(
+        Uri.parse(ApiConstants.getFullUrl(ApiConstants.getCustomers)),
+        headers: headers,
+        body: json.encode(customer.toJson()),
+      ).timeout(const Duration(seconds: 30));
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         _loadCustomers();
@@ -4847,6 +4688,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     if (noteResult == null) {
       return; // User cancelled
     }
+<<<<<<< HEAD
     specialNote = noteResult;
   } else if (_selectedTable != null) {
     // Use existing note
@@ -4907,6 +4749,165 @@ class _DashboardScreenState extends State<DashboardScreen> {
       
       if (lotId == 0) {
         lotId = 1;
+=======
+    
+    if (_isEditingDueTable && _currentInvoiceId != null) {
+      await _updateDueTableInvoice();
+      return;
+    }
+    
+    final hasKitchenItems = _hasKitchenItems(_cartItems);
+    
+    if (_connectedKitchenDevices.isEmpty && hasKitchenItems) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Warning: Kitchen printer not connected. KOT will not be printed.'),
+          backgroundColor: Colors.orange,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+    
+    if (_connectedBotDevices.isEmpty && _cartItems.isNotEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Warning: BOT printer not connected. BOT will not be printed.'),
+          backgroundColor: Colors.orange,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+    
+    final Table? currentTable = _selectedTable;
+    final List<CartItem> cartItemsToSave = List<CartItem>.from(_cartItems);
+    
+    final specialNote = await _showSaveInvoiceNoteDialog();
+    if (specialNote == null) {
+      return;
+    }
+    
+    setState(() {
+      _isSavingInvoice = true;
+    });
+    
+    _showLoadingOverlay('Saving Invoice...');
+    
+    try {
+      final headers = await _getAuthHeaders();
+      
+      String saleType = _selectedTable != null 
+          ? 'DINE IN'  
+          : 'TAKE AWAY'; 
+      
+      List<Map<String, dynamic>> items = [];
+      
+      for (var item in cartItemsToSave) {
+        double price = item.getPriceByOrderType(_selectedOrderType);
+        double disVal = item.getDiscount(_selectedOrderType);
+        double dis = item.discountType == '%' ? item.discountValue : 0.0;
+        double total = item.getTotalPrice(_selectedOrderType);
+        
+        int lotId = 0;
+        String? lotNumber;
+        
+        if (item.product.lotsqty.isNotEmpty) {
+          for (var lot in item.product.lotsqty) {
+            final qty = int.tryParse(lot['qty']?.toString() ?? '0') ?? 0;
+            if (qty > 0) {
+              lotId = lot['id'] ?? lot['lot_id'] ?? 0;
+              lotNumber = lot['lot_number']?.toString();
+              break;
+            }
+          }
+          
+          if (lotId == 0) {
+            final firstLot = item.product.lotsqty.first;
+            lotId = firstLot['id'] ?? firstLot['lot_id'] ?? 1;
+            lotNumber = firstLot['lot_number']?.toString();
+          }
+        } else {
+          if (item.product.lotNumber.isNotEmpty) {
+            try {
+              lotId = int.tryParse(item.product.lotNumber) ?? 1;
+              lotNumber = item.product.lotNumber;
+            } catch (e) {
+              lotId = 1;
+            }
+          } else {
+            lotId = 1;
+          }
+        }
+        
+        if (lotId == 0) {
+          lotId = 1;
+        }
+        
+        items.add({
+          'aQty': item.product.availableQuantity + item.quantity,
+          'bar_code': item.product.barCode,
+          'cost': item.product.cost,
+          'dis': dis,
+          'disVal': disVal,
+          'exp': item.product.expiryDate,
+          'lot_id': lotId,
+          'lot_index': 0,
+          'name': item.product.name,
+          'price': price,
+          'qty': item.quantity,
+          's_name': null,
+          'sid': item.product.tblStockId,
+          'stock': item.product.stockName,
+          'total': total.toStringAsFixed(2),
+          'total_discount': disVal.toStringAsFixed(2),
+          'unit': item.product.unit,
+          'special_note': item.specialNote ?? '',
+          'lot_number': lotNumber ?? item.product.lotNumber,
+        });
+      }
+
+      Map<String, dynamic> metadata = {
+        'advance_payment': '',
+        'bill_copy_issued': 0,
+        'billDis': _discountPercentage.toString(),
+        'billDisVal': _globalDiscountValue.toStringAsFixed(2),
+        'customer': _selectedCustomer != null ? {
+          'id': _selectedCustomer!.id,
+          'name': _selectedCustomer!.name,
+          'phone': _selectedCustomer!.phone,
+          'email': _selectedCustomer!.email,
+          'nic': _selectedCustomer!.nic,
+          'address': _selectedCustomer!.address,
+        } : {
+          'id': 0,
+          'name': 'Walk-in Customer',
+          'phone': '',
+          'email': '',
+          'nic': '',
+          'address': '',
+        },
+        'free_issue': 0,
+        'grossAmount': _totalSubtotal.toStringAsFixed(2),
+        'invDate': DateFormat('yyyy-MM-dd').format(DateTime.now()),
+        'items': items,
+        'netAmount': _netAmount.toStringAsFixed(2),
+        'order_now_order_info_id': [],
+        'room_booking': '',
+        'saleType': saleType,
+        'service_charge': _selectedTable != null ? _serviceAmount.toStringAsFixed(2) : '0.00',
+        'services': [],
+        'tbl_room_booking_id': '',
+        'waiter_id': _selectedWaiter?.id ?? 0,
+        'waiter_name': _selectedWaiter?.name ?? '',
+      };
+
+      if (currentTable != null && currentTable.id != null) {
+        metadata['table_name_id'] = {
+          'id': currentTable.id,
+          'name': currentTable.name,
+          'service_charge': currentTable.serviceCharge,
+          'special_note': specialNote,
+        };
+>>>>>>> 425adf5dcaf48d4e27c4b766e59fed37dd315626
       }
       
       items.add({
@@ -4981,6 +4982,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       'type': 2,
     };
 
+<<<<<<< HEAD
     print('Save Invoice Payload: ${json.encode(payload)}');
 
     String endpoint = ApiConstants.getFullUrl(ApiConstants.saveInvoice);
@@ -5102,6 +5104,142 @@ class _DashboardScreenState extends State<DashboardScreen> {
       } else {
         throw Exception('Failed to save invoice: ${response.statusCode} - ${response.body}');
       }
+=======
+      String endpoint = ApiConstants.getFullUrl(ApiConstants.saveInvoice);
+      
+      final uri = Uri.parse(endpoint).replace(
+        queryParameters: {
+          'bill_copy': '0',
+          'due': isDue ? '1' : '0',
+        }
+      );
+
+      final response = await http.post(
+        uri,
+        headers: headers,
+        body: json.encode(payload),
+      ).timeout(const Duration(seconds: 30));
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final responseData = json.decode(response.body);
+        
+        String? invoiceNumber;
+        if (responseData['data'] != null && responseData['data']['invoice_head'] != null) {
+          invoiceNumber = responseData['data']['invoice_head']['invoice_code'];
+        } else if (responseData['invoice_code'] != null) {
+          invoiceNumber = responseData['invoice_code'];
+        } else if (responseData['invoice_number'] != null) {
+          invoiceNumber = responseData['invoice_number'];
+        }
+        
+        String? kotCode = responseData['kot_code'] ?? responseData['data']?['kot_code'];
+        String? botCode = responseData['bot_code'] ?? responseData['data']?['bot_code'];
+        
+        if (kotCode != null) {
+          setState(() {
+            _kotCode = kotCode;
+          });
+        }
+        
+        if (botCode != null) {
+          setState(() {
+            _botCode = botCode;
+          });
+        }
+        
+        final hasKitchenItemsInCart = _hasKitchenItems(cartItemsToSave);
+
+        if (_connectedKitchenDevices.isNotEmpty && hasKitchenItemsInCart) {
+          await _printKOT(onlyNewItems: _isEditingDueTable);
+        }
+
+        if (_connectedBotDevices.isNotEmpty && cartItemsToSave.isNotEmpty) {
+          await _printKOT(onlyNewItems: _isEditingDueTable, printBOT: true);
+        }
+        
+        await _updateStockInDatabaseForSave(cartItemsToSave, headers);
+        
+        _cartDataForPrinting = {
+          'cartItems': List<CartItem>.from(cartItemsToSave),
+          'selectedOrderType': _selectedOrderType,
+          'selectedCustomer': _selectedCustomer,
+          'selectedTable': currentTable,
+          'totalSubtotal': _totalSubtotal,
+          'totalItemDiscount': _totalItemDiscount,
+          'discountPercentage': _discountPercentage,
+          'globalDiscountValue': _globalDiscountValue,
+          'serviceAmount': _serviceAmount,
+          'netAmount': _netAmount,
+          'orderNumber': _orderNumber,
+          'invoiceNumber': invoiceNumber ?? 'INV-${DateTime.now().millisecondsSinceEpoch}',
+          'kotCode': kotCode,
+          'botCode': botCode,
+        };
+        
+        setState(() {
+          for (var cartItem in _cartItems) {
+            final product = cartItem.product;
+            final productIndex = _products.indexWhere((p) => p.id == product.id);
+            if (productIndex != -1) {
+              _products[productIndex].availableQuantity -= cartItem.quantity;
+              final filteredIndex = _filteredProducts.indexWhere((p) => p.id == product.id);
+              if (filteredIndex != -1) {
+                _filteredProducts[filteredIndex].availableQuantity -= cartItem.quantity;
+              }
+            }
+          }
+          
+          _cartItems.clear();
+          _discountController.text = '0';
+          _currentInvoiceId = null;
+          _serviceAmountOverride = 0.0;
+          _isEditingDueTable = false;
+          _existingDueTableItems.clear();
+          _isProcessingDueTablePayment = false;
+          _kotCode = null;
+          
+          if (currentTable != null) {
+            _selectedTable = Table(
+              id: currentTable.id,
+              name: currentTable.name,
+              serviceCharge: currentTable.serviceCharge,
+              hasDueOrders: false,
+              specialNote: specialNote,
+            );
+            
+            _saveLocalTableNote(currentTable.id, specialNote);
+          }
+        });
+        
+      } else {
+        print('Save Invoice Error: ${response.statusCode} - ${response.body}');
+        final errorData = json.decode(response.body);
+        if (errorData['errors'] != null) {
+          final errors = errorData['errors'];
+          String errorMessage = 'Validation errors:\n';
+          errors.forEach((key, value) {
+            errorMessage += '$key: ${value.join(', ')}\n';
+          });
+          throw Exception(errorMessage);
+        } else {
+          throw Exception('Failed to save invoice: ${response.statusCode} - ${response.body}');
+        }
+      }
+    } catch (e) {
+      print('Save Invoice Exception: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error saving invoice: $e'),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      _dismissLoadingOverlay();
+      if (mounted) setState(() {
+        _isSavingInvoice = false;
+      });
+>>>>>>> 425adf5dcaf48d4e27c4b766e59fed37dd315626
     }
   } catch (e) {
     print('Save Invoice Exception: $e');
@@ -5195,6 +5333,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     if (_currentInvoiceId == null) {
       throw Exception('No invoice ID found for due table update');
     }
+<<<<<<< HEAD
     
     String saleType = 'DINE IN';
     
@@ -5238,6 +5377,161 @@ class _DashboardScreenState extends State<DashboardScreen> {
       
       if (lotId == 0) {
         lotId = 1;
+=======
+
+    final specialNote = await _showSaveInvoiceNoteDialog();
+    if (specialNote == null) {
+      return;
+    }
+    
+    final Table? currentTable = _selectedTable;
+    
+    setState(() {
+      _isSavingInvoice = true;
+    });
+    
+    _showLoadingOverlay('Updating Due Table...');
+    
+    try {
+      final headers = await _getAuthHeaders();
+      
+      if (_currentInvoiceId == null) {
+        throw Exception('No invoice ID found for due table update');
+      }
+      
+      String saleType = 'DINE IN';
+      
+      List<Map<String, dynamic>> items = [];
+      
+      for (var cartItem in _cartItems) {
+        double price = cartItem.getPriceByOrderType(_selectedOrderType);
+        double disVal = cartItem.getDiscount(_selectedOrderType);
+        double dis = cartItem.discountType == '%' ? cartItem.discountValue : 0.0;
+        double total = cartItem.getTotalPrice(_selectedOrderType);
+        
+        int lotId = 0;
+        String lotNumber = cartItem.product.lotNumber;
+        
+        if (cartItem.product.lotsqty.isNotEmpty) {
+          for (var lot in cartItem.product.lotsqty) {
+            final qty = int.tryParse(lot['qty']?.toString() ?? '0') ?? 0;
+            if (qty > 0) {
+              lotId = lot['id'] ?? lot['lot_id'] ?? 0;
+              lotNumber = lot['lot_number']?.toString() ?? '';
+              break;
+            }
+          }
+          
+          if (lotId == 0 && cartItem.product.lotsqty.isNotEmpty) {
+            final firstLot = cartItem.product.lotsqty.first;
+            lotId = firstLot['id'] ?? firstLot['lot_id'] ?? 1;
+            lotNumber = firstLot['lot_number']?.toString() ?? '';
+          }
+        } else {
+          if (cartItem.product.lotNumber.isNotEmpty) {
+            try {
+              lotId = int.tryParse(cartItem.product.lotNumber) ?? 1;
+            } catch (e) {
+              lotId = 1;
+            }
+          } else {
+            lotId = 1;
+          }
+        }
+        
+        if (lotId == 0) {
+          lotId = 1;
+        }
+        
+        Map<String, dynamic> itemData = {
+          'aQty': cartItem.product.availableQuantity + cartItem.quantity,
+          'bar_code': cartItem.product.barCode,
+          'cost': cartItem.product.cost,
+          'dis': dis,
+          'disVal': disVal,
+          'exp': cartItem.product.expiryDate,
+          'lot_id': lotId,
+          'lot_index': 0,
+          'name': cartItem.product.name,
+          'price': price,
+          'qty': cartItem.quantity,
+          's_name': null,
+          'sid': cartItem.product.tblStockId,
+          'stock': cartItem.product.stockName,
+          'total': total.toStringAsFixed(2),
+          'total_discount': disVal.toStringAsFixed(2),
+          'unit': cartItem.product.unit,
+          'special_note': cartItem.specialNote ?? '',
+          'lot_number': lotNumber,
+        };
+        
+        if (!cartItem.isNewItem) {
+          final existingItem = _existingDueTableItems.firstWhere(
+            (existing) => 
+              existing['product_id'] == cartItem.product.id ||
+              existing['tbl_product_id'] == cartItem.product.id,
+            orElse: () => {},
+          );
+          
+          if (existingItem.isNotEmpty && existingItem['id'] != null) {
+            itemData['id'] = existingItem['id'];
+          }
+        }
+        
+        items.add(itemData);
+      }
+
+      Map<String, dynamic> metadata = {
+        'id': _currentInvoiceId,
+        'advance_payment': '',
+        'bill_copy_issued': 0,
+        'billDis': _discountPercentage.toString(),
+        'billDisVal': _globalDiscountValue.toStringAsFixed(2),
+        'customer': _selectedCustomer != null ? {
+          'id': _selectedCustomer!.id ?? 0,
+          'name': _selectedCustomer!.name,
+          'phone': _selectedCustomer!.phone ?? '',
+          'email': _selectedCustomer!.email ?? '',
+          'nic': _selectedCustomer!.nic ?? '',
+          'address': _selectedCustomer!.address ?? '',
+        } : {
+          'id': 0,
+          'name': 'Walk-in Customer',
+          'phone': '',
+          'email': '',
+          'nic': '',
+          'address': '',
+        },
+        'free_issue': 0,
+        'grossAmount': _totalSubtotal.toStringAsFixed(2),
+        'invDate': DateFormat('yyyy-MM-dd').format(DateTime.now()),
+        'items': items,
+        'netAmount': _netAmount.toStringAsFixed(2),
+        'order_now_order_info_id': [],
+        'room_booking': '',
+        'saleType': saleType,
+        'service_charge': _selectedTable != null ? _serviceAmount.toStringAsFixed(2) : '0.00',
+        'services': [],
+        'tbl_room_booking_id': '',
+        'waiter_id': _selectedWaiter?.id ?? 0,
+        'waiter_name': _selectedWaiter?.name ?? '',
+      };
+
+      if (currentTable != null) {
+        metadata['table_name_id'] = {
+          'id': currentTable.id ?? 0,
+          'name': currentTable.name,
+          'service_charge': currentTable.serviceCharge,
+          'special_note': specialNote,
+        };
+      } else {
+        metadata['table_name_id'] = {
+          'id': 0,
+          'name': '',
+          'service_charge': 0.0,
+          'special_note': '',
+        };
+>>>>>>> 425adf5dcaf48d4e27c4b766e59fed37dd315626
       }
       
       Map<String, dynamic> itemData = {
@@ -5261,6 +5555,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         'special_note': cartItem.specialNote ?? '',
         'lot_number': lotNumber,
       };
+<<<<<<< HEAD
       
       if (!cartItem.isNewItem) {
         final existingItem = _existingDueTableItems.firstWhere(
@@ -5336,9 +5631,48 @@ class _DashboardScreenState extends State<DashboardScreen> {
     };
 
     print('Update Due Table Payload: ${json.encode(payload)}');
+=======
+
+      print('Update Due Table Payload: ${json.encode(payload)}');
+
+      String endpoint = '${ApiConstants.getFullUrl(ApiConstants.saveInvoice)}?bill_copy=0&due=1';
+
+      final response = await http.post(
+        Uri.parse(endpoint),
+        headers: headers,
+        body: json.encode(payload),
+      ).timeout(const Duration(seconds: 30));
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final responseData = json.decode(response.body);
+        
+        String? invoiceNumber;
+        if (responseData['data'] != null && responseData['data']['invoice_head'] != null) {
+          invoiceNumber = responseData['data']['invoice_head']['invoice_code'];
+        }
+        
+        String? kotCode = responseData['kot_code'] ?? responseData['data']?['kot_code'];
+        String? botCode = responseData['bot_code'] ?? responseData['data']?['bot_code'];
+        
+        if (kotCode != null) {
+          setState(() {
+            _kotCode = kotCode;
+          });
+        }
+        
+        if (botCode != null) {
+          setState(() {
+            _botCode = botCode;
+          });
+        }
+        
+        final newKitchenItems = _cartItems.where((item) => item.isNewItem).toList();
+        final hasNewKitchenItems = _hasKitchenItems(newKitchenItems);
+>>>>>>> 425adf5dcaf48d4e27c4b766e59fed37dd315626
 
     String endpoint = '${ApiConstants.getFullUrl(ApiConstants.saveInvoice)}?bill_copy=0&due=1';
 
+<<<<<<< HEAD
     final response = await http.post(
       Uri.parse(endpoint),
       headers: headers,
@@ -5452,6 +5786,100 @@ class _DashboardScreenState extends State<DashboardScreen> {
       }
       
       throw Exception('$errorMessage (Status: ${response.statusCode})');
+=======
+        if (_connectedBotDevices.isNotEmpty && newKitchenItems.isNotEmpty) {
+          await _printKOT(onlyNewItems: true, printBOT: true);
+        }
+        
+        await _updateStockInDatabase(newKitchenItems, headers);
+        
+        _cartDataForPrinting = {
+          'cartItems': List<CartItem>.from(_cartItems.where((item) => item.isNewItem).toList()),
+          'selectedOrderType': _selectedOrderType,
+          'selectedCustomer': _selectedCustomer,
+          'selectedTable': _selectedTable,
+          'totalSubtotal': _totalSubtotal,
+          'totalItemDiscount': _totalItemDiscount,
+          'discountPercentage': _discountPercentage,
+          'globalDiscountValue': _globalDiscountValue,
+          'serviceAmount': _serviceAmount,
+          'netAmount': _netAmount,
+          'orderNumber': _orderNumber,
+          'invoiceNumber': invoiceNumber ?? 'INV-${DateTime.now().millisecondsSinceEpoch}',
+          'kotCode': kotCode,
+          'botCode': botCode,
+        };
+        
+        setState(() {
+          final newItemsToClear = _cartItems.where((item) => item.isNewItem).toList();
+          
+          for (var cartItem in newItemsToClear) {
+            final product = cartItem.product;
+            final productIndex = _products.indexWhere((p) => p.id == product.id);
+            if (productIndex != -1) {
+              _products[productIndex].availableQuantity += cartItem.quantity;
+              final filteredIndex = _filteredProducts.indexWhere((p) => p.id == product.id);
+              if (filteredIndex != -1) {
+                _filteredProducts[filteredIndex].availableQuantity += cartItem.quantity;
+              }
+            }
+          }
+          
+          _cartItems.clear();
+          _discountController.text = '0';
+          _serviceAmountOverride = 0.0;
+          _isProcessingDueTablePayment = false;
+          _kotCode = null;
+          _botCode = null;
+          
+          _cartDataForPrinting = null;
+          _isEditingDueTable = false;
+          _existingDueTableItems.clear();
+          _currentInvoiceId = null;
+          
+          _updateCartTotals();
+          
+          if (currentTable != null) {
+            _selectedTable = Table(
+              id: currentTable.id,
+              name: currentTable.name,
+              serviceCharge: currentTable.serviceCharge,
+              hasDueOrders: false,
+              specialNote: specialNote,
+            );
+            
+            _saveLocalTableNote(currentTable.id, specialNote);
+          }
+        });
+        
+      } else {
+        print('Update Due Table Error: ${response.statusCode} - ${response.body}');
+        final errorBody = json.decode(response.body);
+        
+        String errorMessage = 'Failed to update due table';
+        if (errorBody['message'] != null) {
+          errorMessage = errorBody['message'];
+        } else if (errorBody['error'] != null) {
+          errorMessage = errorBody['error'];
+        }
+        
+        throw Exception('$errorMessage (Status: ${response.statusCode})');
+      }
+    } catch (e) {
+      print('Update Due Table Exception: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error updating due table: ${e.toString().replaceAll('Exception: ', '')}'),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      _dismissLoadingOverlay();
+      if (mounted) setState(() {
+        _isSavingInvoice = false;
+      });
+>>>>>>> 425adf5dcaf48d4e27c4b766e59fed37dd315626
     }
   } catch (e) {
     print('Update Due Table Exception: $e');
@@ -5470,18 +5898,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 }
 
-  Future<void> _updateStockInDatabaseForSave(
-      List<CartItem> itemsToUpdate, Map<String, String> headers) async {
+  Future<void> _updateStockInDatabaseForSave(List<CartItem> itemsToUpdate, Map<String, String> headers) async {
     if (itemsToUpdate.isEmpty) return;
-
+    
     try {
       for (var cartItem in itemsToUpdate) {
         final product = cartItem.product;
-
+        
         if (product.lotsqty.isNotEmpty) {
           var selectedLot;
           int lotId = 0;
-
+          
           for (var lot in product.lotsqty) {
             final qty = int.tryParse(lot['qty']?.toString() ?? '0') ?? 0;
             if (qty > 0) {
@@ -5490,41 +5917,34 @@ class _DashboardScreenState extends State<DashboardScreen> {
               break;
             }
           }
-
+          
           if (selectedLot == null && product.lotsqty.isNotEmpty) {
             selectedLot = product.lotsqty.first;
             lotId = selectedLot['id'] ?? selectedLot['lot_id'] ?? 0;
           }
-
+          
           if (lotId > 0) {
-            final currentQty =
-                int.tryParse(selectedLot['qty']?.toString() ?? '0') ?? 0;
-
+            final currentQty = int.tryParse(selectedLot['qty']?.toString() ?? '0') ?? 0;
+            
             if (currentQty >= cartItem.quantity) {
               final newQty = currentQty - cartItem.quantity;
-
-              final response = await http
-                  .post(
-                    Uri.parse(ApiConstants.getFullUrl(
-                        ApiConstants.updateLotQuantity)),
-                    headers: headers,
-                    body: json.encode({
-                      'lot_id': lotId,
-                      'qty': newQty,
-                    }),
-                  )
-                  .timeout(const Duration(seconds: 10));
-
+              
+              final response = await http.post(
+                Uri.parse(ApiConstants.getFullUrl(ApiConstants.updateLotQuantity)),
+                headers: headers,
+                body: json.encode({
+                  'lot_id': lotId,
+                  'qty': newQty,
+                }),
+              ).timeout(const Duration(seconds: 10));
+              
               if (response.statusCode == 200) {
-                print(
-                    'Stock updated for product ${product.name}, lot $lotId: $currentQty -> $newQty');
+                print('Stock updated for product ${product.name}, lot $lotId: $currentQty -> $newQty');
               } else {
-                print(
-                    'Failed to update stock for product ${product.name}: ${response.statusCode}');
+                print('Failed to update stock for product ${product.name}: ${response.statusCode}');
               }
             } else {
-              print(
-                  'Insufficient stock for product ${product.name}: ${currentQty} available, ${cartItem.quantity} requested');
+              print('Insufficient stock for product ${product.name}: ${currentQty} available, ${cartItem.quantity} requested');
             }
           }
         }
@@ -5534,14 +5954,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
-  Future<void> _updateStockInDatabase(
-      List<CartItem> itemsToUpdate, Map<String, String> headers) async {
+  Future<void> _updateStockInDatabase(List<CartItem> itemsToUpdate, Map<String, String> headers) async {
     if (itemsToUpdate.isEmpty) return;
-
+    
     try {
       for (var cartItem in itemsToUpdate) {
         final product = cartItem.product;
-
+        
         if (product.lotsqty.isNotEmpty) {
           var selectedLot;
           for (var lot in product.lotsqty) {
@@ -5551,36 +5970,31 @@ class _DashboardScreenState extends State<DashboardScreen> {
               break;
             }
           }
-
+          
           if (selectedLot == null && product.lotsqty.isNotEmpty) {
             selectedLot = product.lotsqty.first;
           }
-
+          
           if (selectedLot != null) {
             final lotId = selectedLot['id'];
-            final currentQty =
-                int.tryParse(selectedLot['qty']?.toString() ?? '0') ?? 0;
-
+            final currentQty = int.tryParse(selectedLot['qty']?.toString() ?? '0') ?? 0;
+            
             if (currentQty >= cartItem.quantity) {
               final newQty = currentQty - cartItem.quantity;
-
-              final response = await http
-                  .post(
-                    Uri.parse(ApiConstants.getFullUrl(
-                        ApiConstants.updateLotQuantity)),
-                    headers: headers,
-                    body: json.encode({
-                      'lot_id': lotId,
-                      'qty': newQty,
-                    }),
-                  )
-                  .timeout(const Duration(seconds: 10));
-
+              
+              final response = await http.post(
+                Uri.parse(ApiConstants.getFullUrl(ApiConstants.updateLotQuantity)),
+                headers: headers,
+                body: json.encode({
+                  'lot_id': lotId,
+                  'qty': newQty,
+                }),
+              ).timeout(const Duration(seconds: 10));
+              
               if (response.statusCode == 200) {
                 print('Stock updated for product ${product.name}, lot $lotId');
               } else {
-                print(
-                    'Failed to update stock for product ${product.name}: ${response.statusCode}');
+                print('Failed to update stock for product ${product.name}: ${response.statusCode}');
               }
             }
           }
@@ -5600,10 +6014,43 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ? 'Cart is empty' 
             : 'Bill copy is only available for due tables',
         ),
+<<<<<<< HEAD
         behavior: SnackBarBehavior.floating,
       ),
     );
     return;
+=======
+      );
+      return;
+    }
+    
+    if (_connectedCashierDevices.isEmpty) {
+      _showMessage('Please connect to a cashier printer first');
+      return;
+    }
+    
+    try {
+      await _printReceipt(isBillCopy: true);
+      
+      _clearCart();
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Bill copy printed successfully. Cart cleared.'),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: Colors.blue,
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error printing bill copy: $e'),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+>>>>>>> 425adf5dcaf48d4e27c4b766e59fed37dd315626
   }
 
   if (_connectedCashierDevices.isEmpty) {
@@ -5641,6 +6088,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         _showMessage('Error printing bill copy: $e');
       }
     }
+<<<<<<< HEAD
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -5900,6 +6348,99 @@ Future<void> _saveAndPrintBillCopy() async {
         'invoiceNumber': invoiceNumber ?? 'COPY-${DateTime.now().millisecondsSinceEpoch}',
         'kotCode': kotCode,
         'botCode': botCode,
+=======
+    
+    if (_connectedCashierDevices.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Cannot save bill copy: Cashier printer not connected. Please connect to a cashier printer first.'),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+    
+    try {
+      final headers = await _getAuthHeaders();
+      
+      String saleType = _selectedTable != null 
+          ? 'DINE IN'  
+          : 'TAKE AWAY'; 
+      
+      List<Map<String, dynamic>> items = [];
+      for (var item in _cartItems) {
+        double price = item.getPriceByOrderType(_selectedOrderType);
+        double disVal = item.getDiscount(_selectedOrderType);
+        double dis = item.discountType == '%' ? item.discountValue : 0.0;
+        double total = item.getTotalPrice(_selectedOrderType);
+        
+        int lotId = 0;
+        if (item.product.lotsqty.isNotEmpty) {
+          for (var lot in item.product.lotsqty) {
+            if ((lot['qty'] ?? 0) > 0) {
+              lotId = lot['id'] ?? 0;
+              break;
+            }
+          }
+        }
+        
+        items.add({
+          'aQty': item.product.availableQuantity + item.quantity,
+          'bar_code': item.product.barCode,
+          'cost': item.product.cost,
+          'dis': dis,
+          'disVal': disVal,
+          'exp': item.product.expiryDate,
+          'lot_id': lotId,
+          'lot_index': 0,
+          'name': item.product.name,
+          'price': price,
+          'qty': item.quantity,
+          's_name': null,
+          'sid': item.product.tblStockId,
+          'stock': item.product.stockName,
+          'total': total.toStringAsFixed(2),
+          'total_discount': disVal.toStringAsFixed(2),
+          'unit': item.product.unit,
+          'special_note': item.specialNote ?? '',
+        });
+      }
+
+      Map<String, dynamic> metadata = {
+        'advance_payment': '',
+        'bill_copy_issued': 1,
+        'billDis': _discountPercentage.toString(),
+        'billDisVal': _globalDiscountValue.toStringAsFixed(2),
+        'customer': _selectedCustomer != null ? {
+          'id': _selectedCustomer!.id,
+          'name': _selectedCustomer!.name,
+          'phone': _selectedCustomer!.phone,
+          'email': _selectedCustomer!.email,
+          'nic': _selectedCustomer!.nic,
+          'address': _selectedCustomer!.address,
+        } : {
+          'id': 0,
+          'name': 'Walk-in Customer',
+          'phone': '',
+          'email': '',
+          'nic': '',
+          'address': '',
+        },
+        'free_issue': 0,
+        'grossAmount': _totalSubtotal.toStringAsFixed(2),
+        'invDate': DateFormat('yyyy-MM-dd').format(DateTime.now()),
+        'items': items,
+        'netAmount': _netAmount.toStringAsFixed(2),
+        'order_now_order_info_id': [],
+        'room_booking': '',
+        'saleType': saleType,
+        'service_charge': _selectedTable != null ? _serviceAmount.toStringAsFixed(2) : '0.00',
+        'services': [],
+        'tbl_room_booking_id': '',
+        'waiter_id': _selectedWaiter?.id ?? 0,
+        'waiter_name': _selectedWaiter?.name ?? '',
+>>>>>>> 425adf5dcaf48d4e27c4b766e59fed37dd315626
       };
 
       final List<int> cashierBytes = await _generateReceipt(cartData);
@@ -5913,8 +6454,44 @@ Future<void> _saveAndPrintBillCopy() async {
         }
       }
 
+<<<<<<< HEAD
       // Do NOT clear the cart - keep due table items for payment
       
+=======
+      final payload = {
+        'metadata': metadata,
+        'type': 2,
+      };
+
+      print('Save Bill Copy Payload: ${json.encode(payload)}');
+
+      final response = await http.post(
+        Uri.parse('${ApiConstants.getFullUrl(ApiConstants.saveInvoice)}?bill_copy=1'),
+        headers: headers,
+        body: json.encode(payload),
+      ).timeout(const Duration(seconds: 30));
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final responseData = json.decode(response.body);
+        
+        await _printBillCopyFromInvoice(responseData);
+        
+        _clearCart();
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Bill copy saved, printed, and cart cleared'),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: Colors.green,
+          ),
+        );
+        
+      } else {
+        throw Exception('Failed to save bill copy: ${response.statusCode} - ${response.body}');
+      }
+    } catch (e) {
+      print('Save Bill Copy Exception: $e');
+>>>>>>> 425adf5dcaf48d4e27c4b766e59fed37dd315626
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Bill copy saved and printed for ${currentTable?.name ?? "table"}'),
@@ -5954,10 +6531,9 @@ Future<void> _saveAndPrintBillCopy() async {
 }
 
   void _showAddProductDialog(Product product) {
-    final existingIndex =
-        _cartItems.indexWhere((item) => item.product.id == product.id);
+    final existingIndex = _cartItems.indexWhere((item) => item.product.id == product.id);
     final bool isExisting = existingIndex >= 0;
-
+    
     if (isExisting) {
       _addProductToCart(
         product,
@@ -5966,11 +6542,10 @@ Future<void> _saveAndPrintBillCopy() async {
         _cartItems[existingIndex].discountValue,
         existingIndex,
       );
-
+      
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-              '${product.name} quantity increased to ${_cartItems[existingIndex].quantity}'),
+          content: Text('${product.name} quantity increased to ${_cartItems[existingIndex].quantity}'),
           behavior: SnackBarBehavior.floating,
           duration: const Duration(seconds: 1),
         ),
@@ -5986,15 +6561,15 @@ Future<void> _saveAndPrintBillCopy() async {
     }
   }
 
-  Widget _buildDiscountTypeChip(String value, String label,
-      String selectedValue, void Function(void Function()) setState) {
+  Widget _buildDiscountTypeChip(String value, String label, String selectedValue, void Function(void Function()) setState) {
     final isSelected = selectedValue == value;
     return ChoiceChip(
       label: Text(label, style: GoogleFonts.poppins()),
       selected: isSelected,
       onSelected: (selected) {
         setState(() {
-          if (selected) {}
+          if (selected) {
+          }
         });
       },
       selectedColor: Colors.blue,
@@ -6004,29 +6579,28 @@ Future<void> _saveAndPrintBillCopy() async {
     );
   }
 
-  void _addProductToCart(Product product, int quantity, String discountType,
-      double discountValue, int? existingIndex) {
+  void _addProductToCart(Product product, int quantity, String discountType, double discountValue, int? existingIndex) {
     if (quantity <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Invalid quantity')),
       );
       return;
     }
-
+  
     if (quantity > product.availableQuantity) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Only ${product.availableQuantity} available')),
       );
       return;
     }
-
+  
     if (discountType == '%' && discountValue > 100) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Percentage cannot exceed 100')),
       );
       return;
     }
-
+  
     if (existingIndex != null && existingIndex < _cartItems.length) {
       setState(() {
         _cartItems[existingIndex] = CartItem(
@@ -6037,7 +6611,7 @@ Future<void> _saveAndPrintBillCopy() async {
           isNewItem: _cartItems[existingIndex].isNewItem,
           specialNote: _cartItems[existingIndex].specialNote,
         );
-
+        
         final productIndex = _products.indexWhere((p) => p.id == product.id);
         if (productIndex != -1) {
           final originalQty = _products[productIndex].availableQuantity;
@@ -6045,8 +6619,7 @@ Future<void> _saveAndPrintBillCopy() async {
           final newQty = originalQty + previousQty - quantity;
           if (newQty >= 0) {
             _products[productIndex].availableQuantity = newQty;
-            final filteredIndex =
-                _filteredProducts.indexWhere((p) => p.id == product.id);
+            final filteredIndex = _filteredProducts.indexWhere((p) => p.id == product.id);
             if (filteredIndex != -1) {
               _filteredProducts[filteredIndex].availableQuantity = newQty;
             }
@@ -6063,14 +6636,13 @@ Future<void> _saveAndPrintBillCopy() async {
           isNewItem: true,
           specialNote: '',
         ));
-
+        
         final productIndex = _products.indexWhere((p) => p.id == product.id);
         if (productIndex != -1) {
           final newQty = _products[productIndex].availableQuantity - quantity;
           if (newQty >= 0) {
             _products[productIndex].availableQuantity = newQty;
-            final filteredIndex =
-                _filteredProducts.indexWhere((p) => p.id == product.id);
+            final filteredIndex = _filteredProducts.indexWhere((p) => p.id == product.id);
             if (filteredIndex != -1) {
               _filteredProducts[filteredIndex].availableQuantity = newQty;
             }
@@ -6078,490 +6650,478 @@ Future<void> _saveAndPrintBillCopy() async {
         }
       });
     }
-
-    _invalidateCache();
+  
     _updateCartTotals();
   }
 
-  void _removeFromCart(int index) {
-    if (index >= 0 && index < _cartItems.length) {
-      setState(() {
-        final removedItem = _cartItems.removeAt(index);
-
-        final isDueTableItem = _isEditingDueTable && !removedItem.isNewItem;
-
-        if (!isDueTableItem) {
-          if (removedItem.isNewItem) {
-            final productIndex =
-                _products.indexWhere((p) => p.id == removedItem.product.id);
-            if (productIndex != -1) {
-              _products[productIndex].availableQuantity += removedItem.quantity;
-
-              final filteredIndex = _filteredProducts
-                  .indexWhere((p) => p.id == removedItem.product.id);
-              if (filteredIndex != -1) {
-                _filteredProducts[filteredIndex].availableQuantity +=
-                    removedItem.quantity;
-              }
+ void _removeFromCart(int index) {
+  if (index >= 0 && index < _cartItems.length) {
+    setState(() {
+      final removedItem = _cartItems.removeAt(index);
+      
+    
+      final isDueTableItem = _isEditingDueTable && !removedItem.isNewItem;
+      
+      if (!isDueTableItem) {
+     
+        if (removedItem.isNewItem) {
+          final productIndex = _products.indexWhere((p) => p.id == removedItem.product.id);
+          if (productIndex != -1) {
+            _products[productIndex].availableQuantity += removedItem.quantity;
+            
+            final filteredIndex = _filteredProducts.indexWhere((p) => p.id == removedItem.product.id);
+            if (filteredIndex != -1) {
+              _filteredProducts[filteredIndex].availableQuantity += removedItem.quantity;
             }
-          }
-        } else {
-          _existingDueTableItems.removeWhere((existingItem) =>
-              existingItem['product_id'] == removedItem.product.id ||
-              existingItem['tbl_product_id'] == removedItem.product.id);
-
-          // ScaffoldMessenger.of(context).showSnackBar(
-          //   SnackBar(
-          //     content: Text('Due table item "${removedItem.product.name}" removed successfully'),
-          //     backgroundColor: Colors.green,
-          //     behavior: SnackBarBehavior.floating,
-          //   ),
-          // );
-        }
-      });
-      _invalidateCache();
-      _updateCartTotals();
-    }
-  }
-
-  Future<void> _removeDueTableItemWithVerification(int index) async {
-    if (index < 0 || index >= _cartItems.length) return;
-
-    final item = _cartItems[index];
-
-    // Check if it's a due table item
-    final isDueTableItem = _isEditingDueTable && !item.isNewItem;
-
-    if (!isDueTableItem) {
-      // For non-due table items, remove normally
-      _removeFromCart(index);
-      return;
-    }
-
-    // Check current user role
-    final currentUserIsAdmin = await _verifyCurrentUserIsAdmin();
-
-    if (currentUserIsAdmin) {
-      // Current user is admin, show cancellation reason dialog
-      final reason = await _showCancellationReasonDialog(item);
-      if (reason != null) {
-        await _cancelItemAndRemoveFromCart(item, reason, index);
-      }
-    } else {
-      // Current user is not admin, show appropriate message
-      final prefs = await SharedPreferences.getInstance();
-      final userDataString = prefs.getString('user_data');
-      final userData = json.decode(userDataString ?? '{}');
-      final userName = userData['name'] ?? 'User';
-      final userType = userData['type'] ?? 1;
-
-      if (userType == 1) {
-        // Regular user - require admin login
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-                '$userName (User) cannot remove due table items. Admin authorization required.'),
-            backgroundColor: Colors.red,
-            behavior: SnackBarBehavior.floating,
-            duration: const Duration(seconds: 3),
-          ),
-        );
-
-        // Show admin verification dialog
-        final isAuthorized = await _showAdminPasswordDialog();
-
-        if (isAuthorized && mounted) {
-          final reason = await _showCancellationReasonDialog(item);
-          if (reason != null) {
-            await _cancelItemAndRemoveFromCart(item, reason, index);
           }
         }
       } else {
-        // Unknown user type - show general message
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text(
-                'Admin verification required to remove due table items'),
-            backgroundColor: Colors.red,
-            behavior: SnackBarBehavior.floating,
-          ),
+     
+        _existingDueTableItems.removeWhere((existingItem) => 
+          existingItem['product_id'] == removedItem.product.id ||
+          existingItem['tbl_product_id'] == removedItem.product.id
         );
+        
+     
+        // ScaffoldMessenger.of(context).showSnackBar(
+        //   SnackBar(
+        //     content: Text('Due table item "${removedItem.product.name}" removed successfully'),
+        //     backgroundColor: Colors.green,
+        //     behavior: SnackBarBehavior.floating,
+        //   ),
+        // );
       }
+    });
+    _updateCartTotals();
+  }
+}
+
+Future<void> _removeDueTableItemWithVerification(int index) async {
+  if (index < 0 || index >= _cartItems.length) return;
+  
+  final item = _cartItems[index];
+  
+  // Check if it's a due table item
+  final isDueTableItem = _isEditingDueTable && !item.isNewItem;
+  
+  if (!isDueTableItem) {
+    // For non-due table items, remove normally
+    _removeFromCart(index);
+    return;
+  }
+  
+  // Check current user role
+  final currentUserIsAdmin = await _verifyCurrentUserIsAdmin();
+  
+  if (currentUserIsAdmin) {
+    // Current user is admin, show cancellation reason dialog
+    final reason = await _showCancellationReasonDialog(item);
+    if (reason != null) {
+      await _cancelItemAndRemoveFromCart(item, reason, index);
     }
-  }
-
-  Future<String?> _showCancellationReasonDialog(CartItem item) async {
-    final reasonController = TextEditingController();
-    final selectedReason = ValueNotifier<String>('Wrong Order');
-    final customReasonController = TextEditingController();
-
-    final List<String> predefinedReasons = [
-      'Wrong Order',
-      'Customer Changed Mind',
-      'Out of Stock',
-      'Preparation Error',
-      'Quality Issue',
-      'Other'
-    ];
-
-    return showDialog<String>(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) {
-        final isLandscape =
-            MediaQuery.of(context).orientation == Orientation.landscape;
-
-        return Dialog(
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          insetPadding: EdgeInsets.all(isLandscape ? 40 : 20),
-          child: StatefulBuilder(
-            builder: (context, setState) {
-              return Container(
-                padding: const EdgeInsets.all(16),
-                constraints: BoxConstraints(
-                  maxWidth: isLandscape
-                      ? MediaQuery.of(context).size.width * 0.5
-                      : MediaQuery.of(context).size.width * 0.8,
-                  maxHeight: MediaQuery.of(context).size.height * 0.6,
-                ),
-                child: SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Text(
-                        'Cancel Item: ${item.product.name}',
-                        style: GoogleFonts.poppins(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.red,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-
-                      const SizedBox(height: 8),
-
-                      Text(
-                        'Quantity: ${item.quantity} | Price: Rs.${item.getPriceByOrderType(_selectedOrderType).toStringAsFixed(2)}',
-                        style: GoogleFonts.poppins(
-                          fontSize: 11,
-                          color: Colors.grey[600],
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-
-                      const SizedBox(height: 16),
-
-                      Text(
-                        'Select Cancellation Reason:',
-                        style: GoogleFonts.poppins(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-
-                      const SizedBox(height: 8),
-
-                      // Predefined reasons
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: predefinedReasons.map((reason) {
-                          final isSelected = selectedReason.value == reason;
-                          return ChoiceChip(
-                            label: Text(
-                              reason,
-                              style: GoogleFonts.poppins(
-                                fontSize: 10,
-                                color:
-                                    isSelected ? Colors.white : Colors.black87,
-                              ),
-                            ),
-                            selected: isSelected,
-                            selectedColor: Colors.red,
-                            backgroundColor: Colors.grey[200],
-                            onSelected: (selected) {
-                              setState(() {
-                                selectedReason.value = reason;
-                                if (reason != 'Other') {
-                                  reasonController.text = reason;
-                                } else {
-                                  reasonController.text = '';
-                                }
-                              });
-                            },
-                          );
-                        }).toList(),
-                      ),
-
-                      const SizedBox(height: 16),
-
-                      // Custom reason input (only for "Other")
-                      if (selectedReason.value == 'Other')
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Enter Custom Reason:',
-                              style: GoogleFonts.poppins(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Container(
-                              decoration: BoxDecoration(
-                                border: Border.all(color: Colors.grey[300]!),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: TextField(
-                                controller: customReasonController,
-                                minLines: 2,
-                                maxLines: 3,
-                                decoration: InputDecoration(
-                                  hintText: 'Enter reason for cancellation...',
-                                  contentPadding: const EdgeInsets.symmetric(
-                                      horizontal: 12, vertical: 8),
-                                  border: InputBorder.none,
-                                  isDense: true,
-                                ),
-                                style: GoogleFonts.poppins(fontSize: 11),
-                                onChanged: (value) {
-                                  reasonController.text = value;
-                                },
-                              ),
-                            ),
-                          ],
-                        ),
-
-                      const SizedBox(height: 20),
-
-                      // Buttons
-                      if (isLandscape)
-                        Row(
-                          children: _buildCancellationDialogButtons(
-                            reasonController,
-                            selectedReason,
-                            customReasonController,
-                          ),
-                        )
-                      else
-                        Column(
-                          children: _buildCancellationDialogButtons(
-                            reasonController,
-                            selectedReason,
-                            customReasonController,
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-              );
-            },
-          ),
-        );
-      },
-    );
-  }
-
-  List<Widget> _buildCancellationDialogButtons(
-    TextEditingController reasonController,
-    ValueNotifier<String> selectedReason,
-    TextEditingController customReasonController,
-  ) {
-    return [
-      Expanded(
-        child: TextButton(
-          onPressed: () => Navigator.pop(context, null),
-          style: TextButton.styleFrom(
-            padding: const EdgeInsets.symmetric(vertical: 12),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(6),
-            ),
-          ),
-          child: Text(
-            'Cancel',
-            style: GoogleFonts.poppins(
-              fontWeight: FontWeight.w500,
-              fontSize: 11,
-            ),
-          ),
-        ),
-      ),
-      const SizedBox(width: 12, height: 12),
-      Expanded(
-        child: ElevatedButton(
-          onPressed: () {
-            String finalReason;
-
-            if (selectedReason.value == 'Other') {
-              finalReason = customReasonController.text.trim();
-              if (finalReason.isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: const Text('Please enter a cancellation reason'),
-                    backgroundColor: Colors.red,
-                    behavior: SnackBarBehavior.floating,
-                  ),
-                );
-                return;
-              }
-            } else {
-              finalReason = selectedReason.value;
-            }
-
-            Navigator.pop(context, finalReason);
-          },
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.red,
-            foregroundColor: Colors.white,
-            padding: const EdgeInsets.symmetric(vertical: 12),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(6),
-            ),
-          ),
-          child: Text(
-            'Confirm Cancellation',
-            style: GoogleFonts.poppins(
-              fontWeight: FontWeight.w500,
-              fontSize: 11,
-            ),
-          ),
-        ),
-      ),
-    ];
-  }
-
-  Future<void> _cancelItemAndRemoveFromCart(
-      CartItem item, String reason, int index) async {
-    if (_currentInvoiceId == null) {
-      // If no invoice ID, just remove from cart
-      _removeFromCart(index);
-      return;
-    }
-
-    // Show loading
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => const Center(
-        child: CircularProgressIndicator(),
-      ),
-    );
-
-    try {
-      final headers = await _getAuthHeaders();
-
-      // Find the existing due table item data
-      final existingItem = _existingDueTableItems.firstWhere(
-        (existing) =>
-            existing['product_id'] == item.product.id ||
-            existing['tbl_product_id'] == item.product.id,
-        orElse: () => {},
-      );
-
-      // Prepare payload for API
-      final payload = {
-        'invoice_head_id': _currentInvoiceId,
-        'invoice_body_id':
-            existingItem['id'] ?? existingItem['invoice_body_id'] ?? null,
-        'item_name': item.product.name,
-        'bar_code': item.product.barCode,
-        'price': item.getPriceByOrderType(_selectedOrderType),
-        'qty': item.quantity,
-        'reason': reason,
-      };
-
-      // Remove null values from payload
-      payload.removeWhere((key, value) => value == null);
-
-      print('Cancellation payload: $payload');
-
-      final response = await http
-          .post(
-            Uri.parse(ApiConstants.getFullUrl(ApiConstants.cancelItem)),
-            headers: headers,
-            body: json.encode(payload),
-          )
-          .timeout(const Duration(seconds: 30));
-
-      // Close loading dialog
-      if (mounted) Navigator.pop(context);
-
-      if (response.statusCode == 200) {
-        final responseData = json.decode(response.body);
-
-        if (responseData['success'] == true) {
-          // Remove from cart
-          _removeFromCart(index);
-
-          // Show success message
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Item cancelled and reason logged: $reason'),
-              backgroundColor: Colors.green,
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-        } else {
-          throw Exception(responseData['error'] ?? 'Failed to cancel item');
-        }
-      } else {
-        throw Exception('API error: ${response.statusCode} - ${response.body}');
-      }
-    } catch (e) {
-      // Close loading dialog if still open
-      if (mounted && Navigator.of(context, rootNavigator: true).canPop()) {
-        Navigator.of(context, rootNavigator: true).pop();
-      }
-
-      // Show error but still remove from cart locally
+  } else {
+    // Current user is not admin, show appropriate message
+    final prefs = await SharedPreferences.getInstance();
+    final userDataString = prefs.getString('user_data');
+    final userData = json.decode(userDataString ?? '{}');
+    final userName = userData['name'] ?? 'User';
+    final userType = userData['type'] ?? 1;
+    
+    if (userType == 1) {
+      // Regular user - require admin login
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-              'Failed to log cancellation: $e. Item removed locally only.'),
-          backgroundColor: Colors.orange,
+          content: Text('$userName (User) cannot remove due table items. Admin authorization required.'),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+      
+      // Show admin verification dialog
+      final isAuthorized = await _showAdminPasswordDialog();
+      
+      if (isAuthorized && mounted) {
+        final reason = await _showCancellationReasonDialog(item);
+        if (reason != null) {
+          await _cancelItemAndRemoveFromCart(item, reason, index);
+        }
+      }
+    } else {
+      // Unknown user type - show general message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Admin verification required to remove due table items'),
+          backgroundColor: Colors.red,
           behavior: SnackBarBehavior.floating,
         ),
       );
-
-      // Remove from cart even if API fails
-      _removeFromCart(index);
     }
   }
+}
 
-  Future<bool> _verifyCurrentUserIsAdmin() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final userDataString = prefs.getString('user_data');
+Future<String?> _showCancellationReasonDialog(CartItem item) async {
+  final reasonController = TextEditingController();
+  final selectedReason = ValueNotifier<String>('Wrong Order');
+  final customReasonController = TextEditingController();
+  
+  final List<String> predefinedReasons = [
+    'Wrong Order',
+    'Customer Changed Mind',
+    'Out of Stock',
+    'Preparation Error',
+    'Quality Issue',
+    'Other'
+  ];
+  
+  return showDialog<String>(
+    context: context,
+    barrierDismissible: false,
+    builder: (context) {
+      final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
+      
+      return Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        insetPadding: EdgeInsets.all(isLandscape ? 40 : 20),
+        child: StatefulBuilder(
+          builder: (context, setState) {
+            return Container(
+              padding: const EdgeInsets.all(16),
+              constraints: BoxConstraints(
+                maxWidth: isLandscape 
+                    ? MediaQuery.of(context).size.width * 0.5
+                    : MediaQuery.of(context).size.width * 0.8,
+                maxHeight: MediaQuery.of(context).size.height * 0.6,
+              ),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      'Cancel Item: ${item.product.name}',
+                      style: GoogleFonts.poppins(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.red,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    
+                    const SizedBox(height: 8),
+                    
+                    Text(
+                      'Quantity: ${item.quantity} | Price: Rs.${item.getPriceByOrderType(_selectedOrderType).toStringAsFixed(2)}',
+                      style: GoogleFonts.poppins(
+                        fontSize: 11,
+                        color: Colors.grey[600],
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    
+                    const SizedBox(height: 16),
+                    
+                    Text(
+                      'Select Cancellation Reason:',
+                      style: GoogleFonts.poppins(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    
+                    const SizedBox(height: 8),
+                    
+                    // Predefined reasons
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: predefinedReasons.map((reason) {
+                        final isSelected = selectedReason.value == reason;
+                        return ChoiceChip(
+                          label: Text(
+                            reason,
+                            style: GoogleFonts.poppins(
+                              fontSize: 10,
+                              color: isSelected ? Colors.white : Colors.black87,
+                            ),
+                          ),
+                          selected: isSelected,
+                          selectedColor: Colors.red,
+                          backgroundColor: Colors.grey[200],
+                          onSelected: (selected) {
+                            setState(() {
+                              selectedReason.value = reason;
+                              if (reason != 'Other') {
+                                reasonController.text = reason;
+                              } else {
+                                reasonController.text = '';
+                              }
+                            });
+                          },
+                        );
+                      }).toList(),
+                    ),
+                    
+                    const SizedBox(height: 16),
+                    
+                    // Custom reason input (only for "Other")
+                    if (selectedReason.value == 'Other')
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Enter Custom Reason:',
+                            style: GoogleFonts.poppins(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Container(
+                            decoration: BoxDecoration(
+                              border: Border.all(color: Colors.grey[300]!),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: TextField(
+                              controller: customReasonController,
+                              minLines: 2,
+                              maxLines: 3,
+                              decoration: InputDecoration(
+                                hintText: 'Enter reason for cancellation...',
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                border: InputBorder.none,
+                                isDense: true,
+                              ),
+                              style: GoogleFonts.poppins(fontSize: 11),
+                              onChanged: (value) {
+                                reasonController.text = value;
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                    
+                    const SizedBox(height: 20),
+                    
+                    // Buttons
+                    if (isLandscape)
+                      Row(
+                        children: _buildCancellationDialogButtons(
+                          reasonController,
+                          selectedReason,
+                          customReasonController,
+                        ),
+                      )
+                    else
+                      Column(
+                        children: _buildCancellationDialogButtons(
+                          reasonController,
+                          selectedReason,
+                          customReasonController,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
+      );
+    },
+  );
+}
 
-      if (userDataString == null) return false;
+List<Widget> _buildCancellationDialogButtons(
+  TextEditingController reasonController,
+  ValueNotifier<String> selectedReason,
+  TextEditingController customReasonController,
+) {
+  return [
+    Expanded(
+      child: TextButton(
+        onPressed: () => Navigator.pop(context, null),
+        style: TextButton.styleFrom(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(6),
+          ),
+        ),
+        child: Text(
+          'Cancel',
+          style: GoogleFonts.poppins(
+            fontWeight: FontWeight.w500,
+            fontSize: 11,
+          ),
+        ),
+      ),
+    ),
+    const SizedBox(width: 12, height: 12),
+    Expanded(
+      child: ElevatedButton(
+        onPressed: () {
+          String finalReason;
+          
+          if (selectedReason.value == 'Other') {
+            finalReason = customReasonController.text.trim();
+            if (finalReason.isEmpty) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: const Text('Please enter a cancellation reason'),
+                  backgroundColor: Colors.red,
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+              return;
+            }
+          } else {
+            finalReason = selectedReason.value;
+          }
+          
+          Navigator.pop(context, finalReason);
+        },
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.red,
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(6),
+          ),
+        ),
+        child: Text(
+          'Confirm Cancellation',
+          style: GoogleFonts.poppins(
+            fontWeight: FontWeight.w500,
+            fontSize: 11,
+          ),
+        ),
+      ),
+    ),
+  ];
+}
 
-      final userData = json.decode(userDataString);
-
-      // Check user type (0 = admin, 1 = user)
-      final userType = userData['type'] ?? 0;
-      final userName = userData['name']?.toString().toLowerCase() ?? '';
-
-      // Only type 0 is admin
-      return userType == 0;
-    } catch (e) {
-      print('Current user admin verification error: $e');
-      return false;
-    }
+Future<void> _cancelItemAndRemoveFromCart(CartItem item, String reason, int index) async {
+  if (_currentInvoiceId == null) {
+    // If no invoice ID, just remove from cart
+    _removeFromCart(index);
+    return;
   }
+  
+  // Show loading
+  showDialog(
+    context: context,
+    barrierDismissible: false,
+    builder: (context) => const Center(
+      child: CircularProgressIndicator(),
+    ),
+  );
+  
+  try {
+    final headers = await _getAuthHeaders();
+    
+    // Find the existing due table item data
+    final existingItem = _existingDueTableItems.firstWhere(
+      (existing) => 
+        existing['product_id'] == item.product.id ||
+        existing['tbl_product_id'] == item.product.id,
+      orElse: () => {},
+    );
+    
+    // Prepare payload for API
+    final payload = {
+      'invoice_head_id': _currentInvoiceId,
+      'invoice_body_id': existingItem['id'] ?? existingItem['invoice_body_id'] ?? null,
+      'item_name': item.product.name,
+      'bar_code': item.product.barCode,
+      'price': item.getPriceByOrderType(_selectedOrderType),
+      'qty': item.quantity,
+      'reason': reason,
+    };
+    
+    // Remove null values from payload
+    payload.removeWhere((key, value) => value == null);
+    
+    print('Cancellation payload: $payload');
+    
+    final response = await http.post(
+       Uri.parse(ApiConstants.getFullUrl(ApiConstants.cancelItem)),
+      headers: headers,
+      body: json.encode(payload),
+    ).timeout(const Duration(seconds: 30));
+    
+    // Close loading dialog
+    if (mounted) Navigator.pop(context);
+    
+    if (response.statusCode == 200) {
+      final responseData = json.decode(response.body);
+      
+      if (responseData['success'] == true) {
+        // Remove from cart
+        _removeFromCart(index);
+        
+        // Show success message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Item cancelled and reason logged: $reason'),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      } else {
+        throw Exception(responseData['error'] ?? 'Failed to cancel item');
+      }
+    } else {
+      throw Exception('API error: ${response.statusCode} - ${response.body}');
+    }
+  } catch (e) {
+    // Close loading dialog if still open
+    if (mounted && Navigator.of(context, rootNavigator: true).canPop()) {
+      Navigator.of(context, rootNavigator: true).pop();
+    }
+    
+    // Show error but still remove from cart locally
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Failed to log cancellation: $e. Item removed locally only.'),
+        backgroundColor: Colors.orange,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+    
+    // Remove from cart even if API fails
+    _removeFromCart(index);
+  }
+}
+Future<bool> _verifyCurrentUserIsAdmin() async {
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    final userDataString = prefs.getString('user_data');
+    
+    if (userDataString == null) return false;
+    
+    final userData = json.decode(userDataString);
+    
+    // Check user type (0 = admin, 1 = user)
+    final userType = userData['type'] ?? 0;
+    final userName = userData['name']?.toString().toLowerCase() ?? '';
+    
+    // Only type 0 is admin
+    return userType == 0;
+  } catch (e) {
+    print('Current user admin verification error: $e');
+    return false;
+  }
+}
 
   void _updateCartQuantity(int index, int newQuantity) {
     if (index >= 0 && index < _cartItems.length) {
       final item = _cartItems[index];
-
+      
       if (_isEditingDueTable && !item.isNewItem) {
         return;
       }
-
+      
       final product = item.product;
-
+      
       setState(() {
         if (newQuantity <= 0) {
           _removeFromCart(index);
@@ -6575,12 +7135,11 @@ Future<void> _saveAndPrintBillCopy() async {
             isNewItem: item.isNewItem,
             specialNote: item.specialNote,
           );
-
+          
           final productIndex = _products.indexWhere((p) => p.id == product.id);
           if (productIndex != -1) {
             _products[productIndex].availableQuantity -= difference;
-            final filteredIndex =
-                _filteredProducts.indexWhere((p) => p.id == product.id);
+            final filteredIndex = _filteredProducts.indexWhere((p) => p.id == product.id);
             if (filteredIndex != -1) {
               _filteredProducts[filteredIndex].availableQuantity -= difference;
             }
@@ -6588,68 +7147,30 @@ Future<void> _saveAndPrintBillCopy() async {
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content:
-                  Text('Only ${product.availableQuantity} items available'),
+              content: Text('Only ${product.availableQuantity} items available'),
               behavior: SnackBarBehavior.floating,
             ),
           );
         }
       });
-      _invalidateCache();
       _updateCartTotals();
     }
   }
 
   void _updateCartTotals() {
-    _invalidateCache();
     setState(() {});
   }
 
-  void _invalidateCache() {
-    _cachedValuesInvalid = true;
-  }
-
-  void _recomputeCachedValues() {
-    if (!_cachedValuesInvalid) return;
-
-    _cachedTotalSubtotal = _cartItems.fold(
-        0.0, (sum, item) => sum + item.getSubtotal(_selectedOrderType));
-    _cachedTotalItemDiscount = _cartItems.fold(
-        0.0, (sum, item) => sum + item.getDiscount(_selectedOrderType));
-    _cachedTotalBeforeGlobal = _cachedTotalSubtotal - _cachedTotalItemDiscount;
-
-    final discountPercentage = double.tryParse(_discountController.text) ?? 0.0;
-    _cachedGlobalDiscountValue =
-        _cachedTotalBeforeGlobal * (discountPercentage / 100);
-
-    if (_serviceAmountOverride > 0) {
-      _cachedServiceAmount = _serviceAmountOverride;
-    } else {
-      double base = _cachedTotalBeforeGlobal - _cachedGlobalDiscountValue;
-      _cachedServiceAmount = _selectedTable != null
-          ? base * (_selectedTable!.serviceCharge / 100)
-          : 0.0;
-    }
-
-    double base = _cachedTotalBeforeGlobal - _cachedGlobalDiscountValue;
-    _cachedNetAmount = base + _cachedServiceAmount;
-
-    _cachedValuesInvalid = false;
-  }
-
   double get _totalSubtotal {
-    _recomputeCachedValues();
-    return _cachedTotalSubtotal;
+    return _cartItems.fold(0, (sum, item) => sum + item.getSubtotal(_selectedOrderType));
   }
 
   double get _totalItemDiscount {
-    _recomputeCachedValues();
-    return _cachedTotalItemDiscount;
+    return _cartItems.fold(0.0, (sum, item) => sum + item.getDiscount(_selectedOrderType));
   }
 
   double get _totalBeforeGlobal {
-    _recomputeCachedValues();
-    return _cachedTotalBeforeGlobal;
+    return _totalSubtotal - _totalItemDiscount;
   }
 
   double get _discountPercentage {
@@ -6657,27 +7178,29 @@ Future<void> _saveAndPrintBillCopy() async {
   }
 
   double get _globalDiscountValue {
-    _recomputeCachedValues();
-    return _cachedGlobalDiscountValue;
+    return _totalBeforeGlobal * (_discountPercentage / 100);
   }
 
   double get _serviceAmount {
-    _recomputeCachedValues();
-    return _cachedServiceAmount;
+    if (_serviceAmountOverride > 0) {
+      return _serviceAmountOverride;
+    }
+    double base = _totalBeforeGlobal - _globalDiscountValue;
+    return _selectedTable != null ? base * (_selectedTable!.serviceCharge / 100) : 0.0;
   }
 
   double get _netAmount {
-    _recomputeCachedValues();
-    return _cachedNetAmount;
+    double base = _totalBeforeGlobal - _globalDiscountValue;
+    return base + _serviceAmount;
   }
 
   void _clearCart() {
     if (_cartItems.isEmpty) {
       return;
     }
-
+  
     _showLoadingOverlay('Clearing Cart...');
-
+  
     Future.delayed(const Duration(milliseconds: 300), () {
       setState(() {
         for (var cartItem in _cartItems) {
@@ -6685,15 +7208,13 @@ Future<void> _saveAndPrintBillCopy() async {
           final productIndex = _products.indexWhere((p) => p.id == product.id);
           if (productIndex != -1) {
             _products[productIndex].availableQuantity += cartItem.quantity;
-            final filteredIndex =
-                _filteredProducts.indexWhere((p) => p.id == product.id);
+            final filteredIndex = _filteredProducts.indexWhere((p) => p.id == product.id);
             if (filteredIndex != -1) {
-              _filteredProducts[filteredIndex].availableQuantity +=
-                  cartItem.quantity;
+              _filteredProducts[filteredIndex].availableQuantity += cartItem.quantity;
             }
           }
         }
-
+        
         _cartItems.clear();
         _discountController.text = '0';
         _currentInvoiceId = null;
@@ -6703,17 +7224,16 @@ Future<void> _saveAndPrintBillCopy() async {
         _isProcessingDueTablePayment = false;
         _paymentDataForPrinting = null;
         _kotCode = null;
-        _invalidateCache();
       });
-
+      
       _dismissLoadingOverlay();
     });
   }
 
   void _clearEverything() {
-    if (_cartItems.isEmpty &&
-        _selectedCustomer == null &&
-        _selectedTable == null &&
+    if (_cartItems.isEmpty && 
+        _selectedCustomer == null && 
+        _selectedTable == null && 
         _selectedWaiter == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -6723,9 +7243,9 @@ Future<void> _saveAndPrintBillCopy() async {
       );
       return;
     }
-
+  
     _showLoadingOverlay('Resetting Everything...');
-
+  
     Future.delayed(const Duration(milliseconds: 300), () {
       setState(() {
         for (var cartItem in _cartItems) {
@@ -6733,15 +7253,13 @@ Future<void> _saveAndPrintBillCopy() async {
           final productIndex = _products.indexWhere((p) => p.id == product.id);
           if (productIndex != -1) {
             _products[productIndex].availableQuantity += cartItem.quantity;
-            final filteredIndex =
-                _filteredProducts.indexWhere((p) => p.id == product.id);
+            final filteredIndex = _filteredProducts.indexWhere((p) => p.id == product.id);
             if (filteredIndex != -1) {
-              _filteredProducts[filteredIndex].availableQuantity +=
-                  cartItem.quantity;
+              _filteredProducts[filteredIndex].availableQuantity += cartItem.quantity;
             }
           }
         }
-
+        
         _cartItems.clear();
         _discountController.text = '0';
         _selectedCustomer = null;
@@ -6754,9 +7272,8 @@ Future<void> _saveAndPrintBillCopy() async {
         _isProcessingDueTablePayment = false;
         _paymentDataForPrinting = null;
         _kotCode = null;
-        _invalidateCache();
       });
-
+    
       _dismissLoadingOverlay();
     });
   }
@@ -6764,7 +7281,7 @@ Future<void> _saveAndPrintBillCopy() async {
   void _selectFreshTable(Table table) {
     setState(() {
       _clearEverything();
-
+      
       _selectedTable = Table(
         id: table.id,
         name: table.name,
@@ -6773,7 +7290,7 @@ Future<void> _saveAndPrintBillCopy() async {
         specialNote: '',
       );
     });
-
+    
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('Fresh table "${table.name}" selected'),
@@ -6790,15 +7307,13 @@ Future<void> _saveAndPrintBillCopy() async {
         final productIndex = _products.indexWhere((p) => p.id == product.id);
         if (productIndex != -1) {
           _products[productIndex].availableQuantity += cartItem.quantity;
-          final filteredIndex =
-              _filteredProducts.indexWhere((p) => p.id == product.id);
+          final filteredIndex = _filteredProducts.indexWhere((p) => p.id == product.id);
           if (filteredIndex != -1) {
-            _filteredProducts[filteredIndex].availableQuantity +=
-                cartItem.quantity;
+            _filteredProducts[filteredIndex].availableQuantity += cartItem.quantity;
           }
         }
       }
-
+      
       _cartItems.clear();
       _discountController.text = '0';
       _currentInvoiceId = null;
@@ -6866,8 +7381,7 @@ Future<void> _saveAndPrintBillCopy() async {
     return FilterChip(
       selected: isSelected,
       label: Text(orderType.displayName, style: GoogleFonts.poppins()),
-      avatar: Icon(orderType.icon,
-          color: isSelected ? Colors.white : orderType.color),
+      avatar: Icon(orderType.icon, color: isSelected ? Colors.white : orderType.color),
       backgroundColor: isSelected ? orderType.color : Colors.grey[200],
       selectedColor: orderType.color,
       selectedShadowColor: orderType.color.withOpacity(0.3),
@@ -6891,8 +7405,7 @@ Future<void> _saveAndPrintBillCopy() async {
       builder: (context) => StatefulBuilder(
         builder: (context, setState) {
           return Dialog(
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
             child: ConstrainedBox(
               constraints: BoxConstraints(
                 maxWidth: MediaQuery.of(context).size.width * 0.9,
@@ -6921,8 +7434,7 @@ Future<void> _saveAndPrintBillCopy() async {
                               color: Colors.blue,
                               borderRadius: BorderRadius.circular(12),
                             ),
-                            child: const Icon(Icons.add,
-                                color: Colors.white, size: 20),
+                            child: const Icon(Icons.add, color: Colors.white, size: 20),
                           ),
                         ),
                       ],
@@ -6933,19 +7445,15 @@ Future<void> _saveAndPrintBillCopy() async {
                       decoration: InputDecoration(
                         hintText: 'Search customers...',
                         prefixIcon: const Icon(Icons.search),
-                        border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12)),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                         filled: true,
                       ),
                       onChanged: (value) {
                         setState(() {
-                          _filteredCustomers = _customers
-                              .where((customer) =>
-                                  customer.name
-                                      .toLowerCase()
-                                      .contains(value.toLowerCase()) ||
-                                  customer.phone.contains(value))
-                              .toList();
+                          _filteredCustomers = _customers.where((customer) =>
+                            customer.name.toLowerCase().contains(value.toLowerCase()) ||
+                            customer.phone.contains(value)
+                          ).toList();
                         });
                       },
                     ),
@@ -6958,11 +7466,9 @@ Future<void> _saveAndPrintBillCopy() async {
                                   child: Column(
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
-                                      Icon(Icons.people_outline,
-                                          size: 64, color: Colors.grey),
+                                      Icon(Icons.people_outline, size: 64, color: Colors.grey),
                                       SizedBox(height: 16),
-                                      Text('No customers found',
-                                          style: TextStyle(color: Colors.grey)),
+                                      Text('No customers found', style: TextStyle(color: Colors.grey)),
                                     ],
                                   ),
                                 )
@@ -6980,16 +7486,11 @@ Future<void> _saveAndPrintBillCopy() async {
                                             color: Colors.blue.withOpacity(0.1),
                                             shape: BoxShape.circle,
                                           ),
-                                          child: const Icon(Icons.person,
-                                              color: Colors.blue, size: 20),
+                                          child: const Icon(Icons.person, color: Colors.blue, size: 20),
                                         ),
-                                        title: Text(customer.name,
-                                            style: GoogleFonts.poppins(
-                                                fontWeight: FontWeight.w500)),
+                                        title: Text(customer.name, style: GoogleFonts.poppins(fontWeight: FontWeight.w500)),
                                         subtitle: Text(customer.phone),
-                                        trailing: const Icon(
-                                            Icons.arrow_forward_ios,
-                                            size: 16),
+                                        trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                                         onTap: () {
                                           Navigator.pop(context);
                                           this.setState(() {
@@ -7018,8 +7519,7 @@ Future<void> _saveAndPrintBillCopy() async {
       builder: (context) => StatefulBuilder(
         builder: (context, setState) {
           return Dialog(
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
             child: ConstrainedBox(
               constraints: BoxConstraints(
                 maxWidth: MediaQuery.of(context).size.width * 0.9,
@@ -7048,17 +7548,14 @@ Future<void> _saveAndPrintBillCopy() async {
                       decoration: InputDecoration(
                         hintText: 'Search waiters...',
                         prefixIcon: const Icon(Icons.search),
-                        border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12)),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                         filled: true,
                       ),
                       onChanged: (value) {
                         setState(() {
-                          _filteredWaiters = _waiters
-                              .where((waiter) => waiter.name
-                                  .toLowerCase()
-                                  .contains(value.toLowerCase()))
-                              .toList();
+                          _filteredWaiters = _waiters.where((waiter) =>
+                            waiter.name.toLowerCase().contains(value.toLowerCase())
+                          ).toList();
                         });
                       },
                     ),
@@ -7071,11 +7568,9 @@ Future<void> _saveAndPrintBillCopy() async {
                                   child: Column(
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
-                                      Icon(Icons.person_pin_outlined,
-                                          size: 64, color: Colors.grey),
+                                      Icon(Icons.person_pin_outlined, size: 64, color: Colors.grey),
                                       SizedBox(height: 16),
-                                      Text('No waiters found',
-                                          style: TextStyle(color: Colors.grey)),
+                                      Text('No waiters found', style: TextStyle(color: Colors.grey)),
                                     ],
                                   ),
                                 )
@@ -7093,15 +7588,10 @@ Future<void> _saveAndPrintBillCopy() async {
                                             color: Colors.blue.withOpacity(0.1),
                                             shape: BoxShape.circle,
                                           ),
-                                          child: const Icon(Icons.person_pin,
-                                              color: Colors.blue, size: 20),
+                                          child: const Icon(Icons.person_pin, color: Colors.blue, size: 20),
                                         ),
-                                        title: Text(waiter.name,
-                                            style: GoogleFonts.poppins(
-                                                fontWeight: FontWeight.w500)),
-                                        trailing: const Icon(
-                                            Icons.arrow_forward_ios,
-                                            size: 16),
+                                        title: Text(waiter.name, style: GoogleFonts.poppins(fontWeight: FontWeight.w500)),
+                                        trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                                         onTap: () {
                                           Navigator.pop(context);
                                           setState(() {
@@ -7125,24 +7615,18 @@ Future<void> _saveAndPrintBillCopy() async {
 
   void _showTableDialog() {
     _tableSearchController.clear();
-    final isLandscape =
-        MediaQuery.of(context).orientation == Orientation.landscape;
-
+    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
+    
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setState) {
           return Dialog(
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
             child: ConstrainedBox(
               constraints: BoxConstraints(
-                maxWidth: isLandscape
-                    ? MediaQuery.of(context).size.width * 0.8
-                    : MediaQuery.of(context).size.width * 0.9,
-                maxHeight: isLandscape
-                    ? MediaQuery.of(context).size.height * 0.9
-                    : MediaQuery.of(context).size.height * 0.8,
+                maxWidth: isLandscape ? MediaQuery.of(context).size.width * 0.8 : MediaQuery.of(context).size.width * 0.9,
+                maxHeight: isLandscape ? MediaQuery.of(context).size.height * 0.9 : MediaQuery.of(context).size.height * 0.8,
               ),
               child: Padding(
                 padding: const EdgeInsets.all(20),
@@ -7167,17 +7651,14 @@ Future<void> _saveAndPrintBillCopy() async {
                       decoration: InputDecoration(
                         hintText: 'Search tables...',
                         prefixIcon: const Icon(Icons.search),
-                        border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12)),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                         filled: true,
                       ),
                       onChanged: (value) {
                         setState(() {
-                          _filteredTables = _tables
-                              .where((table) => table.name
-                                  .toLowerCase()
-                                  .contains(value.toLowerCase()))
-                              .toList();
+                          _filteredTables = _tables.where((table) =>
+                            table.name.toLowerCase().contains(value.toLowerCase())
+                          ).toList();
                         });
                       },
                     ),
@@ -7190,11 +7671,9 @@ Future<void> _saveAndPrintBillCopy() async {
                                   child: Column(
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
-                                      Icon(Icons.table_chart_outlined,
-                                          size: 64, color: Colors.grey),
+                                      Icon(Icons.table_chart_outlined, size: 64, color: Colors.grey),
                                       SizedBox(height: 16),
-                                      Text('No tables found',
-                                          style: TextStyle(color: Colors.grey)),
+                                      Text('No tables found', style: TextStyle(color: Colors.grey)),
                                     ],
                                   ),
                                 )
@@ -7218,14 +7697,9 @@ Future<void> _saveAndPrintBillCopy() async {
                                             size: 20,
                                           ),
                                         ),
-                                        title: Text(table.name,
-                                            style: GoogleFonts.poppins(
-                                                fontWeight: FontWeight.w500)),
-                                        subtitle: Text(
-                                            'Service Charge: ${table.serviceCharge}%'),
-                                        trailing: const Icon(
-                                            Icons.arrow_forward_ios,
-                                            size: 16),
+                                        title: Text(table.name, style: GoogleFonts.poppins(fontWeight: FontWeight.w500)),
+                                        subtitle: Text('Service Charge: ${table.serviceCharge}%'),
+                                        trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                                         onTap: () {
                                           Navigator.pop(context);
                                           _handleTableSelection(table);
@@ -7252,7 +7726,7 @@ Future<void> _saveAndPrintBillCopy() async {
       builder: (context) {
         bool isLoading = true;
         List<Table> currentDueTables = [];
-
+        
         return StatefulBuilder(
           builder: (context, setDialogState) {
             if (isLoading) {
@@ -7277,10 +7751,9 @@ Future<void> _saveAndPrintBillCopy() async {
                 }
               });
             }
-
+            
             return Dialog(
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
               child: ConstrainedBox(
                 constraints: BoxConstraints(
                   maxWidth: MediaQuery.of(context).size.width * 0.9,
@@ -7303,8 +7776,7 @@ Future<void> _saveAndPrintBillCopy() async {
                           ),
                           const SizedBox(width: 8),
                           Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 4),
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                             decoration: BoxDecoration(
                               color: Colors.red[50],
                               borderRadius: BorderRadius.circular(20),
@@ -7322,14 +7794,12 @@ Future<void> _saveAndPrintBillCopy() async {
                           const Spacer(),
                           if (!isLoading && currentDueTables.isNotEmpty)
                             IconButton(
-                              icon:
-                                  Icon(Icons.refresh, color: Colors.grey[700]),
+                              icon: Icon(Icons.refresh, color: Colors.grey[700]),
                               onPressed: () async {
                                 setDialogState(() {
                                   isLoading = true;
                                 });
-                                final refreshedTables =
-                                    await _loadDueTablesForDialog();
+                                final refreshedTables = await _loadDueTablesForDialog();
                                 setDialogState(() {
                                   currentDueTables = refreshedTables;
                                   isLoading = false;
@@ -7338,9 +7808,11 @@ Future<void> _saveAndPrintBillCopy() async {
                             ),
                         ],
                       ),
+                      
                       const SizedBox(height: 4),
                       Divider(color: Colors.grey[300], thickness: 1),
                       const SizedBox(height: 8),
+                      
                       Expanded(
                         child: isLoading
                             ? Center(
@@ -7362,11 +7834,9 @@ Future<void> _saveAndPrintBillCopy() async {
                             : currentDueTables.isEmpty
                                 ? Center(
                                     child: Column(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
+                                      mainAxisAlignment: MainAxisAlignment.center,
                                       children: [
-                                        Icon(Icons.table_chart_outlined,
-                                            size: 64, color: Colors.grey[400]),
+                                        Icon(Icons.table_chart_outlined, size: 64, color: Colors.grey[400]),
                                         const SizedBox(height: 16),
                                         Text(
                                           'No active tables',
@@ -7379,8 +7849,7 @@ Future<void> _saveAndPrintBillCopy() async {
                                     ),
                                   )
                                 : GridView.builder(
-                                    gridDelegate:
-                                        const SliverGridDelegateWithFixedCrossAxisCount(
+                                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                                       crossAxisCount: 3,
                                       childAspectRatio: 3.4,
                                       crossAxisSpacing: 12,
@@ -7389,14 +7858,14 @@ Future<void> _saveAndPrintBillCopy() async {
                                     itemCount: currentDueTables.length,
                                     itemBuilder: (context, index) {
                                       final table = currentDueTables[index];
-                                      return _buildTableCardFromImage(table,
-                                          () {
+                                      return _buildTableCardFromImage(table, () {
                                         currentDueTables.removeAt(index);
                                         setDialogState(() {});
                                       });
                                     },
                                   ),
                       ),
+                      
                       const SizedBox(height: 20),
                       SizedBox(
                         width: double.infinity,
@@ -7435,22 +7904,20 @@ Future<void> _saveAndPrintBillCopy() async {
   Future<List<Table>> _loadDueTablesForDialog() async {
     try {
       final headers = await _getAuthHeaders();
-      final response = await http
-          .get(
-            Uri.parse(ApiConstants.getFullUrl(ApiConstants.getDueTables)),
-            headers: headers,
-          )
-          .timeout(const Duration(seconds: 10));
+      final response = await http.get(
+        Uri.parse(ApiConstants.getFullUrl(ApiConstants.getDueTables)),
+        headers: headers,
+      ).timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data['status'] == 'Success' && data['data'] != null) {
           List<dynamic> tablesData = data['data'];
           List<Table> dueTables = [];
-
+          
           for (var tableData in tablesData) {
             Table table = Table.fromJson(tableData);
-
+            
             if (_tableSpecialNotes.containsKey(table.id)) {
               table = Table(
                 id: table.id,
@@ -7460,10 +7927,10 @@ Future<void> _saveAndPrintBillCopy() async {
                 specialNote: _tableSpecialNotes[table.id]!,
               );
             }
-
+            
             dueTables.add(table);
           }
-
+          
           return dueTables;
         }
       } else if (response.statusCode == 401) {
@@ -7480,7 +7947,7 @@ Future<void> _saveAndPrintBillCopy() async {
     return GestureDetector(
       onTap: () {
         Navigator.pop(context);
-
+        
         showDialog(
           context: context,
           barrierDismissible: false,
@@ -7492,7 +7959,7 @@ Future<void> _saveAndPrintBillCopy() async {
             ),
           ),
         );
-
+        
         Future.delayed(const Duration(milliseconds: 100), () {
           setState(() {
             _selectedTable = Table(
@@ -7503,12 +7970,12 @@ Future<void> _saveAndPrintBillCopy() async {
               specialNote: table.specialNote,
             );
           });
-
+          
           _loadDueTableItems(table).then((_) {
             Navigator.pop(context);
           }).catchError((error) {
             Navigator.pop(context);
-
+            
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text('Error loading due table: $error'),
@@ -7565,8 +8032,7 @@ Future<void> _saveAndPrintBillCopy() async {
                   ),
                   const Spacer(),
                   Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
                     decoration: BoxDecoration(
                       color: Colors.green[50],
                       borderRadius: BorderRadius.circular(12),
@@ -7586,8 +8052,7 @@ Future<void> _saveAndPrintBillCopy() async {
               if (table.specialNote.isNotEmpty) ...[
                 const SizedBox(height: 2),
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
                   decoration: BoxDecoration(
                     color: Colors.yellow[50],
                     borderRadius: BorderRadius.circular(4),
@@ -7614,15 +8079,12 @@ Future<void> _saveAndPrintBillCopy() async {
   Future<void> _markTableAsPaid(Table table, VoidCallback onSuccess) async {
     try {
       final headers = await _getAuthHeaders();
-
-      final response = await http
-          .post(
-            Uri.parse(
-                '${ApiConstants.getFullUrl(ApiConstants.markTablePaid)}/${table.id}'),
-            headers: headers,
-          )
-          .timeout(const Duration(seconds: 10));
-
+      
+      final response = await http.post(
+        Uri.parse('${ApiConstants.getFullUrl(ApiConstants.markTablePaid)}/${table.id}'),
+        headers: headers,
+      ).timeout(const Duration(seconds: 10));
+      
       if (response.statusCode == 200) {
         setState(() {
           _tables = _tables.map((t) {
@@ -7639,9 +8101,9 @@ Future<void> _saveAndPrintBillCopy() async {
           }).toList();
           _filteredTables = _tables;
         });
-
+        
         await _removeLocalTableNote(table.id);
-
+        
         onSuccess();
       }
     } catch (e) {
@@ -7656,8 +8118,7 @@ Future<void> _saveAndPrintBillCopy() async {
     final nicController = TextEditingController();
     final addressController = TextEditingController();
 
-    final isLandscape =
-        MediaQuery.of(context).orientation == Orientation.landscape;
+    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
 
     showDialog(
       context: context,
@@ -7666,10 +8127,8 @@ Future<void> _saveAndPrintBillCopy() async {
         insetPadding: const EdgeInsets.all(20),
         child: ConstrainedBox(
           constraints: BoxConstraints(
-            maxWidth:
-                isLandscape ? MediaQuery.of(context).size.width * 0.6 : 400,
-            maxHeight:
-                isLandscape ? MediaQuery.of(context).size.height * 0.8 : 500,
+            maxWidth: isLandscape ? MediaQuery.of(context).size.width * 0.6 : 400,
+            maxHeight: isLandscape ? MediaQuery.of(context).size.height * 0.8 : 500,
           ),
           child: SingleChildScrollView(
             child: Container(
@@ -7689,8 +8148,7 @@ Future<void> _saveAndPrintBillCopy() async {
                     controller: nameController,
                     decoration: InputDecoration(
                       labelText: 'Name*',
-                      border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12)),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                       filled: true,
                     ),
                   ),
@@ -7699,8 +8157,7 @@ Future<void> _saveAndPrintBillCopy() async {
                     controller: phoneController,
                     decoration: InputDecoration(
                       labelText: 'Phone*',
-                      border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12)),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                       filled: true,
                     ),
                   ),
@@ -7709,8 +8166,7 @@ Future<void> _saveAndPrintBillCopy() async {
                     controller: emailController,
                     decoration: InputDecoration(
                       labelText: 'Email',
-                      border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12)),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                       filled: true,
                     ),
                   ),
@@ -7719,8 +8175,7 @@ Future<void> _saveAndPrintBillCopy() async {
                     controller: nicController,
                     decoration: InputDecoration(
                       labelText: 'NIC',
-                      border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12)),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                       filled: true,
                     ),
                   ),
@@ -7729,8 +8184,7 @@ Future<void> _saveAndPrintBillCopy() async {
                     controller: addressController,
                     decoration: InputDecoration(
                       labelText: 'Address',
-                      border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12)),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                       filled: true,
                     ),
                   ),
@@ -7742,8 +8196,7 @@ Future<void> _saveAndPrintBillCopy() async {
                           onPressed: () => Navigator.pop(context),
                           style: TextButton.styleFrom(
                             padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12)),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                           ),
                           child: Text(
                             'CANCEL',
@@ -7757,8 +8210,7 @@ Future<void> _saveAndPrintBillCopy() async {
                       Expanded(
                         child: ElevatedButton(
                           onPressed: () {
-                            if (nameController.text.isEmpty ||
-                                phoneController.text.isEmpty) {
+                            if (nameController.text.isEmpty || phoneController.text.isEmpty) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
                                   content: Text('Name and Phone are required'),
@@ -7781,8 +8233,7 @@ Future<void> _saveAndPrintBillCopy() async {
                             backgroundColor: Colors.blue,
                             foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12)),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                           ),
                           child: Text(
                             'ADD',
@@ -7805,8 +8256,7 @@ Future<void> _saveAndPrintBillCopy() async {
 
   Widget _buildProductCard(Product product) {
     final isInStock = product.availableQuantity > 0;
-    final currentPrice =
-        _selectedOrderType == OrderType.whole ? product.wsPrice : product.price;
+    final currentPrice = _selectedOrderType == OrderType.whole ? product.wsPrice : product.price;
     final cardHeight = 50.0;
 
     return Card(
@@ -7848,6 +8298,7 @@ Future<void> _saveAndPrintBillCopy() async {
                         : null,
                   ),
                 ),
+                
                 Container(
                   padding: const EdgeInsets.all(8),
                   child: Column(
@@ -7863,7 +8314,9 @@ Future<void> _saveAndPrintBillCopy() async {
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
+                      
                       const SizedBox(height: 4),
+                      
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
@@ -7913,13 +8366,11 @@ Future<void> _saveAndPrintBillCopy() async {
                           ),
                         ),
                       ),
-                      if (cartItem.specialNote != null &&
-                          cartItem.specialNote!.isNotEmpty)
+                      if (cartItem.specialNote != null && cartItem.specialNote!.isNotEmpty)
                         Padding(
                           padding: const EdgeInsets.only(left: 8.0),
                           child: Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 6, vertical: 2),
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                             decoration: BoxDecoration(
                               color: Colors.yellow[100],
                               borderRadius: BorderRadius.circular(4),
@@ -7958,26 +8409,21 @@ Future<void> _saveAndPrintBillCopy() async {
             Row(
               children: [
                 IconButton(
-                  icon:
-                      const Icon(Icons.remove, size: 18, color: Colors.black87),
-                  onPressed: () =>
-                      _updateCartQuantity(index, cartItem.quantity - 1),
+                  icon: const Icon(Icons.remove, size: 18, color: Colors.black87),
+                  onPressed: () => _updateCartQuantity(index, cartItem.quantity - 1),
                   padding: EdgeInsets.zero,
                 ),
                 Text(
                   cartItem.quantity.toString(),
-                  style: GoogleFonts.poppins(
-                      fontWeight: FontWeight.bold, color: Colors.black87),
+                  style: GoogleFonts.poppins(fontWeight: FontWeight.bold, color: Colors.black87),
                 ),
                 IconButton(
                   icon: const Icon(Icons.add, size: 18, color: Colors.black87),
-                  onPressed: () =>
-                      _updateCartQuantity(index, cartItem.quantity + 1),
+                  onPressed: () => _updateCartQuantity(index, cartItem.quantity + 1),
                   padding: EdgeInsets.zero,
                 ),
                 IconButton(
-                  icon: const Icon(Icons.delete,
-                      size: 18, color: Color.fromARGB(255, 221, 49, 49)),
+                  icon: const Icon(Icons.delete, size: 18, color: Color.fromARGB(255, 221, 49, 49)),
                   onPressed: () => _removeFromCart(index),
                   padding: EdgeInsets.zero,
                 ),
@@ -7989,6 +8435,7 @@ Future<void> _saveAndPrintBillCopy() async {
     );
   }
 
+<<<<<<< HEAD
  Widget _buildCategoriesPanel() {
   return Container(
     width: 160, // Slightly wider for better readability
@@ -8146,6 +8593,94 @@ Future<void> _saveAndPrintBillCopy() async {
                                         color: Colors.blue.withOpacity(0.1),
                                         blurRadius: 8,
                                         offset: const Offset(0, 2),
+=======
+  Widget _buildCategoriesPanel() {
+    return Container(
+      width: 140, 
+      color: Colors.white,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              border: Border(
+                bottom: BorderSide(color: Colors.grey[300]!, width: 1),
+              ),
+            ),
+            child: Text(
+              'Categories',
+              style: GoogleFonts.poppins(
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
+            ),
+              textAlign: TextAlign.center,
+            ),
+          ),
+        
+          Expanded(
+            child: _categories.isEmpty
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.category_outlined, size: 32, color: Colors.grey),
+                        const SizedBox(height: 8),
+                        Text(
+                          'No categories',
+                          style: GoogleFonts.poppins(
+                            fontSize: 12,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.all(4),
+                    itemCount: _categories.length,
+                    itemBuilder: (context, index) {
+                      final category = _categories[index];
+                      final isSelected = _selectedCategory?.id == category.id;
+                      
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 4),
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            onTap: () => _filterProductsByCategory(category),
+                            borderRadius: BorderRadius.circular(8),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+                              decoration: BoxDecoration(
+                                color: isSelected ? Colors.blue.withOpacity(0.1) : Colors.white,
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: isSelected ? Colors.blue : Colors.grey[300]!,
+                                  width: isSelected ? 1.5 : 1,
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.start,
+                                children: [
+                                  Icon(
+                                    Icons.category,
+                                    size: 14,
+                                    color: isSelected ? Colors.blue : Colors.grey[600],
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Expanded(
+                                    child: Text(
+                                      category.categoryName.length > 12 
+                                          ? '${category.categoryName.substring(0, 12)}...' 
+                                          : category.categoryName,
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 10,
+                                        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                        color: isSelected ? Colors.blue : Colors.black87,
+>>>>>>> 425adf5dcaf48d4e27c4b766e59fed37dd315626
                                       ),
                                     ]
                                   : [
@@ -8370,6 +8905,7 @@ IconData _getCategoryIcon(String categoryName) {
               ),
             ),
             const SizedBox(height: 16),
+          
             if (_cartItems.isNotEmpty)
               Container(
                 padding: const EdgeInsets.all(12),
@@ -8387,8 +8923,7 @@ IconData _getCategoryIcon(String categoryName) {
                         children: [
                           Text(
                             'Order Summary',
-                            style: GoogleFonts.poppins(
-                                fontWeight: FontWeight.bold),
+                            style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
                           ),
                           Text(
                             'Subtotal: Rs.${_totalSubtotal.toStringAsFixed(2)}',
@@ -8400,15 +8935,16 @@ IconData _getCategoryIcon(String categoryName) {
                   ],
                 ),
               ),
+          
             const SizedBox(height: 16),
+          
             Expanded(
               child: _cartItems.isEmpty
                   ? const Center(
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.shopping_cart_outlined,
-                              size: 64, color: Colors.grey),
+                          Icon(Icons.shopping_cart_outlined, size: 64, color: Colors.grey),
                           SizedBox(height: 16),
                           Text('Your cart is empty'),
                         ],
@@ -8421,6 +8957,7 @@ IconData _getCategoryIcon(String categoryName) {
                       },
                     ),
             ),
+          
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -8431,8 +8968,7 @@ IconData _getCategoryIcon(String categoryName) {
                 children: [
                   _buildTotalRow('Subtotal', _totalSubtotal),
                   _buildTotalRow('Item Discounts', -_totalItemDiscount),
-                  _buildTotalRow('Discount (${_discountPercentage}%)',
-                      -_globalDiscountValue),
+                  _buildTotalRow('Discount (${_discountPercentage}%)', -_globalDiscountValue),
                   if (_selectedTable != null && _serviceAmount > 0)
                     _buildTotalRow('Service Charge', _serviceAmount),
                   const Divider(),
@@ -8443,6 +8979,7 @@ IconData _getCategoryIcon(String categoryName) {
                     isTotal: true,
                   ),
                   const SizedBox(height: 16),
+                
                   Row(
                     children: [
                       Expanded(
@@ -8450,10 +8987,8 @@ IconData _getCategoryIcon(String categoryName) {
                           controller: _discountController,
                           decoration: InputDecoration(
                             labelText: 'Discount %',
-                            border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(8)),
-                            contentPadding:
-                                const EdgeInsets.symmetric(horizontal: 12),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 12),
                           ),
                           keyboardType: TextInputType.number,
                           textAlign: TextAlign.center,
@@ -8472,7 +9007,9 @@ IconData _getCategoryIcon(String categoryName) {
                       ),
                     ],
                   ),
+                
                   const SizedBox(height: 16),
+                
                   SizedBox(
                     width: double.infinity,
                     height: 50,
@@ -8481,8 +9018,7 @@ IconData _getCategoryIcon(String categoryName) {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.green,
                         foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12)),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       ),
                       child: Text(
                         'PROCEED TO PAYMENT',
@@ -8493,7 +9029,9 @@ IconData _getCategoryIcon(String categoryName) {
                       ),
                     ),
                   ),
+                
                   const SizedBox(height: 8),
+                
                   if (_cartItems.isNotEmpty)
                     Row(
                       children: [
@@ -8501,8 +9039,7 @@ IconData _getCategoryIcon(String categoryName) {
                           child: OutlinedButton(
                             onPressed: () => _saveInvoice(),
                             style: OutlinedButton.styleFrom(
-                              shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8)),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                               side: const BorderSide(color: Colors.blue),
                             ),
                             child: Text(
@@ -8516,8 +9053,7 @@ IconData _getCategoryIcon(String categoryName) {
                           child: OutlinedButton(
                             onPressed: () => _saveInvoice(isDue: true),
                             style: OutlinedButton.styleFrom(
-                              shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8)),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                               side: const BorderSide(color: Colors.orange),
                             ),
                             child: Text(
@@ -8537,50 +9073,45 @@ IconData _getCategoryIcon(String categoryName) {
     );
   }
 
-  Widget _buildTotalRow(String label, double amount,
-      {bool isBold = false, bool isTotal = false}) {
+  Widget _buildTotalRow(String label, double amount, {bool isBold = false, bool isTotal = false}) {
     return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              label,
-              style: GoogleFonts.poppins(
-                fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
-                color: isTotal ? Colors.green : Colors.black,
-              ),
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: GoogleFonts.poppins(
+              fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
+              color: isTotal ? Colors.green : Colors.black,
             ),
-            Text(
-              'Rs.${amount.toStringAsFixed(2)}',
-              style: GoogleFonts.poppins(
-                fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
-                color: isTotal
-                    ? Colors.green
-                    : (amount < 0 ? Colors.red : Colors.black),
-              ),
+          ),
+          Text(
+            'Rs.${amount.toStringAsFixed(2)}',
+            style: GoogleFonts.poppins(
+              fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
+              color: isTotal ? Colors.green : (amount < 0 ? Colors.red : Colors.black),
             ),
-          ],
-        ));
+          ),
+        ],
+      )
+    );
   }
 
   void _showCartItemPopup(int index) {
     final cartItem = _cartItems[index];
-    final noteController =
-        TextEditingController(text: cartItem.specialNote ?? '');
-
+    final noteController = TextEditingController(text: cartItem.specialNote ?? '');
+    
     showDialog(
       context: context,
       builder: (context) {
-        final isLandscape =
-            MediaQuery.of(context).orientation == Orientation.landscape;
-
+        final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
+        
         return Dialog(
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           child: Container(
             padding: const EdgeInsets.all(16),
-            width: isLandscape
+            width: isLandscape 
                 ? MediaQuery.of(context).size.width * 0.5
                 : MediaQuery.of(context).size.width * 0.75,
             child: Column(
@@ -8595,18 +9126,20 @@ IconData _getCategoryIcon(String categoryName) {
                   ),
                 ),
                 const SizedBox(height: 9),
+                
                 TextField(
                   controller: noteController,
                   maxLines: isLandscape ? 2 : 3,
                   decoration: InputDecoration(
                     hintText: 'Enter special instructions...',
-                    border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8)),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                     contentPadding: const EdgeInsets.all(10),
                   ),
                   style: GoogleFonts.poppins(fontSize: 10),
                 ),
+                
                 const SizedBox(height: 12),
+                
                 if (isLandscape)
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -8638,8 +9171,8 @@ IconData _getCategoryIcon(String categoryName) {
                           onPressed: () {
                             setState(() {
                               _cartItems[index] = cartItem.copyWith(
-                                specialNote: noteController.text.trim().isEmpty
-                                    ? null
+                                specialNote: noteController.text.trim().isEmpty 
+                                    ? null 
                                     : noteController.text.trim(),
                               );
                             });
@@ -8698,8 +9231,8 @@ IconData _getCategoryIcon(String categoryName) {
                           onPressed: () {
                             setState(() {
                               _cartItems[index] = cartItem.copyWith(
-                                specialNote: noteController.text.trim().isEmpty
-                                    ? null
+                                specialNote: noteController.text.trim().isEmpty 
+                                    ? null 
                                     : noteController.text.trim(),
                               );
                             });
@@ -8765,11 +9298,9 @@ IconData _getCategoryIcon(String categoryName) {
                     color: Colors.blue,
                   ),
                 ),
-                if (_selectedTable != null &&
-                    _selectedTable!.specialNote.isNotEmpty)
+                if (_selectedTable != null && _selectedTable!.specialNote.isNotEmpty)
                   Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                     decoration: BoxDecoration(
                       color: Colors.yellow[100],
                       borderRadius: BorderRadius.circular(12),
@@ -8791,14 +9322,14 @@ IconData _getCategoryIcon(String categoryName) {
               ],
             ),
           ),
+        
           Expanded(
             child: _cartItems.isEmpty
                 ? Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(Icons.shopping_cart_outlined,
-                            size: 64, color: Colors.grey),
+                        const Icon(Icons.shopping_cart_outlined, size: 64, color: Colors.grey),
                         const SizedBox(height: 16),
                         Text(
                           'Cart is empty',
@@ -8826,6 +9357,7 @@ IconData _getCategoryIcon(String categoryName) {
                     },
                   ),
           ),
+        
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -8834,392 +9366,393 @@ IconData _getCategoryIcon(String categoryName) {
                 top: BorderSide(color: Colors.grey[300]!, width: 1),
               ),
             ),
-            child: Column(
-              children: [
-                _buildSummaryRow('Gross Amount:', _totalSubtotal),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _discountController,
-                        decoration: InputDecoration(
-                          labelText: 'Discount (%)',
-                          border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8)),
-                          contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 8),
-                          isDense: true,
-                        ),
-                        keyboardType: TextInputType.number,
-                        textAlign: TextAlign.center,
-                        style: GoogleFonts.poppins(fontSize: 12),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 10),
-                        decoration: BoxDecoration(
-                          color: Colors.red[50],
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.red[100]!),
-                        ),
-                        child: Text(
-                          'Rs.${_globalDiscountValue.toStringAsFixed(2)}',
-                          style: GoogleFonts.poppins(
-                            fontWeight: FontWeight.bold,
-                            color: Colors.red,
-                            fontSize: 12,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                if (_selectedTable != null && _serviceAmount > 0)
-                  _buildSummaryRow('Service Charge:', _serviceAmount),
-                const Divider(height: 20),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.green[50],
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.green[100]!),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              child: Column(
+                children: [
+                 
+                  
+                  _buildSummaryRow('Gross Amount:', _totalSubtotal),
+                  
+                  Row(
                     children: [
-                      Text(
-                        'NET AMOUNT:',
-                        style: GoogleFonts.poppins(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.green[800],
+                      Expanded(
+                        child: TextField(
+                          controller: _discountController,
+                          decoration: InputDecoration(
+                            labelText: 'Discount (%)',
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            isDense: true,
+                          ),
+                          keyboardType: TextInputType.number,
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.poppins(fontSize: 12),
                         ),
                       ),
-                      Text(
-                        'Rs.${_netAmount.toStringAsFixed(2)}',
-                        style: GoogleFonts.poppins(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 18,
-                          color: Colors.green[800],
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                          decoration: BoxDecoration(
+                            color: Colors.red[50],
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.red[100]!),
+                          ),
+                          child: Text(
+                            'Rs.${_globalDiscountValue.toStringAsFixed(2)}',
+                            style: GoogleFonts.poppins(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.red,
+                              fontSize: 12,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
                         ),
                       ),
                     ],
                   ),
-                ),
-                const SizedBox(height: 16),
-                Column(
-                  children: [
-                    SizedBox(
-                      width: double.infinity,
-                      height: 45,
-                      child: ElevatedButton(
-                        onPressed:
-                            _cartItems.isEmpty ? null : _showPaymentScreen,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green,
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8)),
-                        ),
-                        child: Text(
-                          'PAY NOW',
+                  
+                  if (_selectedTable != null && _serviceAmount > 0)
+                    _buildSummaryRow('Service Charge:', _serviceAmount),
+                  
+                  const Divider(height: 20),
+                  
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.green[50],
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.green[100]!),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'NET AMOUNT:',
                           style: GoogleFonts.poppins(
                             fontWeight: FontWeight.bold,
-                            fontSize: 14,
+                            color: Colors.green[800],
                           ),
                         ),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    if (_cartItems.isNotEmpty)
-                      Row(
-                        children: [
-                          Expanded(
-                            child: SizedBox(
-                              height: 40,
-                              child: OutlinedButton(
-                                onPressed: () => _saveInvoice(),
-                                style: OutlinedButton.styleFrom(
-                                  shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(6)),
-                                  side: const BorderSide(color: Colors.blue),
-                                ),
-                                child: Text(
-                                  'SAVE INV',
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 12,
-                                    color: Colors.blue,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: SizedBox(
-                              height: 40,
-                              child: OutlinedButton(
-                                onPressed: () => _saveInvoice(isDue: true),
-                                style: OutlinedButton.styleFrom(
-                                  shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(6)),
-                                  side: const BorderSide(color: Colors.orange),
-                                ),
-                                child: Text(
-                                  'DUE INV',
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 12,
-                                    color: Colors.orange,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCartItemForPanel(CartItem cartItem, int index) {
-    final isDueTableItem = _isEditingDueTable && !cartItem.isNewItem;
-
-    return InkWell(
-      onLongPress: () {
-        _showCartItemPopup(index);
-      },
-      child: Card(
-        margin: const EdgeInsets.only(bottom: 4),
-        elevation: 1,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        color: Colors.white,
-        child: Container(
-          height: 60,
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            cartItem.product.name,
-                            style: GoogleFonts.poppins(
-                              fontWeight: FontWeight.w500,
-                              fontSize: 12,
-                              color: Colors.black,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        if (cartItem.specialNote != null &&
-                            cartItem.specialNote!.isNotEmpty)
-                          Padding(
-                            padding: const EdgeInsets.only(left: 4.0),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 4, vertical: 1),
-                              decoration: BoxDecoration(
-                                color: Colors.yellow[100],
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: Text(
-                                'N',
-                                style: GoogleFonts.poppins(
-                                  fontSize: 8,
-                                  color: Colors.orange[800],
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                    const SizedBox(height: 2),
-                    Row(
-                      children: [
                         Text(
-                          'Rs.${cartItem.getPriceByOrderType(_selectedOrderType).toStringAsFixed(2)}',
+                          'Rs.${_netAmount.toStringAsFixed(2)}',
                           style: GoogleFonts.poppins(
-                            fontSize: 10,
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        Container(
-                          width: 1,
-                          height: 10,
-                          color: Colors.grey[300],
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          'x${cartItem.quantity}',
-                          style: GoogleFonts.poppins(
-                            fontSize: 10,
-                            color: Colors.grey[600],
+                            fontWeight: FontWeight.bold,
+                            fontSize: 18,
+                            color: Colors.green[800],
                           ),
                         ),
                       ],
                     ),
-                  ],
-                ),
-              ),
-              if (isDueTableItem)
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.grey[100],
-                        border: Border.all(color: Colors.grey[300]!),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                        'Qty: ${cartItem.quantity}',
-                        style: GoogleFonts.poppins(
-                          fontWeight: FontWeight.w500,
-                          fontSize: 11,
-                          color: Colors.black,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Container(
-                      width: 24,
-                      height: 24,
-                      child: IconButton(
-                        icon: const Icon(Icons.close,
-                            size: 14, color: Colors.red),
-                        onPressed: () =>
-                            _removeDueTableItemWithVerification(index),
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
-                      ),
-                    ),
-                  ],
-                )
-              else
-                Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        border: Border.all(color: Colors.grey[300]!),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            width: 24,
-                            height: 20,
-                            child: IconButton(
-                              icon: const Icon(Icons.remove,
-                                  size: 12, color: Colors.black),
-                              onPressed: () => _updateCartQuantity(
-                                  index, cartItem.quantity - 1),
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(),
-                            ),
-                          ),
-                          Container(
-                            width: 24,
-                            alignment: Alignment.center,
-                            child: Text(
-                              cartItem.quantity.toString(),
-                              style: GoogleFonts.poppins(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 12,
-                                color: Colors.black,
-                              ),
-                            ),
-                          ),
-                          Container(
-                            width: 24,
-                            height: 20,
-                            child: IconButton(
-                              icon: const Icon(Icons.add,
-                                  size: 12, color: Colors.black),
-                              onPressed: () => _updateCartQuantity(
-                                  index, cartItem.quantity + 1),
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      'Rs.${cartItem.getTotalPrice(_selectedOrderType).toStringAsFixed(2)}',
-                      style: GoogleFonts.poppins(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.blue,
-                      ),
-                    ),
-                  ],
-                ),
-              if (!isDueTableItem) const SizedBox(width: 4),
-              if (!isDueTableItem)
-                Container(
-                  width: 24,
-                  height: 24,
-                  child: IconButton(
-                    icon:
-                        const Icon(Icons.close, size: 14, color: Colors.black),
-                    onPressed: () => _removeFromCart(index),
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
                   ),
-                ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSummaryRow(String label, double amount) {
-    return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              label,
-              style: GoogleFonts.poppins(
-                fontSize: 12,
-                color: Colors.grey[700],
-              ),
-            ),
-            Text(
-              'Rs.${amount.toStringAsFixed(2)}',
-              style: GoogleFonts.poppins(
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-                color: Colors.grey[800],
+                  
+                  const SizedBox(height: 16),
+                  
+                  Column(
+                    children: [
+                      SizedBox(
+                        width: double.infinity,
+                        height: 45,
+                        child: ElevatedButton(
+                          onPressed: _cartItems.isEmpty ? null : _showPaymentScreen,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.green,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          ),
+                          child: Text(
+                            'PAY NOW',
+                            style: GoogleFonts.poppins(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                      ),
+                      
+                      const SizedBox(height: 8),
+                      
+                      if (_cartItems.isNotEmpty)
+                        Row(
+                          children: [
+                            Expanded(
+                              child: SizedBox(
+                                height: 40,
+                                child: OutlinedButton(
+                                  onPressed: () => _saveInvoice(),
+                                  style: OutlinedButton.styleFrom(
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                                    side: const BorderSide(color: Colors.blue),
+                                  ),
+                                  child: Text(
+                                    'SAVE INV',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 12,
+                                      color: Colors.blue,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: SizedBox(
+                                height: 40,
+                                child: OutlinedButton(
+                                  onPressed: () => _saveInvoice(isDue: true),
+                                  style: OutlinedButton.styleFrom(
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                                    side: const BorderSide(color: Colors.orange),
+                                  ),
+                                  child: Text(
+                                    'DUE INV',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 12,
+                                      color: Colors.orange,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                    ],
+                  ),
+                ],
               ),
             ),
           ],
-        ));
+        ),
+      );
+  }
+
+Widget _buildCartItemForPanel(CartItem cartItem, int index) {
+  final isDueTableItem = _isEditingDueTable && !cartItem.isNewItem;
+  
+  return InkWell(
+    onLongPress: () {
+      _showCartItemPopup(index);
+    },
+    child: Card(
+      margin: const EdgeInsets.only(bottom: 4), 
+      elevation: 1,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      color: Colors.white,
+      child: Container(
+        height: 60,
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          cartItem.product.name,
+                          style: GoogleFonts.poppins(
+                            fontWeight: FontWeight.w500,
+                            fontSize: 12, 
+                            color: Colors.black,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      if (cartItem.specialNote != null && cartItem.specialNote!.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(left: 4.0),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                            decoration: BoxDecoration(
+                              color: Colors.yellow[100],
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              'N',
+                              style: GoogleFonts.poppins(
+                                fontSize: 8,
+                                color: Colors.orange[800],
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 2), 
+                  Row(
+                    children: [
+                      Text(
+                        'Rs.${cartItem.getPriceByOrderType(_selectedOrderType).toStringAsFixed(2)}',
+                        style: GoogleFonts.poppins(
+                          fontSize: 10, 
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Container(
+                        width: 1,
+                        height: 10,
+                        color: Colors.grey[300],
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        'x${cartItem.quantity}',
+                        style: GoogleFonts.poppins(
+                          fontSize: 10, 
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            
+            if (isDueTableItem)
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[100],
+                      border: Border.all(color: Colors.grey[300]!),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      'Qty: ${cartItem.quantity}',
+                      style: GoogleFonts.poppins(
+                        fontWeight: FontWeight.w500,
+                        fontSize: 11, 
+                        color: Colors.black,
+                      ),
+                    ),
+                  ),
+                  
+                  const SizedBox(width: 8),
+                  
+                  Container(
+                    width: 24,
+                    height: 24,
+                    child: IconButton(
+                      icon: const Icon(Icons.close, size: 14, color: Colors.red),
+                      onPressed: () => _removeDueTableItemWithVerification(index),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                    ),
+                  ),
+                ],
+              )
+            else
+              Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      border: Border.all(color: Colors.grey[300]!),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 24, 
+                          height: 20,
+                          child: IconButton(
+                            icon: const Icon(Icons.remove, size: 12, color: Colors.black),
+                            onPressed: () => _updateCartQuantity(index, cartItem.quantity - 1),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                          ),
+                        ),
+                        Container(
+                          width: 24,
+                          alignment: Alignment.center,
+                          child: Text(
+                            cartItem.quantity.toString(),
+                            style: GoogleFonts.poppins(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12, 
+                              color: Colors.black,
+                            ),
+                          ),
+                        ),
+                        Container(
+                          width: 24,
+                          height: 20,
+                          child: IconButton(
+                            icon: const Icon(Icons.add, size: 12, color: Colors.black),
+                            onPressed: () => _updateCartQuantity(index, cartItem.quantity + 1),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  
+                  const SizedBox(height: 2), 
+                  
+                  Text(
+                    'Rs.${cartItem.getTotalPrice(_selectedOrderType).toStringAsFixed(2)}',
+                    style: GoogleFonts.poppins(
+                      fontSize: 11, 
+                      fontWeight: FontWeight.w600,
+                      color: Colors.blue,
+                    ),
+                  ),
+                ],
+              ),
+            
+            if (!isDueTableItem) const SizedBox(width: 4),
+              
+            if (!isDueTableItem)
+              Container(
+                width: 24,
+                height: 24,
+                child: IconButton(
+                  icon: const Icon(Icons.close, size: 14, color: Colors.black),
+                  onPressed: () => _removeFromCart(index),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                ),
+              ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+  Widget _buildSummaryRow(String label, double amount) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: GoogleFonts.poppins(
+              fontSize: 12,
+              color: Colors.grey[700],
+            ),
+          ),
+          Text(
+            'Rs.${amount.toStringAsFixed(2)}',
+            style: GoogleFonts.poppins(
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+              color: Colors.grey[800],
+            ),
+          ),
+        ],
+      )
+    );
   }
 
   void _toggleListView() {
@@ -9230,8 +9763,7 @@ IconData _getCategoryIcon(String categoryName) {
 
   Widget _buildProductCardGrid(Product product) {
     final isInStock = product.availableQuantity > 0;
-    final currentPrice =
-        _selectedOrderType == OrderType.whole ? product.wsPrice : product.price;
+    final currentPrice = _selectedOrderType == OrderType.whole ? product.wsPrice : product.price;
     final cardHeight = 50.0;
 
     return Card(
@@ -9260,7 +9792,7 @@ IconData _getCategoryIcon(String categoryName) {
                           ? DecorationImage(
                               image: NetworkImage(product.productImage!),
                               fit: BoxFit.cover,
-                            )
+                          )
                           : null,
                     ),
                     child: product.productImage == null
@@ -9274,6 +9806,7 @@ IconData _getCategoryIcon(String categoryName) {
                         : null,
                   ),
                 ),
+                
                 Container(
                   padding: const EdgeInsets.all(8),
                   child: Column(
@@ -9290,7 +9823,9 @@ IconData _getCategoryIcon(String categoryName) {
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
+                      
                       const SizedBox(height: 4),
+                      
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
@@ -9317,9 +9852,8 @@ IconData _getCategoryIcon(String categoryName) {
 
   Widget _buildProductItemList(Product product) {
     final isInStock = product.availableQuantity > 0;
-    final currentPrice =
-        _selectedOrderType == OrderType.whole ? product.wsPrice : product.price;
-
+    final currentPrice = _selectedOrderType == OrderType.whole ? product.wsPrice : product.price;
+    
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       elevation: 2,
@@ -9383,10 +9917,8 @@ IconData _getCategoryIcon(String categoryName) {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.blue,
                   foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8)),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 ),
                 child: Text(
                   'Add',
@@ -9411,8 +9943,8 @@ IconData _getCategoryIcon(String categoryName) {
       if (notesJson != null) {
         final Map<String, dynamic> notesMap = json.decode(notesJson);
         setState(() {
-          _tableSpecialNotes = notesMap
-              .map((key, value) => MapEntry(int.parse(key), value.toString()));
+          _tableSpecialNotes = notesMap.map((key, value) => 
+            MapEntry(int.parse(key), value.toString()));
         });
       }
     } catch (e) {
@@ -9425,7 +9957,7 @@ IconData _getCategoryIcon(String categoryName) {
       setState(() {
         _tableSpecialNotes[tableId] = note;
       });
-
+      
       final prefs = await SharedPreferences.getInstance();
       final notesJson = json.encode(_tableSpecialNotes);
       await prefs.setString('table_special_notes', notesJson);
@@ -9439,7 +9971,7 @@ IconData _getCategoryIcon(String categoryName) {
       setState(() {
         _tableSpecialNotes.remove(tableId);
       });
-
+      
       final prefs = await SharedPreferences.getInstance();
       final notesJson = json.encode(_tableSpecialNotes);
       await prefs.setString('table_special_notes', notesJson);
@@ -9595,6 +10127,7 @@ IconData _getCategoryIcon(String categoryName) {
       body: Row(
         children: [
           _buildCategoriesPanel(),
+          
           Expanded(
             flex: 1,
             child: Column(
@@ -9621,8 +10154,7 @@ IconData _getCategoryIcon(String categoryName) {
                                   child: Row(
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
-                                      Icon(_selectedOrderType.icon,
-                                          color: Colors.blue, size: 20),
+                                      Icon(_selectedOrderType.icon, color: Colors.blue, size: 20),
                                       const SizedBox(width: 8),
                                       Text(
                                         _selectedOrderType.displayName,
@@ -9661,6 +10193,7 @@ IconData _getCategoryIcon(String categoryName) {
                         ],
                       ),
                       const SizedBox(height: 8),
+                    
                       SingleChildScrollView(
                         scrollDirection: Axis.horizontal,
                         child: Row(
@@ -9683,10 +10216,10 @@ IconData _getCategoryIcon(String categoryName) {
                               _showTableDialog,
                             ),
                             const SizedBox(width: 8),
+                           
                             Container(
                               height: 35,
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 12),
+                              padding: const EdgeInsets.symmetric(horizontal: 12),
                               decoration: BoxDecoration(
                                 color: Colors.red[50],
                                 borderRadius: BorderRadius.circular(20),
@@ -9700,8 +10233,7 @@ IconData _getCategoryIcon(String categoryName) {
                                   child: Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      Icon(Icons.money_off,
-                                          size: 16, color: Colors.red[800]),
+                                      Icon(Icons.money_off, size: 16, color: Colors.red[800]),
                                       const SizedBox(width: 4),
                                       Text(
                                         'Due Tables',
@@ -9717,13 +10249,12 @@ IconData _getCategoryIcon(String categoryName) {
                               ),
                             ),
                             const SizedBox(width: 8),
+                           
                             Container(
                               height: 35,
                               width: 35,
                               decoration: BoxDecoration(
-                                color: _showListView
-                                    ? Colors.blue[100]
-                                    : Colors.blue[50],
+                                color: _showListView ? Colors.blue[100] : Colors.blue[50],
                                 borderRadius: BorderRadius.circular(20),
                                 border: Border.all(color: Colors.blue[100]!),
                               ),
@@ -9733,13 +10264,9 @@ IconData _getCategoryIcon(String categoryName) {
                                   onTap: _toggleListView,
                                   borderRadius: BorderRadius.circular(20),
                                   child: Icon(
-                                    _showListView
-                                        ? Icons.grid_view
-                                        : Icons.list,
+                                    _showListView ? Icons.grid_view : Icons.list,
                                     size: 18,
-                                    color: _showListView
-                                        ? Colors.blue[800]
-                                        : Colors.blue,
+                                    color: _showListView ? Colors.blue[800] : Colors.blue,
                                   ),
                                 ),
                               ),
@@ -9748,6 +10275,7 @@ IconData _getCategoryIcon(String categoryName) {
                         ),
                       ),
                       const SizedBox(height: 8),
+                    
                       Container(
                         height: 45,
                         decoration: BoxDecoration(
@@ -9785,6 +10313,7 @@ IconData _getCategoryIcon(String categoryName) {
                     ],
                   ),
                 ),
+              
                 Expanded(
                   child: _isLoadingProducts
                       ? const Center(child: CircularProgressIndicator())
@@ -9793,8 +10322,7 @@ IconData _getCategoryIcon(String categoryName) {
                               child: Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  Icon(Icons.inventory_2_outlined,
-                                      size: 80, color: Colors.grey.shade300),
+                                  Icon(Icons.inventory_2_outlined, size: 80, color: Colors.grey.shade300),
                                   const SizedBox(height: 16),
                                   Text(
                                     'No products found',
@@ -9811,29 +10339,27 @@ IconData _getCategoryIcon(String categoryName) {
                                   padding: const EdgeInsets.all(8),
                                   itemCount: _filteredProducts.length,
                                   itemBuilder: (context, index) {
-                                    return _buildProductItemList(
-                                        _filteredProducts[index]);
+                                    return _buildProductItemList(_filteredProducts[index]);
                                   },
                                 )
                               : GridView.builder(
                                   padding: const EdgeInsets.all(8),
-                                  gridDelegate:
-                                      const SliverGridDelegateWithFixedCrossAxisCount(
+                                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                                     crossAxisCount: 6,
                                     childAspectRatio: 0.65,
                                     crossAxisSpacing: 4,
-                                    mainAxisSpacing: 4,
+                                    mainAxisSpacing: 4, 
                                   ),
                                   itemCount: _filteredProducts.length,
                                   itemBuilder: (context, index) {
-                                    return _buildProductCardGrid(
-                                        _filteredProducts[index]);
+                                    return _buildProductCardGrid(_filteredProducts[index]);
                                   },
                                 ),
                 ),
               ],
             ),
           ),
+          
           Container(
             width: 280,
             decoration: BoxDecoration(
@@ -9860,14 +10386,18 @@ IconData _getCategoryIcon(String categoryName) {
     final hasCashierPrinter = _connectedCashierDevices.isNotEmpty;
     final hasKitchenPrinter = _connectedKitchenDevices.isNotEmpty;
     final hasBotPrinter = _connectedBotDevices.isNotEmpty;
-
+    
     Color iconColor;
     Color badgeColor;
     String tooltipText = 'Printers';
+<<<<<<< HEAD
     bool _shouldShowBillCopy() {
   return _isEditingDueTable && _cartItems.isNotEmpty;
 }
 
+=======
+    
+>>>>>>> 425adf5dcaf48d4e27c4b766e59fed37dd315626
     if (!hasCashierPrinter) {
       iconColor = Colors.red;
       badgeColor = Colors.red;
@@ -9885,7 +10415,7 @@ IconData _getCategoryIcon(String categoryName) {
       badgeColor = Colors.green;
       tooltipText = 'All printers connected';
     }
-
+    
     return Stack(
       children: [
         Icon(
@@ -10000,11 +10530,9 @@ class PaymentScreen extends StatefulWidget {
   _PaymentScreenState createState() => _PaymentScreenState();
 }
 
-class _PaymentScreenState extends State<PaymentScreen>
-    with SingleTickerProviderStateMixin {
+class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProviderStateMixin {
   final TextEditingController _cashAmountController = TextEditingController();
-  final TextEditingController _bankTransferAmountController =
-      TextEditingController();
+  final TextEditingController _bankTransferAmountController = TextEditingController();
   final TextEditingController _creditAmountController = TextEditingController();
   final TextEditingController _cardAmountController = TextEditingController();
   double cashPaid = 0.0;
@@ -10029,42 +10557,42 @@ class _PaymentScreenState extends State<PaymentScreen>
   bool _bankTabVisited = false;
   bool _creditTabVisited = false;
   bool _cardTabVisited = false;
-
+  
   // Track if auto-fill has been triggered for due table
   bool _dueTableAutoFillTriggered = false;
-
+  
   @override
   void initState() {
     super.initState();
-
+    
     _tabController = TabController(length: 4, vsync: this);
-
+    
     cashPaid = 0.0;
     bankTransferPaid = 0.0;
     creditUsed = 0.0;
     cardPaid = 0.0;
     totalPaid = 0.0;
     remainingBalance = widget.netAmount;
-
+    
     _cashAmountController.clear();
     _bankTransferAmountController.clear();
     _creditAmountController.clear();
     _cardAmountController.clear();
-
+    
     _cashTabVisited = false;
     _bankTabVisited = false;
     _creditTabVisited = false;
     _cardTabVisited = false;
     _dueTableAutoFillTriggered = false;
-
+    
     _tabController.addListener(_handleTabChange);
     _loadAuthTokenAndUserData();
   }
-
+  
   void _handleTabChange() {
     if (!_tabController.indexIsChanging) {
       final currentIndex = _tabController.index;
-
+      
       switch (currentIndex) {
         case 0: // Cash
           if (!_cashTabVisited) {
@@ -10092,9 +10620,7 @@ class _PaymentScreenState extends State<PaymentScreen>
             setState(() {
               _cardTabVisited = true;
               // For due tables, only auto-fill if no payment has been entered yet
-              if (widget.isDueTable &&
-                  !_dueTableAutoFillTriggered &&
-                  totalPaid == 0) {
+              if (widget.isDueTable && !_dueTableAutoFillTriggered && totalPaid == 0) {
                 _autoFillCardAmountForDueTable();
                 _dueTableAutoFillTriggered = true;
               } else if (!widget.isDueTable) {
@@ -10111,16 +10637,16 @@ class _PaymentScreenState extends State<PaymentScreen>
       }
     }
   }
-
+  
   void _autoFillCardAmount() {
     double currentTotalPaid = cashPaid + bankTransferPaid + creditUsed;
     double currentRemainingBalance = widget.netAmount - currentTotalPaid;
-
+    
     if (currentRemainingBalance > 0) {
       setState(() {
         cardPaid = currentRemainingBalance;
         _cardAmountController.text = cardPaid.toStringAsFixed(2);
-
+        
         totalPaid = cashPaid + bankTransferPaid + creditUsed + cardPaid;
         remainingBalance = widget.netAmount - totalPaid;
       });
@@ -10128,43 +10654,43 @@ class _PaymentScreenState extends State<PaymentScreen>
       setState(() {
         cardPaid = 0.0;
         _cardAmountController.text = '';
-
+        
         totalPaid = cashPaid + bankTransferPaid + creditUsed + cardPaid;
         remainingBalance = widget.netAmount - totalPaid;
       });
     }
   }
-
+  
   void _autoFillCardAmountForDueTable() {
     // Only auto-fill if no payment has been entered yet
     if (totalPaid == 0) {
       setState(() {
         cardPaid = widget.netAmount;
         _cardAmountController.text = cardPaid.toStringAsFixed(2);
-
+        
         cashPaid = 0.0;
         bankTransferPaid = 0.0;
         creditUsed = 0.0;
         _cashAmountController.text = '';
         _bankTransferAmountController.text = '';
         _creditAmountController.text = '';
-
+        
         totalPaid = cashPaid + bankTransferPaid + creditUsed + cardPaid;
         remainingBalance = widget.netAmount - totalPaid;
       });
     }
   }
-
+  
   // New method to auto-fill card with remaining balance for due tables
   void _updateCardAmountForDueTable() {
     double currentTotalPaid = cashPaid + bankTransferPaid + creditUsed;
     double currentRemainingBalance = widget.netAmount - currentTotalPaid;
-
+    
     if (currentRemainingBalance > 0) {
       setState(() {
         cardPaid = currentRemainingBalance;
         _cardAmountController.text = cardPaid.toStringAsFixed(2);
-
+        
         totalPaid = cashPaid + bankTransferPaid + creditUsed + cardPaid;
         remainingBalance = widget.netAmount - totalPaid;
       });
@@ -10172,13 +10698,13 @@ class _PaymentScreenState extends State<PaymentScreen>
       setState(() {
         cardPaid = 0.0;
         _cardAmountController.text = '';
-
+        
         totalPaid = cashPaid + bankTransferPaid + creditUsed + cardPaid;
         remainingBalance = widget.netAmount - totalPaid;
       });
     }
   }
-
+  
   @override
   void dispose() {
     _tabController.removeListener(_handleTabChange);
@@ -10189,7 +10715,7 @@ class _PaymentScreenState extends State<PaymentScreen>
     _cardAmountController.dispose();
     super.dispose();
   }
-
+  
   Future<void> _loadAuthTokenAndUserData() async {
     setState(() {
       _loadingBanks = true;
@@ -10198,8 +10724,7 @@ class _PaymentScreenState extends State<PaymentScreen>
     try {
       final token = await AuthService.getToken();
       if (token == null) {
-        throw Exception(
-            'Authentication token not available. Please login again.');
+        throw Exception('Authentication token not available. Please login again.');
       }
       setState(() {
         authToken = token;
@@ -10216,7 +10741,7 @@ class _PaymentScreenState extends State<PaymentScreen>
       _initialLoadAttempted = true;
     });
   }
-
+  
   Future<void> _loadUserData() async {
     try {
       final SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -10233,7 +10758,7 @@ class _PaymentScreenState extends State<PaymentScreen>
       await _fetchUserDataFromAPI();
     }
   }
-
+  
   Future<void> _fetchUserDataFromAPI() async {
     if (authToken == null) return;
     try {
@@ -10247,12 +10772,12 @@ class _PaymentScreenState extends State<PaymentScreen>
       ).timeout(const Duration(seconds: 10));
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-
+        
         if (data is Map<String, dynamic>) {
           setState(() {
             userData = data;
           });
-
+          
           final SharedPreferences prefs = await SharedPreferences.getInstance();
           await prefs.setString('user_data', json.encode(data));
         }
@@ -10261,7 +10786,7 @@ class _PaymentScreenState extends State<PaymentScreen>
       // Silently handle error
     }
   }
-
+  
   Future<void> _loadBanks() async {
     if (authToken == null) {
       setState(() {
@@ -10281,9 +10806,9 @@ class _PaymentScreenState extends State<PaymentScreen>
       ).timeout(const Duration(seconds: 10));
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-
+        
         List<dynamic> banksList = [];
-
+        
         if (data is List) {
           banksList = data;
         } else if (data['data'] is List) {
@@ -10297,7 +10822,7 @@ class _PaymentScreenState extends State<PaymentScreen>
             banksList = data[listKey];
           }
         }
-
+        
         if (banksList.isNotEmpty) {
           setState(() {
             banks = List<Map<String, dynamic>>.from(banksList);
@@ -10325,11 +10850,11 @@ class _PaymentScreenState extends State<PaymentScreen>
       });
     }
   }
-
+  
   void _retryBankLoad() {
     _loadAuthTokenAndUserData();
   }
-
+  
   void _handleUnauthorizedError() {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -10343,32 +10868,29 @@ class _PaymentScreenState extends State<PaymentScreen>
       ),
     );
   }
-
+  
   void _updatePaymentAmount(String method, String value) {
     double amount = double.tryParse(value) ?? 0.0;
-
+    
     // Validate the amount is not negative
     if (amount < 0) {
       amount = 0.0;
-      // Batch all controller updates to avoid multiple rebuilds
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        switch (method) {
-          case 'Cash':
-            _cashAmountController.text = '';
-            break;
-          case 'Bank Transfer':
-            _bankTransferAmountController.text = '';
-            break;
-          case 'Credit':
-            _creditAmountController.text = '';
-            break;
-          case 'Card':
-            _cardAmountController.text = '';
-            break;
-        }
-      });
+      switch (method) {
+        case 'Cash':
+          _cashAmountController.text = '';
+          break;
+        case 'Bank Transfer':
+          _bankTransferAmountController.text = '';
+          break;
+        case 'Credit':
+          _creditAmountController.text = '';
+          break;
+        case 'Card':
+          _cardAmountController.text = '';
+          break;
+      }
     }
-
+    
     double currentMethodAmount = 0.0;
     switch (method) {
       case 'Cash':
@@ -10384,34 +10906,27 @@ class _PaymentScreenState extends State<PaymentScreen>
         currentMethodAmount = cardPaid;
         break;
     }
-
+    
     double otherMethodsTotal = totalPaid - currentMethodAmount;
-
+    
     double maxAllowed = (widget.netAmount - otherMethodsTotal);
-
+    
     if (method != 'Cash' && amount > maxAllowed) {
       amount = maxAllowed > 0 ? maxAllowed : 0;
-
-      // Batch all controller updates
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        switch (method) {
-          case 'Bank Transfer':
-            _bankTransferAmountController.text =
-                amount > 0 ? amount.toStringAsFixed(2) : '';
-            break;
-          case 'Credit':
-            _creditAmountController.text =
-                amount > 0 ? amount.toStringAsFixed(2) : '';
-            break;
-          case 'Card':
-            _cardAmountController.text =
-                amount > 0 ? amount.toStringAsFixed(2) : '';
-            break;
-        }
-      });
+      
+      switch (method) {
+        case 'Bank Transfer':
+          _bankTransferAmountController.text = amount > 0 ? amount.toStringAsFixed(2) : '';
+          break;
+        case 'Credit':
+          _creditAmountController.text = amount > 0 ? amount.toStringAsFixed(2) : '';
+          break;
+        case 'Card':
+          _cardAmountController.text = amount > 0 ? amount.toStringAsFixed(2) : '';
+          break;
+      }
     }
-
-    // Batch all state updates in one setState call
+    
     setState(() {
       switch (method) {
         case 'Cash':
@@ -10426,9 +10941,7 @@ class _PaymentScreenState extends State<PaymentScreen>
           } else {
             creditUsed = 0.0;
             if (value.isNotEmpty) {
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                _creditAmountController.text = '';
-              });
+              _creditAmountController.text = '';
             }
           }
           break;
@@ -10436,88 +10949,82 @@ class _PaymentScreenState extends State<PaymentScreen>
           cardPaid = amount;
           break;
       }
-
+      
       totalPaid = cashPaid + bankTransferPaid + creditUsed + cardPaid;
       remainingBalance = widget.netAmount - totalPaid;
-
+      
       // For due tables, update card amount when other methods are changed
       if (widget.isDueTable && method != 'Card') {
         _updateCardAmountForDueTable();
       }
-
+      
       // For regular tables, update card amount when other methods are changed
       if (!widget.isDueTable && method != 'Card' && _cardTabVisited) {
         _autoFillCardAmount();
       }
     });
   }
-
+  
   Future<Map<String, dynamic>> _processPayment() async {
     if (_isProcessingPayment) return {'success': false, 'invoiceNumber': null};
     setState(() => _isProcessingPayment = true);
-
+    
     if (widget.selectedTable != null && widget.selectedTable!.id == null) {
-      _showError(
-          'Selected table has no valid ID. Please select a different table.');
+      _showError('Selected table has no valid ID. Please select a different table.');
       setState(() => _isProcessingPayment = false);
       return {'success': false, 'invoiceNumber': null};
     }
-
+    
     double nonCashTotal = bankTransferPaid + creditUsed + cardPaid;
     double cashPayment = cashPaid;
-
+    
     if (nonCashTotal > widget.netAmount) {
-      _showError(
-          'Total non-cash payment (${nonCashTotal.toStringAsFixed(2)}) exceeds invoice amount (${widget.netAmount.toStringAsFixed(2)})');
+      _showError('Total non-cash payment (${nonCashTotal.toStringAsFixed(2)}) exceeds invoice amount (${widget.netAmount.toStringAsFixed(2)})');
       setState(() => _isProcessingPayment = false);
       return {'success': false, 'invoiceNumber': null};
     }
-
+    
     if (totalPaid < widget.netAmount) {
-      _showError(
-          'Total payment (${totalPaid.toStringAsFixed(2)}) is less than invoice amount (${widget.netAmount.toStringAsFixed(2)})');
+      _showError('Total payment (${totalPaid.toStringAsFixed(2)}) is less than invoice amount (${widget.netAmount.toStringAsFixed(2)})');
       setState(() => _isProcessingPayment = false);
       return {'success': false, 'invoiceNumber': null};
     }
-
+    
     if (creditUsed > 0 && widget.selectedCustomer?.id == null) {
       _showError('Customer ID is required for credit payment');
       setState(() => _isProcessingPayment = false);
       return {'success': false, 'invoiceNumber': null};
     }
-
+    
     try {
       final paymentPayload = await _buildPaymentPayload();
       print('Payment Payload: ${json.encode(paymentPayload)}');
-      final response = await http
-          .post(
-            Uri.parse(ApiConstants.getFullUrl(ApiConstants.processPayment)),
-            headers: {
-              'Content-Type': 'application/json',
-              'Accept': 'application/json',
-              'Authorization': 'Bearer $authToken',
-              'referer': ApiConstants.refererHeader,
-            },
-            body: json.encode(paymentPayload),
-          )
-          .timeout(const Duration(seconds: 30));
-
+      final response = await http.post(
+        Uri.parse(ApiConstants.getFullUrl(ApiConstants.processPayment)),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $authToken',
+          'referer': ApiConstants.refererHeader,
+        },
+        body: json.encode(paymentPayload),
+      ).timeout(const Duration(seconds: 30));
+      
       print('Response Status: ${response.statusCode}');
       print('Response Body: ${response.body}');
-
+      
       if (response.statusCode == 200 || response.statusCode == 201) {
         final responseData = json.decode(response.body);
-
+        
         String? invoiceNumber;
-        if (responseData['data'] != null &&
-            responseData['data']['invoice_head'] != null) {
+        if (responseData['data'] != null && responseData['data']['invoice_head'] != null) {
           invoiceNumber = responseData['data']['invoice_head']['invoice_code'];
         }
-
+        
         await _showSuccessDialog(responseData, invoiceNumber);
-
+        
         return {
-          'success': true,
+          'success': true, 
           'invoiceNumber': invoiceNumber,
           'paymentData': {
             'cash': cashPaid,
@@ -10527,8 +11034,7 @@ class _PaymentScreenState extends State<PaymentScreen>
           }
         };
       } else {
-        throw Exception(
-            'Payment failed: ${response.statusCode} - ${response.body}');
+        throw Exception('Payment failed: ${response.statusCode} - ${response.body}');
       }
     } catch (e) {
       _showError('Payment error: $e');
@@ -10537,16 +11043,14 @@ class _PaymentScreenState extends State<PaymentScreen>
       setState(() => _isProcessingPayment = false);
     }
   }
-
-  Future<void> _showSuccessDialog(
-      Map<String, dynamic> responseData, String? invoiceNumber) async {
+  
+  Future<void> _showSuccessDialog(Map<String, dynamic> responseData, String? invoiceNumber) async {
     return showDialog(
       context: context,
       barrierDismissible: false,
       builder: (BuildContext context) {
         return AlertDialog(
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           title: Row(
             children: [
               const Icon(Icons.check_circle, color: Colors.green, size: 32),
@@ -10591,7 +11095,7 @@ class _PaymentScreenState extends State<PaymentScreen>
               onPressed: () {
                 Navigator.of(context).pop();
                 Navigator.of(context).pop({
-                  'success': true,
+                  'success': true, 
                   'invoiceNumber': invoiceNumber,
                   'paymentData': {
                     'cash': cashPaid,
@@ -10604,8 +11108,7 @@ class _PaymentScreenState extends State<PaymentScreen>
               style: ElevatedButton.styleFrom(
                 backgroundColor: primaryColor,
                 minimumSize: const Size(double.infinity, 50),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
               child: Text(
                 'OK',
@@ -10620,7 +11123,7 @@ class _PaymentScreenState extends State<PaymentScreen>
       },
     );
   }
-
+  
   Future<Map<String, dynamic>> _buildPaymentPayload() async {
     if (userData == null) {
       throw Exception('User data not loaded. Please try again.');
@@ -10628,17 +11131,19 @@ class _PaymentScreenState extends State<PaymentScreen>
     String branch = userData!['branch_id']?.toString() ?? '1';
     String userName = userData!['name']?.toString() ?? 'Unknown';
     String userId = userData!['id']?.toString() ?? '0';
-    String saleType = widget.selectedTable != null ? 'DINE IN' : 'TAKE AWAY';
+    String saleType = widget.selectedTable != null
+        ? 'DINE IN'
+        : 'TAKE AWAY';
     List<Map<String, dynamic>> items = [];
     for (var item in widget.cartItems) {
       double price = item.getPriceByOrderType(widget.selectedOrderType);
       double disVal = item.getDiscount(widget.selectedOrderType);
       double dis = item.discountType == '%' ? item.discountValue : 0.0;
       double total = item.getTotalPrice(widget.selectedOrderType);
-
+      
       int lotId = 0;
       String lotNumber = item.product.lotNumber;
-
+      
       if (item.product.lotsqty.isNotEmpty) {
         for (var lot in item.product.lotsqty) {
           final qty = int.tryParse(lot['qty']?.toString() ?? '0') ?? 0;
@@ -10648,7 +11153,7 @@ class _PaymentScreenState extends State<PaymentScreen>
             break;
           }
         }
-
+        
         if (lotId == 0 && lotNumber.isNotEmpty) {
           try {
             lotId = int.tryParse(lotNumber) ?? 0;
@@ -10656,7 +11161,7 @@ class _PaymentScreenState extends State<PaymentScreen>
             print('Failed to parse lot number: $lotNumber');
           }
         }
-
+        
         if (lotId == 0) {
           final firstLot = item.product.lotsqty.first;
           lotId = firstLot['id'] ?? firstLot['lot_id'] ?? 1;
@@ -10672,11 +11177,11 @@ class _PaymentScreenState extends State<PaymentScreen>
           lotId = 1;
         }
       }
-
+      
       if (lotId == 0) {
         lotId = 1;
       }
-
+      
       items.add({
         'aQty': item.product.availableQuantity + item.quantity,
         'bar_code': item.product.barCode,
@@ -10695,7 +11200,7 @@ class _PaymentScreenState extends State<PaymentScreen>
         'total': total.toStringAsFixed(2),
         'total_discount': disVal.toStringAsFixed(2),
         'unit': item.product.unit,
-        'special_note': item.specialNote ?? '',
+        'special_note': item.specialNote ?? '', 
       });
     }
     Map<String, dynamic> metadata = {
@@ -10704,23 +11209,21 @@ class _PaymentScreenState extends State<PaymentScreen>
       'bill_copy_issued': 0,
       'billDis': widget.discountPercentage.toString(),
       'billDisVal': widget.globalDiscountValue.toStringAsFixed(2),
-      'customer': widget.selectedCustomer != null
-          ? {
-              'id': widget.selectedCustomer!.id,
-              'name': widget.selectedCustomer!.name,
-              'phone': widget.selectedCustomer!.phone ?? '',
-              'email': widget.selectedCustomer!.email ?? '',
-              'nic': widget.selectedCustomer!.nic ?? '',
-              'address': widget.selectedCustomer!.address ?? '',
-            }
-          : {
-              'id': 0,
-              'name': 'Walk-in Customer',
-              'phone': '',
-              'email': '',
-              'nic': '',
-              'address': '',
-            },
+      'customer': widget.selectedCustomer != null ? {
+        'id': widget.selectedCustomer!.id,
+        'name': widget.selectedCustomer!.name,
+        'phone': widget.selectedCustomer!.phone ?? '',
+        'email': widget.selectedCustomer!.email ?? '',
+        'nic': widget.selectedCustomer!.nic ?? '',
+        'address': widget.selectedCustomer!.address ?? '',
+      } : {
+        'id': 0,
+        'name': 'Walk-in Customer',
+        'phone': '',
+        'email': '',
+        'nic': '',
+        'address': '',
+      },
       'free_issue': 0,
       'grossAmount': widget.totalSubtotal.toStringAsFixed(2),
       'invDate': DateFormat('yyyy-MM-dd').format(DateTime.now()),
@@ -10729,9 +11232,7 @@ class _PaymentScreenState extends State<PaymentScreen>
       'order_now_order_info_id': "",
       'room_booking': '',
       'saleType': saleType,
-      'service_charge': widget.selectedTable != null
-          ? widget.serviceAmount.toStringAsFixed(2)
-          : '0.00',
+      'service_charge': widget.selectedTable != null ? widget.serviceAmount.toStringAsFixed(2) : '0.00',
       'services': [],
       'tbl_room_booking_id': '',
       'waiter_id': widget.selectedWaiter?.id ?? 0,
@@ -10762,20 +11263,17 @@ class _PaymentScreenState extends State<PaymentScreen>
         'cardAmount': cardPaid.toStringAsFixed(2),
         'cardType': 'VISA',
       };
-
+      
       if (selectedCardBank != null && selectedCardBank!.isNotEmpty) {
         cardData['cardBank'] = {
           'account_no': selectedCardBank!['account_no']?.toString() ?? '123456',
-          'account_type':
-              selectedCardBank!['account_type']?.toString() ?? 'Saving',
+          'account_type': selectedCardBank!['account_type']?.toString() ?? 'Saving',
           'bank_code': selectedCardBank!['bank_code']?.toString() ?? 'BOC',
           'bank_name': selectedCardBank!['bank_name']?.toString() ?? 'BOC',
           'branch': selectedCardBank!['branch']?.toString() ?? 'Kurunegala',
-          'created_at': selectedCardBank!['created_at']?.toString() ??
-              '2025-04-07T11:35:51.000000Z',
+          'created_at': selectedCardBank!['created_at']?.toString() ?? '2025-04-07T11:35:51.000000Z',
           'id': selectedCardBank!['id'] ?? 1,
-          'updated_at': selectedCardBank!['updated_at']?.toString() ??
-              '2025-04-07T11:35:51.000000Z',
+          'updated_at': selectedCardBank!['updated_at']?.toString() ?? '2025-04-07T11:35:51.000000Z',
         };
       } else {
         cardData['cardBank'] = {
@@ -10800,23 +11298,19 @@ class _PaymentScreenState extends State<PaymentScreen>
     String overBal = "";
     return {
       'advancePaymentApplied': 0,
-      'bank': bankTransferPaid > 0
-          ? bankData
-          : {
-              'amount': "",
-              'code': "",
-              'branch': "",
-              'user_name': "",
-              'user_id': "",
-            },
-      'card': cardPaid > 0
-          ? cardData
-          : {
-              'card_no': "",
-              'cardAmount': "",
-              'cardBank': {},
-              'cardType': "",
-            },
+      'bank': bankTransferPaid > 0 ? bankData : {
+        'amount': "",
+        'code': "",
+        'branch': "",
+        'user_name': "",
+        'user_id': "",
+      },
+      'card': cardPaid > 0 ? cardData : {
+        'card_no': "",
+        'cardAmount': "",
+        'cardBank': {},
+        'cardType': "",
+      },
       'cash': cashPaid > 0 ? cashPaid.toStringAsFixed(2) : "",
       'cheque': {
         'amount': "",
@@ -10831,7 +11325,7 @@ class _PaymentScreenState extends State<PaymentScreen>
       'type': 2,
     };
   }
-
+  
   void _showError(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -10844,7 +11338,7 @@ class _PaymentScreenState extends State<PaymentScreen>
       ),
     );
   }
-
+  
   Widget _buildBankDropdownSection(String type) {
     if (!_initialLoadAttempted) {
       return Container(
@@ -10868,7 +11362,7 @@ class _PaymentScreenState extends State<PaymentScreen>
         ),
       );
     }
-
+    
     if (_loadingBanks) {
       return Container(
         padding: const EdgeInsets.all(16),
@@ -10891,7 +11385,7 @@ class _PaymentScreenState extends State<PaymentScreen>
         ),
       );
     }
-
+    
     if (_bankLoadError != null) {
       return Container(
         padding: const EdgeInsets.all(16),
@@ -10917,10 +11411,8 @@ class _PaymentScreenState extends State<PaymentScreen>
               onPressed: _retryBankLoad,
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF1A3C34),
-                padding:
-                    const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8)),
+                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
               ),
               child: Text(
                 'Retry',
@@ -10931,7 +11423,7 @@ class _PaymentScreenState extends State<PaymentScreen>
         ),
       );
     }
-
+    
     if (banks.isEmpty) {
       return Container(
         padding: const EdgeInsets.all(16),
@@ -10945,7 +11437,7 @@ class _PaymentScreenState extends State<PaymentScreen>
         ),
       );
     }
-
+    
     return _buildBankDropdown(
       value: type == 'transfer' ? selectedBankTransferBank : selectedCardBank,
       onChanged: (Map<String, dynamic>? newValue) {
@@ -10957,12 +11449,10 @@ class _PaymentScreenState extends State<PaymentScreen>
           }
         });
       },
-      label: type == 'transfer'
-          ? 'Select Bank for Transfer'
-          : 'Select Bank for Card',
+      label: type == 'transfer' ? 'Select Bank for Transfer' : 'Select Bank for Card',
     );
   }
-
+  
   Widget _buildBankDropdown({
     required Map<String, dynamic>? value,
     required Function(Map<String, dynamic>?) onChanged,
@@ -10973,15 +11463,13 @@ class _PaymentScreenState extends State<PaymentScreen>
       decoration: InputDecoration(
         labelText: label,
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       ),
-      items: banks.map<DropdownMenuItem<Map<String, dynamic>>>(
-          (Map<String, dynamic> bank) {
+      items: banks.map<DropdownMenuItem<Map<String, dynamic>>>((Map<String, dynamic> bank) {
         final String displayName = bank['bank_name'] ??
-            bank['bank_code'] ??
-            bank['name'] ??
-            'Unknown Bank';
+                                 bank['bank_code'] ??
+                                 bank['name'] ??
+                                 'Unknown Bank';
         return DropdownMenuItem<Map<String, dynamic>>(
           value: bank,
           child: Text(
@@ -10994,7 +11482,7 @@ class _PaymentScreenState extends State<PaymentScreen>
       onChanged: onChanged,
     );
   }
-
+  
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -11004,13 +11492,11 @@ class _PaymentScreenState extends State<PaymentScreen>
         elevation: 2,
         title: Text(
           widget.isDueTable ? 'PAY DUE TABLE' : 'PAYMENT',
-          style: GoogleFonts.poppins(
-              fontWeight: FontWeight.w600, color: Colors.white),
+          style: GoogleFonts.poppins(fontWeight: FontWeight.w600, color: Colors.white),
         ),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.of(context)
-              .pop({'success': false, 'invoiceNumber': null}),
+          onPressed: () => Navigator.of(context).pop({'success': false, 'invoiceNumber': null}),
         ),
       ),
       body: Row(
@@ -11023,8 +11509,7 @@ class _PaymentScreenState extends State<PaymentScreen>
                 Container(
                   decoration: BoxDecoration(
                     color: primaryColor.withOpacity(0.1),
-                    borderRadius:
-                        const BorderRadius.vertical(top: Radius.circular(12)),
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
                   ),
                   child: Center(
                     child: SizedBox(
@@ -11034,8 +11519,7 @@ class _PaymentScreenState extends State<PaymentScreen>
                         indicatorColor: primaryColor,
                         labelColor: primaryColor,
                         unselectedLabelColor: Colors.grey[600],
-                        labelStyle: GoogleFonts.poppins(
-                            fontWeight: FontWeight.w600, fontSize: 12),
+                        labelStyle: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 12),
                         unselectedLabelStyle: GoogleFonts.poppins(fontSize: 12),
                         isScrollable: true,
                         tabAlignment: TabAlignment.center,
@@ -11049,6 +11533,7 @@ class _PaymentScreenState extends State<PaymentScreen>
                     ),
                   ),
                 ),
+                
                 Expanded(
                   child: TabBarView(
                     controller: _tabController,
@@ -11072,12 +11557,11 @@ class _PaymentScreenState extends State<PaymentScreen>
                               controller: _cashAmountController,
                               decoration: InputDecoration(
                                 labelText: 'Cash Amount',
-                                border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(12)),
+                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                                 hintText: 'Enter cash amount',
                                 suffixText: 'LKR',
                                 prefixIcon: const Icon(Icons.money),
-                                helperText: widget.isDueTable
+                                helperText: widget.isDueTable 
                                     ? 'Enter cash amount - card will auto-adjust to remaining balance'
                                     : null,
                                 helperStyle: TextStyle(
@@ -11085,14 +11569,13 @@ class _PaymentScreenState extends State<PaymentScreen>
                                   fontSize: 12,
                                 ),
                               ),
-                              keyboardType: TextInputType.numberWithOptions(
-                                  decimal: true),
-                              onChanged: (value) =>
-                                  _updatePaymentAmount('Cash', value),
+                              keyboardType: TextInputType.numberWithOptions(decimal: true),
+                              onChanged: (value) => _updatePaymentAmount('Cash', value),
                             ),
                           ],
                         ),
                       ),
+                      
                       SingleChildScrollView(
                         padding: const EdgeInsets.all(16),
                         child: Column(
@@ -11112,12 +11595,11 @@ class _PaymentScreenState extends State<PaymentScreen>
                               controller: _bankTransferAmountController,
                               decoration: InputDecoration(
                                 labelText: 'Transfer Amount',
-                                border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(12)),
+                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                                 hintText: 'Enter transfer amount',
                                 suffixText: 'LKR',
                                 prefixIcon: const Icon(Icons.account_balance),
-                                helperText: widget.isDueTable
+                                helperText: widget.isDueTable 
                                     ? 'Enter bank transfer amount - card will auto-adjust to remaining balance'
                                     : null,
                                 helperStyle: TextStyle(
@@ -11125,16 +11607,15 @@ class _PaymentScreenState extends State<PaymentScreen>
                                   fontSize: 12,
                                 ),
                               ),
-                              keyboardType: TextInputType.numberWithOptions(
-                                  decimal: true),
-                              onChanged: (value) =>
-                                  _updatePaymentAmount('Bank Transfer', value),
+                              keyboardType: TextInputType.numberWithOptions(decimal: true),
+                              onChanged: (value) => _updatePaymentAmount('Bank Transfer', value),
                             ),
                             const SizedBox(height: 16),
                             _buildBankDropdownSection('transfer'),
                           ],
                         ),
                       ),
+                      
                       SingleChildScrollView(
                         padding: const EdgeInsets.all(16),
                         child: Column(
@@ -11150,8 +11631,7 @@ class _PaymentScreenState extends State<PaymentScreen>
                                 ),
                                 child: Column(
                                   children: [
-                                    Icon(Icons.warning_amber,
-                                        color: Colors.red[800], size: 32),
+                                    Icon(Icons.warning_amber, color: Colors.red[800], size: 32),
                                     const SizedBox(height: 8),
                                     Text(
                                       'Please select a customer to use Credit payment.',
@@ -11209,13 +11689,11 @@ class _PaymentScreenState extends State<PaymentScreen>
                                     controller: _creditAmountController,
                                     decoration: InputDecoration(
                                       labelText: 'Credit Amount to Use',
-                                      border: OutlineInputBorder(
-                                          borderRadius:
-                                              BorderRadius.circular(12)),
+                                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                                       hintText: 'Enter credit amount',
                                       suffixText: 'LKR',
                                       prefixIcon: const Icon(Icons.credit_card),
-                                      helperText: widget.isDueTable
+                                      helperText: widget.isDueTable 
                                           ? 'Enter credit amount - card will auto-adjust to remaining balance'
                                           : null,
                                       helperStyle: TextStyle(
@@ -11223,17 +11701,15 @@ class _PaymentScreenState extends State<PaymentScreen>
                                         fontSize: 12,
                                       ),
                                     ),
-                                    keyboardType:
-                                        TextInputType.numberWithOptions(
-                                            decimal: true),
-                                    onChanged: (value) =>
-                                        _updatePaymentAmount('Credit', value),
+                                    keyboardType: TextInputType.numberWithOptions(decimal: true),
+                                    onChanged: (value) => _updatePaymentAmount('Credit', value),
                                   ),
                                 ],
                               ),
                           ],
                         ),
                       ),
+                      
                       SingleChildScrollView(
                         padding: const EdgeInsets.all(16),
                         child: Column(
@@ -11253,8 +11729,7 @@ class _PaymentScreenState extends State<PaymentScreen>
                               controller: _cardAmountController,
                               decoration: InputDecoration(
                                 labelText: 'Card Amount',
-                                border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(12)),
+                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                                 hintText: 'Enter card amount',
                                 suffixText: 'LKR',
                                 prefixIcon: const Icon(Icons.credit_score),
@@ -11266,10 +11741,8 @@ class _PaymentScreenState extends State<PaymentScreen>
                                   fontSize: 12,
                                 ),
                               ),
-                              keyboardType: TextInputType.numberWithOptions(
-                                  decimal: true),
-                              onChanged: (value) =>
-                                  _updatePaymentAmount('Card', value),
+                              keyboardType: TextInputType.numberWithOptions(decimal: true),
+                              onChanged: (value) => _updatePaymentAmount('Card', value),
                             ),
                             const SizedBox(height: 16),
                             _buildBankDropdownSection('card'),
@@ -11278,20 +11751,14 @@ class _PaymentScreenState extends State<PaymentScreen>
                               value: 'VISA',
                               decoration: InputDecoration(
                                 labelText: 'Card Type',
-                                border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(12)),
+                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                                 prefixIcon: const Icon(Icons.credit_card),
                               ),
                               items: const [
-                                DropdownMenuItem(
-                                    value: 'VISA', child: Text('VISA')),
-                                DropdownMenuItem(
-                                    value: 'MASTER', child: Text('MasterCard')),
-                                DropdownMenuItem(
-                                    value: 'AMEX',
-                                    child: Text('American Express')),
-                                DropdownMenuItem(
-                                    value: 'OTHER', child: Text('Other')),
+                                DropdownMenuItem(value: 'VISA', child: Text('VISA')),
+                                DropdownMenuItem(value: 'MASTER', child: Text('MasterCard')),
+                                DropdownMenuItem(value: 'AMEX', child: Text('American Express')),
+                                DropdownMenuItem(value: 'OTHER', child: Text('Other')),
                               ],
                               onChanged: (value) {
                                 // Handle card type change
@@ -11306,6 +11773,7 @@ class _PaymentScreenState extends State<PaymentScreen>
               ],
             ),
           ),
+          
           Expanded(
             flex: 2,
             child: Container(
@@ -11315,31 +11783,31 @@ class _PaymentScreenState extends State<PaymentScreen>
                 children: [
                   Card(
                     elevation: 2,
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     child: Padding(
                       padding: const EdgeInsets.all(16.0),
                       child: Column(
                         children: [
-                          _buildPaymentSummaryRow(
-                              "Invoice Amount", _fmt(widget.netAmount),
-                              isBold: true),
+                          _buildPaymentSummaryRow("Invoice Amount", _fmt(widget.netAmount), isBold: true),
+                          const SizedBox(height: 16),
+                          _buildPaymentSummaryRow("Total Paid", _fmt(totalPaid)),
                           const SizedBox(height: 16),
                           _buildPaymentSummaryRow(
-                              "Total Paid", _fmt(totalPaid)),
-                          const SizedBox(height: 16),
-                          _buildPaymentSummaryRow(
-                              "Remaining Balance", _fmt(remainingBalance),
-                              isBold: true, isNegative: remainingBalance < 0),
+                            "Remaining Balance",
+                            _fmt(remainingBalance),
+                            isBold: true,
+                            isNegative: remainingBalance < 0
+                          ),
                         ],
                       ),
                     ),
                   ),
+                  
                   const Spacer(),
+                  
                   Card(
                     elevation: 2,
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     child: Padding(
                       padding: const EdgeInsets.all(16.0),
                       child: Column(
@@ -11355,31 +11823,29 @@ class _PaymentScreenState extends State<PaymentScreen>
                           ),
                           const SizedBox(height: 12),
                           _buildPaymentBreakdownRow('Cash:', cashPaid),
-                          _buildPaymentBreakdownRow(
-                              'Bank Transfer:', bankTransferPaid),
+                          _buildPaymentBreakdownRow('Bank Transfer:', bankTransferPaid),
                           _buildPaymentBreakdownRow('Credit:', creditUsed),
                           _buildPaymentBreakdownRow('Card:', cardPaid),
                           const Divider(height: 20),
-                          _buildPaymentBreakdownRow('TOTAL:', totalPaid,
-                              isTotal: true),
+                          _buildPaymentBreakdownRow('TOTAL:', totalPaid, isTotal: true),
                         ],
                       ),
                     ),
                   ),
+                  
                   const SizedBox(height: 20),
+                  
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       SizedBox(
                         width: MediaQuery.of(context).size.width * 0.18,
                         child: ElevatedButton(
-                          onPressed: () => Navigator.of(context)
-                              .pop({'success': false, 'invoiceNumber': null}),
+                          onPressed: () => Navigator.of(context).pop({'success': false, 'invoiceNumber': null}),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.grey[300],
                             foregroundColor: Colors.black87,
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12)),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                             padding: const EdgeInsets.symmetric(vertical: 14),
                           ),
                           child: Text(
@@ -11395,21 +11861,16 @@ class _PaymentScreenState extends State<PaymentScreen>
                       SizedBox(
                         width: MediaQuery.of(context).size.width * 0.18,
                         child: ElevatedButton(
-                          onPressed: _isProcessingPayment
-                              ? null
-                              : () async {
-                                  final result = await _processPayment();
-                                  if (result['success'] == true) {
-                                    // Success handled in _showSuccessDialog
-                                  }
-                                },
+                          onPressed: _isProcessingPayment ? null : () async {
+                            final result = await _processPayment();
+                            if (result['success'] == true) {
+                              // Success handled in _showSuccessDialog
+                            }
+                          },
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: _isProcessingPayment
-                                ? Colors.grey
-                                : accentColor,
+                            backgroundColor: _isProcessingPayment ? Colors.grey : accentColor,
                             foregroundColor: Colors.black87,
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12)),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                             padding: const EdgeInsets.symmetric(vertical: 14),
                           ),
                           child: _isProcessingPayment
@@ -11418,8 +11879,7 @@ class _PaymentScreenState extends State<PaymentScreen>
                                   width: 20,
                                   child: CircularProgressIndicator(
                                     strokeWidth: 2,
-                                    valueColor: AlwaysStoppedAnimation<Color>(
-                                        Colors.black87),
+                                    valueColor: AlwaysStoppedAnimation<Color>(Colors.black87),
                                   ),
                                 )
                               : Text(
@@ -11441,9 +11901,8 @@ class _PaymentScreenState extends State<PaymentScreen>
       ),
     );
   }
-
-  Widget _buildPaymentSummaryRow(String label, String value,
-      {bool isBold = false, bool isNegative = false}) {
+  
+  Widget _buildPaymentSummaryRow(String label, String value, {bool isBold = false, bool isNegative = false}) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -11468,9 +11927,8 @@ class _PaymentScreenState extends State<PaymentScreen>
       ],
     );
   }
-
-  Widget _buildPaymentBreakdownRow(String label, double amount,
-      {bool isTotal = false}) {
+  
+  Widget _buildPaymentBreakdownRow(String label, double amount, {bool isTotal = false}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6.0),
       child: Row(
@@ -11496,6 +11954,6 @@ class _PaymentScreenState extends State<PaymentScreen>
       ),
     );
   }
-
+  
   String _fmt(double v) => 'Rs. ${v.toStringAsFixed(2)}';
-}
+} 
