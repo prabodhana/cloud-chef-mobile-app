@@ -226,6 +226,10 @@ class _InvoiceManagementScreenState extends State<InvoiceManagementScreen> {
   bool _isScanning = false;
   bool _isBluetoothEnabled = false;
   bool _isConnecting = false;
+  bool _isAutoConnecting = false;
+  
+  // Target printer name (cashier printer)
+  static const String TARGET_PRINTER_NAME = "Printer001";
   
   // Cancel invoice variables
   TextEditingController _cancelReasonController = TextEditingController();
@@ -237,16 +241,112 @@ class _InvoiceManagementScreenState extends State<InvoiceManagementScreen> {
   @override
   void initState() {
     super.initState();
-    _fetchTokenAndData();
-    _checkBluetoothStatus();
-    _requestPermissions();
+    _initializeApp();
+  }
+
+  Future<void> _initializeApp() async {
+    // Step 1: Fetch token and invoices
+    await _fetchTokenAndData();
+    
+    // Step 2: Initialize Bluetooth and auto-connect to target printer
+    await _initializeBluetoothAndConnect();
+  }
+
+  Future<void> _initializeBluetoothAndConnect() async {
+    try {
+      // Check if Bluetooth is enabled
+      bool? isEnabled = await _bluetooth.isEnabled;
+      
+      if (isEnabled == null || !isEnabled) {
+        // Try to enable Bluetooth
+        isEnabled = await _bluetooth.requestEnable();
+        
+        if (isEnabled == null || !isEnabled) {
+          if (_isDebugMode) print('Bluetooth is disabled');
+          _showMessage('Please enable Bluetooth to connect to printer');
+          return;
+        }
+      }
+      
+      setState(() {
+        _isBluetoothEnabled = true;
+      });
+      
+      // Load bonded devices
+      await _loadBondedDevices();
+      
+      // Auto-connect to target printer
+      await _autoConnectToTargetPrinter();
+      
+    } catch (e) {
+      if (_isDebugMode) print('Bluetooth initialization error: $e');
+      _showMessage('Bluetooth initialization error: ${e.toString()}');
+    }
+  }
+
+  Future<void> _autoConnectToTargetPrinter() async {
+    if (!_isBluetoothEnabled) {
+      _showMessage('Bluetooth is not enabled');
+      return;
+    }
+    
+    setState(() {
+      _isAutoConnecting = true;
+    });
+    
+    try {
+      // Find target printer in bonded devices
+      BluetoothDevice? targetDevice;
+      
+      for (var device in _devices) {
+        if (device.name != null && device.name!.contains(TARGET_PRINTER_NAME)) {
+          targetDevice = device;
+          break;
+        }
+      }
+      
+      if (targetDevice == null) {
+        // If not found in bonded devices, try to discover
+        _showMessage('Target printer not found in bonded devices. Scanning...');
+        
+        // Start discovery
+        final stream = _bluetooth.startDiscovery();
+        stream.listen((BluetoothDiscoveryResult result) {
+          final device = result.device;
+          if (device.name != null && device.name!.contains(TARGET_PRINTER_NAME)) {
+            // Stop discovery
+            _bluetooth.cancelDiscovery();
+            
+            // Connect to found device
+            _connectToDevice(device, isAutoConnect: true);
+          }
+        });
+        
+        // Stop discovery after 10 seconds
+        await Future.delayed(const Duration(seconds: 10));
+        await _bluetooth.cancelDiscovery();
+        
+        if (!_connectedDevices.any((d) => d.name != null && d.name!.contains(TARGET_PRINTER_NAME))) {
+          _showMessage('Could not find printer: $TARGET_PRINTER_NAME');
+        }
+      } else {
+        // Connect to the found device
+        await _connectToDevice(targetDevice, isAutoConnect: true);
+      }
+    } catch (e) {
+      if (_isDebugMode) print('Auto-connect error: $e');
+      _showMessage('Failed to auto-connect to printer: ${e.toString()}');
+    } finally {
+      setState(() {
+        _isAutoConnecting = false;
+      });
+    }
   }
 
   @override
   void dispose() {
-    for (var connection in _connections) {
-      connection.finish();
-    }
+    // Don't disconnect when screen is disposed - keep the connection active
+    // for faster printing next time
     _cancelReasonController.dispose();
     super.dispose();
   }
@@ -258,18 +358,10 @@ class _InvoiceManagementScreenState extends State<InvoiceManagementScreen> {
         _isBluetoothEnabled = isEnabled ?? false;
       });
       if (_isBluetoothEnabled) {
-        _loadBondedDevices();
+        await _loadBondedDevices();
       }
     } catch (e) {
       _showMessage('Bluetooth status check error: $e');
-    }
-  }
-
-  Future<void> _requestPermissions() async {
-    try {
-      // Request necessary permissions for Bluetooth
-    } catch (e) {
-      _showMessage('Permission error: $e');
     }
   }
 
@@ -279,8 +371,17 @@ class _InvoiceManagementScreenState extends State<InvoiceManagementScreen> {
       setState(() {
         _devices = bondedDevices;
       });
+      
+      // Log found devices for debugging
+      if (_isDebugMode) {
+        print('Found ${bondedDevices.length} bonded devices:');
+        for (var device in bondedDevices) {
+          print('  - ${device.name} (${device.address})');
+        }
+      }
     } catch (e) {
-      _showMessage('Error loading bonded devices: $e');
+      if (_isDebugMode) print('Error loading bonded devices: $e');
+      _showMessage('Error loading bonded devices: ${e.toString()}');
     }
   }
 
@@ -296,7 +397,10 @@ class _InvoiceManagementScreenState extends State<InvoiceManagementScreen> {
     });
 
     try {
+      // First load bonded devices
       await _loadBondedDevices();
+      
+      // Then start discovery for new devices
       final stream = _bluetooth.startDiscovery();
       stream.listen((BluetoothDiscoveryResult result) {
         final device = result.device;
@@ -307,10 +411,12 @@ class _InvoiceManagementScreenState extends State<InvoiceManagementScreen> {
         }
       });
 
+      // Scan for 10 seconds
       await Future.delayed(const Duration(seconds: 10));
       await _bluetooth.cancelDiscovery();
     } catch (e) {
-      _showMessage('Scan error: $e');
+      if (_isDebugMode) print('Scan error: $e');
+      _showMessage('Scan error: ${e.toString()}');
     } finally {
       setState(() {
         _isScanning = false;
@@ -318,34 +424,77 @@ class _InvoiceManagementScreenState extends State<InvoiceManagementScreen> {
     }
   }
 
-  Future<void> _connectToDevice(BluetoothDevice device) async {
+  Future<void> _connectToDevice(BluetoothDevice device, {bool isAutoConnect = false}) async {
+    // Check if already connected
     if (_connectedDevices.any((d) => d.address == device.address)) {
-      _showMessage('Already connected to ${device.name}');
+      if (!isAutoConnect) {
+        _showMessage('Already connected to ${device.name}');
+      }
       return;
     }
 
     setState(() => _isConnecting = true);
+    
     try {
       final connection = await BluetoothConnection.toAddress(device.address);
+      
+      // Listen for incoming data
       connection.input!.listen((data) {
         // Handle incoming data if needed
+        if (_isDebugMode) {
+          print('Received data from printer: ${String.fromCharCodes(data)}');
+        }
       }).onDone(() {
+        // Handle disconnection
         setState(() {
           _connections.removeWhere((conn) => _getDeviceForConnection(conn)?.address == device.address);
           _connectedDevices.removeWhere((d) => d.address == device.address);
         });
-        _showMessage('${device.name} disconnected');
+        
+        if (!isAutoConnect) {
+          _showMessage('${device.name} disconnected');
+        }
+        
+        // Try to reconnect if this was the target printer
+        if (device.name != null && device.name!.contains(TARGET_PRINTER_NAME)) {
+          _showMessage('Target printer disconnected. Attempting to reconnect...');
+          Future.delayed(const Duration(seconds: 2), () {
+            _connectToDevice(device, isAutoConnect: true);
+          });
+        }
       });
 
+      // Add to connections
       setState(() {
         _connections.add(connection);
         _connectedDevices.add(device);
         _isConnecting = false;
       });
-      _showMessage('Connected to ${device.name}');
+      
+      if (!isAutoConnect) {
+        _showMessage('Connected to ${device.name}');
+      }
+      
+      if (_isDebugMode) {
+        print('Successfully connected to ${device.name} (${device.address})');
+      }
     } catch (e) {
       setState(() => _isConnecting = false);
-      _showMessage('Failed to connect to ${device.name}: $e');
+      
+      if (!isAutoConnect) {
+        _showMessage('Failed to connect to ${device.name}: ${e.toString()}');
+      }
+      
+      if (_isDebugMode) {
+        print('Connection error to ${device.name}: $e');
+      }
+      
+      // If auto-connect failed, retry after delay
+      if (isAutoConnect && device.name != null && device.name!.contains(TARGET_PRINTER_NAME)) {
+        _showMessage('Auto-connect failed. Retrying in 5 seconds...');
+        await Future.delayed(const Duration(seconds: 5));
+        await _connectToDevice(device, isAutoConnect: true);
+      }
     }
   }
 
@@ -389,9 +538,17 @@ class _InvoiceManagementScreenState extends State<InvoiceManagementScreen> {
   }
 
   void _showMessage(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    if (_isDebugMode) print('Message: $message');
+    
+    // Only show snackbar if not in auto-connect mode
+    if (!_isAutoConnecting && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
   }
 
   Future<void> _fetchTokenAndData() async {
@@ -1031,14 +1188,28 @@ class _InvoiceManagementScreenState extends State<InvoiceManagementScreen> {
 
     try {
       final bytes = await _generateReceipt(invoice);
+      bool printSuccess = false;
+      
       for (int i = 0; i < _connectedDevices.length; i++) {
         try {
-          _connections[i].output.add(Uint8List.fromList(bytes));
-          await _connections[i].output.allSent;
-          _showMessage('Receipt sent to ${_connectedDevices[i].name}');
+          // Check if connection is still active
+          if (_connections[i].isConnected) {
+            _connections[i].output.add(Uint8List.fromList(bytes));
+            await _connections[i].output.allSent;
+            _showMessage('Receipt sent to ${_connectedDevices[i].name}');
+            printSuccess = true;
+          } else {
+            _showMessage('Connection lost to ${_connectedDevices[i].name}. Reconnecting...');
+            // Try to reconnect
+            await _connectToDevice(_connectedDevices[i], isAutoConnect: true);
+          }
         } catch (e) {
           _showMessage('Error printing to ${_connectedDevices[i].name}: $e');
         }
+      }
+      
+      if (!printSuccess) {
+        _showMessage('Failed to print. No active printer connections.');
       }
     } catch (e) {
       _showMessage('Error generating receipt: $e');
@@ -1114,7 +1285,6 @@ class _InvoiceManagementScreenState extends State<InvoiceManagementScreen> {
                 _buildDetailRow('Date', invoice.displayDate),
                 _buildDetailRow('Customer', invoice.customerName ?? 'Walk-in Customer'),
                 _buildDetailRow('Sale Type', invoice.saleType),
-                _buildDetailRow('Total Amount', 'Rs ${invoice.total.toStringAsFixed(2)}'),
                 _buildDetailRow('Net Amount', 'Rs ${invoice.netAmount.toStringAsFixed(2)}'),
                 _buildDetailRow('Gross Amount', 'Rs ${invoice.grossAmount.toStringAsFixed(2)}'),
                 _buildDetailRow('Profit', 'Rs ${invoice.profit.toStringAsFixed(2)}'),
@@ -1126,6 +1296,53 @@ class _InvoiceManagementScreenState extends State<InvoiceManagementScreen> {
                 _buildDetailRow('Created', invoice.createdAt),
                 if (invoice.isCancelled && cancellationReason != null && cancellationReason.isNotEmpty)
                   _buildDetailRow('Cancellation Reason', cancellationReason),
+                // Show printer connection status
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: _connectedDevices.isNotEmpty ? Colors.green[50] : Colors.orange[50],
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: _connectedDevices.isNotEmpty ? Colors.green[200]! : Colors.orange[200]!,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        _connectedDevices.isNotEmpty ? Icons.print : Icons.print_disabled,
+                        color: _connectedDevices.isNotEmpty ? Colors.green[800] : Colors.orange[800],
+                        size: 20,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              _connectedDevices.isNotEmpty 
+                                  ? 'Printer Connected' 
+                                  : 'Printer Not Connected',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: _connectedDevices.isNotEmpty ? Colors.green[800] : Colors.orange[800],
+                                fontSize: 12,
+                              ),
+                            ),
+                            if (_connectedDevices.isNotEmpty)
+                              Text(
+                                _connectedDevices.map((d) => d.name ?? 'Unknown').join(', '),
+                                style: TextStyle(
+                                  color: Colors.green[700],
+                                  fontSize: 11,
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
@@ -1310,35 +1527,70 @@ class _InvoiceManagementScreenState extends State<InvoiceManagementScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Row(
-                      children: [
-                        Icon(
-                          _isBluetoothEnabled ? Icons.bluetooth_connected : Icons.bluetooth_disabled,
-                          color: _isBluetoothEnabled ? Colors.blue : Colors.grey,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          _isBluetoothEnabled ? 'Bluetooth Enabled' : 'Bluetooth Disabled',
-                          style: TextStyle(
-                            color: _isBluetoothEnabled ? Colors.green : Colors.grey,
+                    // Connection Status
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: _connectedDevices.isNotEmpty ? Colors.green[50] : Colors.orange[50],
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            _isAutoConnecting ? Icons.bluetooth_searching :
+                            _connectedDevices.isNotEmpty ? Icons.bluetooth_connected : Icons.bluetooth,
+                            color: _connectedDevices.isNotEmpty ? Colors.green : 
+                                  _isAutoConnecting ? Colors.blue : Colors.orange,
                           ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    if (_connectedDevices.isNotEmpty) ...[
-                      const Text('Connected Printers:', style: TextStyle(fontWeight: FontWeight.bold)),
-                      ..._connectedDevices.map((device) => ListTile(
-                            title: Text(device.name ?? 'Unknown Device'),
-                            subtitle: Text(device.address),
-                            trailing: IconButton(
-                              icon: const Icon(Icons.close, color: Colors.red),
-                              onPressed: () => _disconnectDevice(device),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  _isAutoConnecting 
+                                      ? 'Auto-connecting to printer...' 
+                                      : _connectedDevices.isNotEmpty 
+                                          ? 'Connected to ${_connectedDevices.length} printer(s)' 
+                                          : 'Printer disconnected',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: _connectedDevices.isNotEmpty ? Colors.green[800] : Colors.orange[800],
+                                  ),
+                                ),
+                                if (_connectedDevices.isNotEmpty)
+                                  Text(
+                                    _connectedDevices.map((d) => d.name ?? 'Unknown').join(', '),
+                                    style: const TextStyle(fontSize: 12),
+                                  ),
+                                if (!_isBluetoothEnabled)
+                                  const Text(
+                                    'Bluetooth is disabled',
+                                    style: TextStyle(color: Colors.red, fontSize: 12),
+                                  ),
+                              ],
                             ),
-                          )).toList(),
-                      const Divider(),
-                    ],
-                    if (_isScanning)
+                          ),
+                        ],
+                      ),
+                    ),
+                    
+                    const SizedBox(height: 16),
+                    
+                    if (_isAutoConnecting)
+                      const Padding(
+                        padding: EdgeInsets.all(8.0),
+                        child: Column(
+                          children: [
+                            CircularProgressIndicator(),
+                            SizedBox(height: 12),
+                            Text('Auto-connecting to target printer...', textAlign: TextAlign.center),
+                            SizedBox(height: 4),
+                            Text('Printer001', style: TextStyle(fontWeight: FontWeight.bold)),
+                          ],
+                        ),
+                      )
+                    else if (_isScanning)
                       const Padding(
                         padding: EdgeInsets.all(8.0),
                         child: Column(
@@ -1368,43 +1620,96 @@ class _InvoiceManagementScreenState extends State<InvoiceManagementScreen> {
                           itemBuilder: (context, index) {
                             final device = _devices[index];
                             final isConnected = _connectedDevices.any((d) => d.address == device.address);
-                            return ListTile(
-                              title: Text(device.name ?? 'Unknown Device'),
-                              subtitle: Text(device.address),
-                              trailing: isConnected
-                                  ? const Icon(Icons.check_circle, color: Colors.green)
-                                  : _isConnecting
-                                      ? const CircularProgressIndicator()
-                                      : IconButton(
-                                          icon: const Icon(Icons.bluetooth),
-                                          onPressed: () => _connectToDevice(device),
-                                          color: Colors.blue,
-                                        ),
-                              onTap: isConnected ? null : () => _connectToDevice(device),
+                            final isTargetPrinter = device.name != null && device.name!.contains(TARGET_PRINTER_NAME);
+                            
+                            return Card(
+                              margin: const EdgeInsets.symmetric(vertical: 4),
+                              color: isTargetPrinter ? Colors.blue[50] : null,
+                              child: ListTile(
+                                leading: Icon(
+                                  isConnected ? Icons.check_circle : Icons.bluetooth,
+                                  color: isConnected ? Colors.green : Colors.blue,
+                                ),
+                                title: Text(
+                                  device.name ?? 'Unknown Device',
+                                  style: TextStyle(
+                                    fontWeight: isTargetPrinter ? FontWeight.bold : FontWeight.normal,
+                                  ),
+                                ),
+                                subtitle: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(device.address),
+                                    if (isTargetPrinter)
+                                      const Text(
+                                        'Target Printer',
+                                        style: TextStyle(color: Colors.blue, fontSize: 10),
+                                      ),
+                                  ],
+                                ),
+                                trailing: isConnected
+                                    ? IconButton(
+                                        icon: const Icon(Icons.close, color: Colors.red),
+                                        onPressed: () => _disconnectDevice(device),
+                                      )
+                                    : _isConnecting
+                                        ? const CircularProgressIndicator()
+                                        : IconButton(
+                                            icon: const Icon(Icons.link, color: Colors.blue),
+                                            onPressed: () => _connectToDevice(device),
+                                          ),
+                              ),
                             );
                           },
                         ),
                       ),
+                    
                     const SizedBox(height: 16),
+                    
+                    // Action buttons
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        ElevatedButton(
-                          onPressed: _scanDevices,
-                          child: const Text('Scan'),
-                        ),
-                        if (_connectedDevices.isNotEmpty)
-                          ElevatedButton(
-                            onPressed: _disconnectAllDevices,
-                            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                            child: const Text('Disconnect All'),
+                        // Auto-connect button
+                        ElevatedButton.icon(
+                          onPressed: _isAutoConnecting ? null : _autoConnectToTargetPrinter,
+                          icon: const Icon(Icons.autorenew, size: 18),
+                          label: const Text('Auto Connect'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.blue[100],
+                            foregroundColor: Colors.blue[800],
                           ),
+                        ),
+                        
+                        // Scan button
+                        ElevatedButton.icon(
+                          onPressed: _scanDevices,
+                          icon: const Icon(Icons.search, size: 18),
+                          label: const Text('Scan'),
+                        ),
+                        
+                        // Close button
                         ElevatedButton(
                           onPressed: () => Navigator.of(context).pop(),
                           child: const Text('Close'),
                         ),
                       ],
                     ),
+                    
+                    // Disconnect all button
+                    if (_connectedDevices.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8),
+                        child: ElevatedButton.icon(
+                          onPressed: _disconnectAllDevices,
+                          icon: const Icon(Icons.close, size: 18),
+                          label: const Text('Disconnect All'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.red[100],
+                            foregroundColor: Colors.red[800],
+                          ),
+                        ),
+                      ),
                   ],
                 ),
               ),
@@ -1519,7 +1824,7 @@ class _InvoiceManagementScreenState extends State<InvoiceManagementScreen> {
     );
   }
 
-  // FIXED: Invoice card with red background for cancelled invoices
+  // Invoice card with red background for cancelled invoices
   Widget _buildInvoiceCard(Invoice invoice) {
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
@@ -1594,19 +1899,13 @@ class _InvoiceManagementScreenState extends State<InvoiceManagementScreen> {
             Row(
               children: [
                 Text(
-                  'Amount: Rs ${invoice.total.toStringAsFixed(2)}',
+                  'Amount: Rs ${invoice.grossAmount.toStringAsFixed(2)}',
                   style: TextStyle(
                     fontWeight: FontWeight.w500,
                     color: invoice.isCancelled ? Colors.red[700] : Colors.green,
                   ),
                 ),
-                const Spacer(),
-                Text(
-                  'Profit: Rs ${invoice.profit.toStringAsFixed(2)}',
-                  style: TextStyle(
-                    color: invoice.isCancelled ? Colors.red[600] : Colors.orange,
-                  ),
-                ),
+                
               ],
             ),
             Text(
@@ -1636,39 +1935,54 @@ class _InvoiceManagementScreenState extends State<InvoiceManagementScreen> {
         backgroundColor: const Color(0xFF1A3C34),
         foregroundColor: Colors.white,
         actions: [
-          IconButton(
-            icon: Stack(
-              children: [
-                const Icon(Icons.print),
-                if (_connectedDevices.isNotEmpty)
-                  Positioned(
-                    right: 0,
-                    top: 0,
-                    child: Container(
-                      padding: const EdgeInsets.all(2),
-                      decoration: const BoxDecoration(
-                        color: Colors.green,
-                        shape: BoxShape.circle,
-                      ),
-                      child: Text(
-                        '${_connectedDevices.length}',
-                        style: const TextStyle(
-                          fontSize: 8,
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+          // Printer status indicator
+          Stack(
+            children: [
+              IconButton(
+                icon: Icon(
+                  _isAutoConnecting ? Icons.bluetooth_searching :
+                  _connectedDevices.isNotEmpty ? Icons.print : Icons.print_disabled,
+                  color: _connectedDevices.isNotEmpty ? Colors.white : Colors.grey[400],
+                ),
+                onPressed: _showPrinterDialog,
+                tooltip: 'Printer Settings',
+              ),
+              if (_connectedDevices.isNotEmpty)
+                Positioned(
+                  right: 8,
+                  top: 8,
+                  child: Container(
+                    width: 12,
+                    height: 12,
+                    decoration: const BoxDecoration(
+                      color: Colors.green,
+                      shape: BoxShape.circle,
                     ),
                   ),
-              ],
-            ),
-            onPressed: _showPrinterDialog,
-            tooltip: 'Printer Settings',
+                ),
+              if (_isAutoConnecting)
+                Positioned(
+                  right: 8,
+                  top: 8,
+                  child: Container(
+                    width: 12,
+                    height: 12,
+                    decoration: BoxDecoration(
+                      color: Colors.blue[400],
+                      shape: BoxShape.circle,
+                    ),
+                    child: const CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                    ),
+                  ),
+                ),
+            ],
           ),
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: fetchInvoices,
-            tooltip: 'Refresh',
+            tooltip: 'Refresh Invoices',
           ),
         ],
       ),
@@ -1682,6 +1996,57 @@ class _InvoiceManagementScreenState extends State<InvoiceManagementScreen> {
         ),
         child: Column(
           children: [
+            // Auto-connect status indicator
+            if (_isAutoConnecting)
+              Container(
+                padding: const EdgeInsets.all(8),
+                color: Colors.blue[50],
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                    const SizedBox(width: 8),
+                    const Text('Auto-connecting to printer...'),
+                    const SizedBox(width: 4),
+                    Text(
+                      TARGET_PRINTER_NAME,
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+              ),
+            
+            // Printer connection status banner
+            if (_connectedDevices.isNotEmpty && !_isAutoConnecting)
+              Container(
+                padding: const EdgeInsets.all(8),
+                color: Colors.green[50],
+                child: Row(
+                  children: [
+                    Icon(Icons.check_circle, color: Colors.green[800], size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Connected to: ${_connectedDevices.map((d) => d.name ?? 'Printer').join(', ')}',
+                        style: TextStyle(
+                          color: Colors.green[800],
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.info, size: 18),
+                      onPressed: _showPrinterDialog,
+                      color: Colors.green[800],
+                    ),
+                  ],
+                ),
+              ),
+            
             Padding(
               padding: const EdgeInsets.all(16.0),
               child: TextField(
@@ -1767,11 +2132,24 @@ class _InvoiceManagementScreenState extends State<InvoiceManagementScreen> {
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: fetchInvoices,
-        backgroundColor: const Color(0xFF1A3C34),
-        child: const Icon(Icons.refresh, color: Colors.white),
-        tooltip: 'Refresh',
+      floatingActionButton: Column(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          if (!_connectedDevices.isNotEmpty && !_isAutoConnecting)
+            FloatingActionButton.small(
+              onPressed: _autoConnectToTargetPrinter,
+              backgroundColor: Colors.blue,
+              child: const Icon(Icons.bluetooth, color: Colors.white),
+              tooltip: 'Connect Printer',
+            ),
+          const SizedBox(height: 8),
+          FloatingActionButton(
+            onPressed: fetchInvoices,
+            backgroundColor: const Color(0xFF1A3C34),
+            child: const Icon(Icons.refresh, color: Colors.white),
+            tooltip: 'Refresh Invoices',
+          ),
+        ],
       ),
     );
   }

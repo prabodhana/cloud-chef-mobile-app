@@ -59,7 +59,7 @@ dependencies:
   cupertino_icons: ^1.0.6
   device_info_plus: ^9.0.0
   esc_pos_printer: ^4.1.0
-  image_picker: ^0.8.7+4
+  image_picker: ^1.0.4
   animate_do: ^3.0.2
 
   
